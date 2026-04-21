@@ -1,54 +1,60 @@
 "use client";
 
 // components/booking/TimeSlotPicker.tsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Clock, Loader2, CalendarX, Ban } from "lucide-react";
-import type { SlotData, SelectedService } from "@/types/booking.types";
+import { ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-react";
+import type { SelectedService } from "@/types/booking.types";
 
 interface TimeSlotPickerProps {
   salonId: string;
   service: SelectedService;
   primaryColor: string;
-  onSelect: (datetime: string, displayTime: string, displayDate: string) => void;
+  onSelect: (
+    datetime: string,
+    timeDisplay: string,
+    dateDisplay: string,
+  ) => void;
 }
 
-interface DaySchedule {
+interface BusinessHours {
+  day_of_week: number;
   is_open: boolean;
   open_time: string;
   close_time: string;
 }
 
-type BusinessHoursMap = Record<number, DaySchedule>;
-
 const DAYS_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTHS_ES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+const DAYS_FULL_ES = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
 ];
 
-function getDaysInMonth(year: number, month: number): Date[] {
-  const days: Date[] = [];
-  const date = new Date(year, month, 1);
-  while (date.getMonth() === month) {
-    days.push(new Date(date));
-    date.setDate(date.getDate() + 1);
-  }
-  return days;
-}
-
-function formatDateISO(date: Date): string {
+// Fuera del componente — disponible en todo el módulo sin problemas de hoisting
+function formatDateKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
-}
-
-function formatDateDisplay(date: Date): string {
-  const dayName = DAYS_ES[date.getDay()];
-  const day = date.getDate();
-  const month = MONTHS_ES[date.getMonth()];
-  return `${dayName} ${day} de ${month}`;
 }
 
 export default function TimeSlotPicker({
@@ -60,109 +66,166 @@ export default function TimeSlotPicker({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [currentMonth, setCurrentMonth] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1),
+  );
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [slots, setSlots] = useState<SlotData[]>([]);
-  const [isClosed, setIsClosed] = useState(false);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [slotsError, setSlotsError] = useState<string | null>(null);
-
-  // Horarios del salón — se cargan una sola vez al montar
-  const [businessHours, setBusinessHours] = useState<BusinessHoursMap>({});
+  const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [loadingHours, setLoadingHours] = useState(true);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // ── Cargar business_hours al montar ──────────────────────────────────────
+  // Cargar business hours una vez
   useEffect(() => {
-    async function fetchBusinessHours() {
-      try {
-        const res = await fetch(`/api/business-hours?salon_id=${salonId}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        // Convertir array a mapa por day_of_week para lookup O(1)
-        const map: BusinessHoursMap = {};
-        for (const row of data.hours) {
-          map[row.day_of_week] = {
-            is_open: row.is_open,
-            open_time: row.open_time,
-            close_time: row.close_time,
-          };
-        }
-        setBusinessHours(map);
-      } catch {
-        // Si falla, el calendario funciona sin bloqueo visual
-        // El API de slots igual valida server-side
-      } finally {
-        setLoadingHours(false);
-      }
-    }
-    fetchBusinessHours();
+    fetch(`/api/business-hours?salon_id=${salonId}`)
+      .then((r) => r.json())
+      .then((data) => setBusinessHours(data.hours || []))
+      .catch(() => setBusinessHours([]))
+      .finally(() => setLoadingHours(false));
   }, [salonId]);
 
-  // ── Fetch slots para una fecha seleccionada ───────────────────────────────
-  const fetchSlots = useCallback(
-    async (date: Date) => {
+  // Cargar slots ocupados cuando cambia la fecha seleccionada
+  useEffect(() => {
+    if (!selectedDate) return;
+    const dateStr = formatDateKey(selectedDate);
+    let cancelled = false;
+
+    const load = async () => {
       setLoadingSlots(true);
-      setSlotsError(null);
-      setSlots([]);
-      setIsClosed(false);
-
       try {
-        const dateStr = formatDateISO(date);
-        const res = await fetch(
-          `/api/appointments?salon_id=${salonId}&service_id=${service.id}&date=${dateStr}`
+        const r = await fetch(
+          `/api/appointments?salon_id=${salonId}&date=${dateStr}`,
         );
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || "No se pudo cargar la disponibilidad");
-        }
-
-        const data = await res.json();
-
-        if (data.closed) {
-          setIsClosed(true);
-          return;
-        }
-
-        setSlots(data.slots || []);
-      } catch (err) {
-        setSlotsError(err instanceof Error ? err.message : "Error al cargar horarios");
+        const data = await r.json();
+        if (!cancelled) setBookedSlots(data.booked || []);
+      } catch {
+        if (!cancelled) setBookedSlots([]);
       } finally {
-        setLoadingSlots(false);
+        if (!cancelled) setLoadingSlots(false);
       }
-    },
-    [salonId, service.id]
-  );
+    };
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    fetchSlots(date);
-  };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate, salonId]);
 
-  const handlePrevMonth = () => {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
-    else setViewMonth((m) => m - 1);
-  };
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
-  const handleNextMonth = () => {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth((m) => m + 1);
-  };
+  function getBusinessHoursForDay(date: Date): BusinessHours | null {
+    const dow = date.getDay();
+    return businessHours.find((bh) => bh.day_of_week === dow) ?? null;
+  }
 
-  const days = getDaysInMonth(viewYear, viewMonth);
-  const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
+  function isDayAvailable(date: Date): boolean {
+    if (date < today) return false;
+    const bh = getBusinessHoursForDay(date);
+    return !!bh?.is_open;
+  }
+
+  function generateTimeSlots(bh: BusinessHours): string[] {
+    const slots: string[] = [];
+    const [openH, openM] = bh.open_time.split(":").map(Number);
+    const [closeH, closeM] = bh.close_time.split(":").map(Number);
+    const openTotal = openH * 60 + openM;
+    const closeTotal = closeH * 60 + closeM;
+    const duration = service.duration_minutes;
+
+    for (let t = openTotal; t + duration <= closeTotal; t += duration) {
+      const h = Math.floor(t / 60);
+      const m = t % 60;
+      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+    return slots;
+  }
+
+  function isSlotBooked(timeStr: string): boolean {
+    return bookedSlots.includes(timeStr);
+  }
+
+  function isSlotInPast(date: Date, timeStr: string): boolean {
+    const [h, m] = timeStr.split(":").map(Number);
+    const slotDate = new Date(date);
+    slotDate.setHours(h, m, 0, 0);
+    return slotDate <= new Date();
+  }
+
+  function formatTimeDisplay(timeStr: string): string {
+    const [h, m] = timeStr.split(":").map(Number);
+    const ampm = h >= 12 ? "pm" : "am";
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    return `${String(hour12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
+  }
+
+  function formatDateDisplay(date: Date): string {
+    const dayName = DAYS_FULL_ES[date.getDay()];
+    const day = date.getDate();
+    const month = MONTHS_ES[date.getMonth()];
+    return `${dayName} ${day} de ${month}`;
+  }
+
+  // ── Slot selection ────────────────────────────────────────────────────────
+  //
+  // FIX TIMEZONE: Construimos el ISO string manualmente usando los valores
+  // locales de fecha y hora directamente, sin pasar por toISOString() que
+  // convertiría de local a UTC restando el offset (UTC-6 El Salvador).
+  //
+  // El resultado es un string tipo "2026-04-23T14:00:00" que Supabase
+  // interpreta y guarda como 14:00 — exactamente lo que el usuario eligió.
+  //
+  function handleSlotSelect(timeStr: string) {
+    if (!selectedDate) return;
+
+    const y = selectedDate.getFullYear();
+    const mo = String(selectedDate.getMonth() + 1).padStart(2, "0");
+    const d = String(selectedDate.getDate()).padStart(2, "0");
+    const [h, m] = timeStr.split(":").map(Number);
+    const hh = String(h).padStart(2, "0");
+    const mm = String(m).padStart(2, "0");
+
+    // ISO sin offset → Supabase lo guarda tal cual como hora local
+    const isoString = `${y}-${mo}-${d}T${hh}:${mm}:00`;
+
+    onSelect(
+      isoString,
+      formatTimeDisplay(timeStr),
+      formatDateDisplay(selectedDate),
+    );
+  }
+
+  // ── Calendar rendering ────────────────────────────────────────────────────
+
+  function getDaysInMonth(year: number, month: number): number {
+    return new Date(year, month + 1, 0).getDate();
+  }
+
+  function getFirstDayOfMonth(year: number, month: number): number {
+    return new Date(year, month, 1).getDay();
+  }
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+
+  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
   const isPrevDisabled =
-    viewYear === today.getFullYear() && viewMonth === today.getMonth();
+    currentMonth <= new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const maxDate = new Date(today);
-  maxDate.setMonth(maxDate.getMonth() + 3);
-  const isNextDisabled =
-    viewYear > maxDate.getFullYear() ||
-    (viewYear === maxDate.getFullYear() && viewMonth >= maxDate.getMonth());
+  // ── Render ────────────────────────────────────────────────────────────────
 
-  const availableSlots = slots.filter((s) => s.available);
-  const hasClosedDays = Object.values(businessHours).some((h) => !h.is_open);
+  if (loadingHours) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <Loader2 className="animate-spin text-[#C4B8B0]" size={24} />
+      </div>
+    );
+  }
+
+  const selectedBH = selectedDate ? getBusinessHoursForDay(selectedDate) : null;
+  const timeSlots = selectedBH ? generateTimeSlots(selectedBH) : [];
 
   return (
     <div>
@@ -175,247 +238,148 @@ export default function TimeSlotPicker({
           Elige fecha y hora
         </h2>
         <p className="text-[#9C8E85] text-sm mt-1">
-          {service.name} · {service.duration_minutes} min
+          Selecciona un día disponible
         </p>
       </motion.div>
 
-      {/* ── Calendar ── */}
+      {/* Calendar */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="bg-white rounded-2xl border border-[#EDE8E3] p-4 mb-4"
+        className="rounded-2xl border border-[#EDE8E3] bg-white p-4 mb-4"
       >
         {/* Month navigation */}
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={handlePrevMonth}
+            onClick={prevMonth}
             disabled={isPrevDisabled}
-            className="w-8 h-8 rounded-lg flex items-center justify-center
-                       text-[#9C8E85] hover:bg-[#FAF8F5] disabled:opacity-30
+            className="p-1.5 rounded-lg hover:bg-[#FAF8F5] disabled:opacity-30
                        disabled:cursor-not-allowed transition-colors"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={16} className="text-[#9C8E85]" />
           </button>
-
-          <span className="font-['Cormorant_Garamond'] text-lg font-semibold text-[#2D2420]">
-            {MONTHS_ES[viewMonth]} {viewYear}
+          <span className="text-sm font-semibold text-[#2D2420]">
+            {MONTHS_ES[month]} {year}
           </span>
-
           <button
-            onClick={handleNextMonth}
-            disabled={isNextDisabled}
-            className="w-8 h-8 rounded-lg flex items-center justify-center
-                       text-[#9C8E85] hover:bg-[#FAF8F5] disabled:opacity-30
-                       disabled:cursor-not-allowed transition-colors"
+            onClick={nextMonth}
+            className="p-1.5 rounded-lg hover:bg-[#FAF8F5] transition-colors"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={16} className="text-[#9C8E85]" />
           </button>
         </div>
 
-        {/* Day headers — días cerrados aparecen más tenues */}
+        {/* Day labels */}
         <div className="grid grid-cols-7 mb-2">
-          {DAYS_ES.map((d, i) => {
-            const dayClosed = businessHours[i] && !businessHours[i].is_open;
-            return (
-              <div
-                key={d}
-                className="text-center text-[10px] font-medium py-1"
-                style={{ color: dayClosed ? "#E0D9D4" : "#C4B8B0" }}
-              >
-                {d}
-              </div>
-            );
-          })}
+          {DAYS_ES.map((d) => (
+            <div
+              key={d}
+              className="text-center text-[10px] font-medium text-[#C4B8B0] py-1"
+            >
+              {d}
+            </div>
+          ))}
         </div>
 
         {/* Days grid */}
         <div className="grid grid-cols-7 gap-y-1">
-          {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+          {Array.from({ length: firstDay }).map((_, i) => (
             <div key={`empty-${i}`} />
           ))}
-
-          {days.map((date) => {
-            const isToday = formatDateISO(date) === formatDateISO(today);
-            const isPast = date < today;
-            const isFuture = date > maxDate;
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const dayNum = i + 1;
+            const date = new Date(year, month, dayNum);
+            const available = isDayAvailable(date);
             const isSelected =
-              selectedDate && formatDateISO(date) === formatDateISO(selectedDate);
-
-            // Verificar si ese día de la semana está cerrado en el salón
-            const dayOfWeek = date.getDay();
-            const schedule = businessHours[dayOfWeek];
-            const isDayClosed = schedule ? !schedule.is_open : false;
-
-            const isDisabled = isPast || isFuture || isDayClosed;
+              selectedDate?.getFullYear() === year &&
+              selectedDate?.getMonth() === month &&
+              selectedDate?.getDate() === dayNum;
+            const isToday =
+              date.getFullYear() === today.getFullYear() &&
+              date.getMonth() === today.getMonth() &&
+              date.getDate() === today.getDate();
 
             return (
               <button
-                key={date.toISOString()}
-                onClick={() => !isDisabled && handleDateSelect(date)}
-                disabled={isDisabled}
-                title={isDayClosed ? "El salón no atiende este día" : undefined}
-                className={`
-                  relative w-full aspect-square rounded-xl text-xs font-medium
-                  flex items-center justify-center transition-all duration-150
-                  ${isDisabled ? "cursor-not-allowed" : "cursor-pointer"}
-                  ${!isDisabled && !isSelected ? "hover:bg-[#FAF8F5] text-[#2D2420]" : ""}
-                `}
-                style={
-                  isSelected
-                    ? { backgroundColor: primaryColor, color: "#fff" }
-                    : isDayClosed
-                    ? { color: "#E0D9D4", textDecoration: "line-through" }
-                    : isPast || isFuture
-                    ? { color: "#C4B8B0" }
-                    : isToday
-                    ? { color: primaryColor, fontWeight: 700 }
-                    : { color: "#2D2420" }
-                }
+                key={dayNum}
+                onClick={() => available && setSelectedDate(date)}
+                disabled={!available}
+                className="aspect-square flex items-center justify-center rounded-full
+                           text-xs font-medium transition-all duration-150
+                           disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: isSelected ? primaryColor : "transparent",
+                  color: isSelected
+                    ? "#fff"
+                    : available
+                      ? "#2D2420"
+                      : "#C4B8B0",
+                  fontWeight: isToday && !isSelected ? 700 : undefined,
+                  textDecoration:
+                    isToday && !isSelected ? "underline" : undefined,
+                  opacity: available ? 1 : 0.4,
+                }}
               >
-                {date.getDate()}
-
-                {/* Punto indicador de hoy */}
-                {isToday && !isSelected && !isDayClosed && (
-                  <span
-                    className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
-                    style={{ backgroundColor: primaryColor }}
-                  />
-                )}
+                {dayNum}
               </button>
             );
           })}
         </div>
-
-        {/* Leyenda — solo si hay días cerrados configurados */}
-        {hasClosedDays && (
-          <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-[#EDE8E3]">
-            <span
-              className="text-[10px] font-medium line-through"
-              style={{ color: "#E0D9D4" }}
-            >
-              15
-            </span>
-            <span className="text-[10px] text-[#C4B8B0]">= Días no disponibles</span>
-          </div>
-        )}
       </motion.div>
 
-      {/* ── Time Slots ── */}
+      {/* Time slots */}
       <AnimatePresence mode="wait">
-        {!selectedDate && (
-          <motion.p
-            key="hint"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="text-center text-[#9C8E85] text-sm py-6"
-          >
-            Selecciona una fecha para ver horarios disponibles
-          </motion.p>
-        )}
-
-        {selectedDate && loadingSlots && (
+        {selectedDate && (
           <motion.div
-            key="loading"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex items-center justify-center gap-2 py-8 text-[#9C8E85] text-sm"
-          >
-            <Loader2 size={16} className="animate-spin" style={{ color: primaryColor }} />
-            Verificando disponibilidad...
-          </motion.div>
-        )}
-
-        {/* Día cerrado */}
-        {selectedDate && isClosed && !loadingSlots && (
-          <motion.div
-            key="closed"
+            key={formatDateKey(selectedDate)}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center py-8 text-center"
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
           >
-            <div className="w-12 h-12 rounded-2xl bg-[#FAF8F5] flex items-center justify-center mb-3">
-              <Ban size={22} className="text-[#C4B8B0]" />
+            <div className="flex items-center gap-1.5 mb-3">
+              <Clock size={13} className="text-[#9C8E85]" />
+              <span className="text-xs font-medium text-[#9C8E85]">
+                Horarios disponibles — {formatDateDisplay(selectedDate)}
+              </span>
             </div>
-            <p className="text-[#2D2420] font-medium text-sm">Cerrado ese día</p>
-            <p className="text-[#9C8E85] text-xs mt-1 leading-relaxed">
-              El salón no atiende los{" "}
-              <span className="font-medium">{DAYS_ES[selectedDate.getDay()]}s</span>.
-              Por favor elige otra fecha.
-            </p>
-          </motion.div>
-        )}
 
-        {selectedDate && slotsError && !loadingSlots && (
-          <motion.div
-            key="error"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="text-center py-6"
-          >
-            <p className="text-sm text-red-500">{slotsError}</p>
-            <button
-              onClick={() => selectedDate && fetchSlots(selectedDate)}
-              className="mt-2 text-xs underline"
-              style={{ color: primaryColor }}
-            >
-              Reintentar
-            </button>
-          </motion.div>
-        )}
-
-        {selectedDate && !loadingSlots && !slotsError && !isClosed && (
-          <motion.div
-            key="slots"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-          >
-            <p className="text-xs font-medium text-[#9C8E85] mb-3 flex items-center gap-1.5">
-              <Clock size={12} />
-              {formatDateDisplay(selectedDate)} · {availableSlots.length} horarios disponibles
-            </p>
-
-            {availableSlots.length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-center">
-                <CalendarX size={28} className="text-[#C4B8B0] mb-2" />
-                <p className="text-[#2D2420] font-medium text-sm">Sin disponibilidad</p>
-                <p className="text-[#9C8E85] text-xs mt-1">Prueba con otra fecha</p>
+            {loadingSlots ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="animate-spin text-[#C4B8B0]" size={20} />
               </div>
+            ) : timeSlots.length === 0 ? (
+              <p className="text-sm text-[#9C8E85] text-center py-4">
+                No hay horarios disponibles este día.
+              </p>
             ) : (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {availableSlots.map((slot, i) => (
-                  <motion.button
-                    key={slot.datetime}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.03 }}
-                    onClick={() =>
-                      onSelect(slot.datetime, slot.time, formatDateDisplay(selectedDate))
-                    }
-                    className="py-2.5 rounded-xl border text-xs font-medium
-                               transition-all duration-150 hover:shadow-sm"
-                    style={{
-                      borderColor: `${primaryColor}40`,
-                      color: primaryColor,
-                      backgroundColor: `${primaryColor}08`,
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = primaryColor;
-                      (e.currentTarget as HTMLButtonElement).style.color = "#fff";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = `${primaryColor}08`;
-                      (e.currentTarget as HTMLButtonElement).style.color = primaryColor;
-                    }}
-                  >
-                    {slot.time}
-                  </motion.button>
-                ))}
+              <div className="grid grid-cols-3 gap-2">
+                {timeSlots.map((slot) => {
+                  const booked = isSlotBooked(slot);
+                  const past = isSlotInPast(selectedDate, slot);
+                  const disabled = booked || past;
+
+                  return (
+                    <button
+                      key={slot}
+                      onClick={() => !disabled && handleSlotSelect(slot)}
+                      disabled={disabled}
+                      className="py-2.5 rounded-xl text-xs font-medium border transition-all duration-150
+                                 disabled:cursor-not-allowed"
+                      style={{
+                        borderColor: disabled ? "#EDE8E3" : primaryColor,
+                        backgroundColor: disabled
+                          ? "#FAF8F5"
+                          : `${primaryColor}08`,
+                        color: disabled ? "#C4B8B0" : primaryColor,
+                        opacity: disabled ? 0.5 : 1,
+                      }}
+                    >
+                      {formatTimeDisplay(slot)}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </motion.div>
