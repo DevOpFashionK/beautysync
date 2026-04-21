@@ -36,7 +36,7 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.25, 0.1, 0.25, 1] } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
 };
 
 export default function ServiceSelector({
@@ -55,8 +55,12 @@ export default function ServiceSelector({
         >
           <Scissors size={28} style={{ color: primaryColor }} />
         </div>
-        <p className="text-[#2D2420] font-medium">No hay servicios disponibles</p>
-        <p className="text-[#9C8E85] text-sm mt-1">Contacta al salón directamente</p>
+        <p className="text-[#2D2420] font-medium">
+          No hay servicios disponibles
+        </p>
+        <p className="text-[#9C8E85] text-sm mt-1">
+          Contacta al salón directamente
+        </p>
       </div>
     );
   }
@@ -69,9 +73,7 @@ export default function ServiceSelector({
         transition={{ duration: 0.4 }}
         className="mb-6"
       >
-        <h2
-          className="font-['Cormorant_Garamond'] text-2xl font-semibold text-[#2D2420] leading-tight"
-        >
+        <h2 className="font-['Cormorant_Garamond'] text-2xl font-semibold text-[#2D2420] leading-tight">
           ¿Qué servicio deseas?
         </h2>
         <p className="text-[#9C8E85] text-sm mt-1">
