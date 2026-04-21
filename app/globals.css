@@ -1,0 +1,154 @@
+@import "tailwindcss";
+@import "../styles/design-tokens.css";
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #FEFCF8;
+    color: #231F21;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(63,60,62,0.15); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(63,60,62,0.25); }
+}
+
+@layer components {
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: white;
+    background: #D4375F;
+    box-shadow: 0 4px 16px 0 rgba(212,55,95,0.25);
+    transition: all 300ms ease;
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn-primary:hover {
+    background: #B52250;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px 0 rgba(212,55,95,0.35);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: #231F21;
+    background: white;
+    border: 1px solid rgba(63,60,62,0.20);
+    transition: all 250ms ease;
+    cursor: pointer;
+  }
+
+  .btn-secondary:hover {
+    border-color: #D4375F;
+    color: #D4375F;
+    background: #FDF2F4;
+  }
+
+  .card {
+    border-radius: 1rem;
+    padding: 1.5rem;
+    background: white;
+    box-shadow: 0 2px 12px 0 rgba(63,60,62,0.08), 0 1px 3px 0 rgba(63,60,62,0.05);
+    border: 1px solid rgba(63,60,62,0.10);
+    transition: box-shadow 300ms ease, transform 300ms ease;
+  }
+
+  .card:hover {
+    box-shadow: 0 8px 24px 0 rgba(63,60,62,0.12);
+  }
+
+  .input-base {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    background: white;
+    color: #231F21;
+    border: 1px solid rgba(63,60,62,0.20);
+    transition: all 250ms ease;
+    outline: none;
+  }
+
+  .input-base:focus {
+    border-color: #D4375F;
+    box-shadow: 0 0 0 3px rgba(212,55,95,0.12);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .skeleton {
+    border-radius: 0.75rem;
+    background: linear-gradient(90deg, #F6F5F5 25%, rgba(255,255,255,0.8) 50%, #F6F5F5 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+}
+
+@layer utilities {
+  .text-gradient-primary {
+    background: linear-gradient(135deg, #D4375F 0%, #C9A227 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
