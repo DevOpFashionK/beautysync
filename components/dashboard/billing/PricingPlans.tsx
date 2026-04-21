@@ -105,11 +105,17 @@ export function PricingPlans({
                       ? "border-2 shadow-lg"
                       : "border border-[#EDE8E3] shadow-sm hover:shadow-md"
                   }
-                  ${isCurrentPlan ? "ring-2" : ""}
+                  ${isCurrentPlan ? "" : ""}
                 `}
                 style={{
-                  borderColor: plan.popular ? primaryColor : undefined,
-                  ringColor: isCurrentPlan ? primaryColor : undefined,
+                  borderColor: plan.popular
+                    ? primaryColor
+                    : isCurrentPlan
+                      ? primaryColor
+                      : undefined,
+                  boxShadow: isCurrentPlan
+                    ? `0 0 0 2px ${primaryColor}`
+                    : undefined,
                 }}
               >
                 {/* Plan header */}
