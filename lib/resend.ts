@@ -1,11 +1,13 @@
 // lib/resend.ts
 import { Resend } from "resend";
 
-if (!process.env.RESEND_API_KEY) {
-  throw new Error("RESEND_API_KEY no está definida en .env.local");
+// ✅ Lazy initialization — no se ejecuta al importar, solo cuando se envía un email
+// Esto evita que el build de Next.js falle si RESEND_API_KEY no está definida
+function getResendClient(): Resend {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error("RESEND_API_KEY no está definida");
+  return new Resend(key);
 }
-
-export const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM =
   process.env.RESEND_FROM_EMAIL ?? "BeautySync <notificaciones@beautysync.co>";
@@ -284,7 +286,7 @@ function tplNuevaReservaSalon(d: SalonNotificationData): string {
 // ─── Funciones públicas de envío ──────────────────────────────────────────────
 
 export async function sendConfirmationEmail(data: AppointmentEmailData) {
-  return resend.emails.send({
+  return getResendClient().emails.send({
     from: FROM,
     to: data.clientEmail,
     subject: `✅ Cita confirmada en ${data.salonName}`,
@@ -293,7 +295,7 @@ export async function sendConfirmationEmail(data: AppointmentEmailData) {
 }
 
 export async function sendReminderEmail(data: AppointmentEmailData) {
-  return resend.emails.send({
+  return getResendClient().emails.send({
     from: FROM,
     to: data.clientEmail,
     subject: `💅 Recordatorio: Tu cita mañana en ${data.salonName}`,
@@ -302,7 +304,7 @@ export async function sendReminderEmail(data: AppointmentEmailData) {
 }
 
 export async function sendCancellationEmail(data: AppointmentEmailData) {
-  return resend.emails.send({
+  return getResendClient().emails.send({
     from: FROM,
     to: data.clientEmail,
     subject: `Cita cancelada — ${data.salonName}`,
@@ -311,7 +313,7 @@ export async function sendCancellationEmail(data: AppointmentEmailData) {
 }
 
 export async function sendNewBookingToSalon(data: SalonNotificationData) {
-  return resend.emails.send({
+  return getResendClient().emails.send({
     from: FROM,
     to: data.ownerEmail,
     subject: `📅 Nueva reserva: ${data.clientName} — ${formatDateTimeES(data.scheduledAt)}`,
