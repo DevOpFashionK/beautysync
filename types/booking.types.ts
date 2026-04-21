@@ -1,12 +1,11 @@
-// Agregar al final de types/index.ts (o crear este archivo aparte)
 // types/booking.types.ts
 
 export type BookingStep = "service" | "date" | "time" | "form" | "confirmation";
 
 export interface SlotData {
-  time: string;       // "09:00"
+  time: string;
   available: boolean;
-  datetime: string;   // ISO string
+  datetime: string;
 }
 
 export interface SlotsResponse {
@@ -24,9 +23,9 @@ export interface SelectedService {
 
 export interface BookingFormData {
   client_name: string;
-  client_email: string;
+  client_email?: string;       // opcional — puede no tener email
   client_phone: string;
-  client_notes: string;
+  client_notes?: string;       // opcional — puede no tener notas
 }
 
 export interface BookingPayload {
@@ -36,7 +35,7 @@ export interface BookingPayload {
   client_email?: string;
   client_phone: string;
   client_notes?: string;
-  scheduled_at: string; // ISO string
+  scheduled_at: string;
 }
 
 export interface SalonPublicData {
