@@ -26,19 +26,6 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.07, delayChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
-};
-
 export default function ServiceSelector({
   services,
   primaryColor,
@@ -55,12 +42,8 @@ export default function ServiceSelector({
         >
           <Scissors size={28} style={{ color: primaryColor }} />
         </div>
-        <p className="text-[#2D2420] font-medium">
-          No hay servicios disponibles
-        </p>
-        <p className="text-[#9C8E85] text-sm mt-1">
-          Contacta al salón directamente
-        </p>
+        <p className="text-[#2D2420] font-medium">No hay servicios disponibles</p>
+        <p className="text-[#9C8E85] text-sm mt-1">Contacta al salón directamente</p>
       </div>
     );
   }
@@ -81,35 +64,24 @@ export default function ServiceSelector({
         </p>
       </motion.div>
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="flex flex-col gap-3"
-      >
-        {activeServices.map((service) => (
+      <div className="flex flex-col gap-3">
+        {activeServices.map((service, index) => (
           <motion.button
             key={service.id}
-            variants={itemVariants}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: index * 0.07 + 0.1 }}
             onClick={() => onSelect(service as SelectedService)}
-            className="group w-full text-left rounded-2xl border border-[#EDE8E3] bg-white p-4 
+            className="group w-full text-left rounded-2xl border border-[#EDE8E3] bg-white p-4
                        transition-all duration-200 hover:shadow-md hover:border-transparent
                        focus:outline-none focus-visible:ring-2"
-            style={
-              {
-                "--focus-color": primaryColor,
-                // @ts-ignore css var
-                "--tw-ring-color": primaryColor,
-              } as React.CSSProperties
-            }
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
           >
             <div className="flex items-center justify-between gap-3">
               {/* Icon */}
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
-                           transition-colors duration-200"
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                 style={{ backgroundColor: `${primaryColor}14` }}
               >
                 <Scissors size={18} style={{ color: primaryColor }} />
@@ -149,7 +121,7 @@ export default function ServiceSelector({
             </div>
           </motion.button>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 }
