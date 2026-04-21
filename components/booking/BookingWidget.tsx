@@ -4,11 +4,26 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
+import dynamic from "next/dynamic";
 
 import ServiceSelector from "@/components/booking/ServiceSelector";
-import TimeSlotPicker from "@/components/booking/TimeSlotPicker";
 import BookingForm from "@/components/booking/BookingForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
+
+// TimeSlotPicker usa new Date() en el render — cargarlo solo en cliente
+// elimina el hydration mismatch de raíz. El Loader es el mismo spinner
+// que usa TimeSlotPicker internamente para consistencia visual.
+const TimeSlotPicker = dynamic(
+  () => import("@/components/booking/TimeSlotPicker"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-48">
+        <div className="w-6 h-6 rounded-full border-2 border-[#EDE8E3] border-t-[#C4B8B0] animate-spin" />
+      </div>
+    ),
+  },
+);
 
 import type {
   BookingStep,
@@ -36,7 +51,8 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
 
   const [step, setStep] = useState<BookingStep>("service");
   const [direction, setDirection] = useState(1);
-  const [selectedService, setSelectedService] = useState<SelectedService | null>(null);
+  const [selectedService, setSelectedService] =
+    useState<SelectedService | null>(null);
   const [selectedDatetime, setSelectedDatetime] = useState<string>("");
   const [selectedTimeDisplay, setSelectedTimeDisplay] = useState<string>("");
   const [selectedDateDisplay, setSelectedDateDisplay] = useState<string>("");
@@ -44,22 +60,28 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const goTo = useCallback((nextStep: BookingStep) => {
-    const currentIdx = STEPS_ORDER.indexOf(step);
-    const nextIdx = STEPS_ORDER.indexOf(nextStep);
-    setDirection(nextIdx > currentIdx ? 1 : -1);
-    setStep(nextStep);
-  }, [step]);
+  const goTo = useCallback(
+    (nextStep: BookingStep) => {
+      const currentIdx = STEPS_ORDER.indexOf(step);
+      const nextIdx = STEPS_ORDER.indexOf(nextStep);
+      setDirection(nextIdx > currentIdx ? 1 : -1);
+      setStep(nextStep);
+    },
+    [step],
+  );
 
   const goBack = useCallback(() => {
     const idx = STEPS_ORDER.indexOf(step);
     if (idx > 0) goTo(STEPS_ORDER[idx - 1]);
   }, [step, goTo]);
 
-  const handleServiceSelect = useCallback((service: SelectedService) => {
-    setSelectedService(service);
-    goTo("date");
-  }, [goTo]);
+  const handleServiceSelect = useCallback(
+    (service: SelectedService) => {
+      setSelectedService(service);
+      goTo("date");
+    },
+    [goTo],
+  );
 
   const handleSlotSelect = useCallback(
     (datetime: string, timeDisplay: string, dateDisplay: string) => {
@@ -68,7 +90,7 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
       setSelectedDateDisplay(dateDisplay);
       goTo("form");
     },
-    [goTo]
+    [goTo],
   );
 
   const handleFormSubmit = useCallback(
@@ -97,19 +119,23 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
         const data = await res.json();
 
         if (!res.ok) {
-          setApiError(data.error || "No se pudo crear la reserva. Intenta nuevamente.");
+          setApiError(
+            data.error || "No se pudo crear la reserva. Intenta nuevamente.",
+          );
           return;
         }
 
         setClientName(formData.client_name);
         goTo("confirmation");
       } catch {
-        setApiError("Error de conexión. Verifica tu internet e intenta nuevamente.");
+        setApiError(
+          "Error de conexión. Verifica tu internet e intenta nuevamente.",
+        );
       } finally {
         setIsSubmitting(false);
       }
     },
-    [salon.id, selectedService, selectedDatetime, goTo]
+    [salon.id, selectedService, selectedDatetime, goTo],
   );
 
   const handleBookAnother = useCallback(() => {
@@ -129,13 +155,10 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
 
   return (
     <div className="w-full max-w-sm mx-auto">
-
       {/* ── Header ── */}
       <div className="mb-6">
-
         {/* Top row: logo + name + back button */}
         <div className="flex items-center justify-between mb-4">
-
           {/* Salon identity */}
           <div className="flex items-center gap-2.5">
             {salon.logo_url ? (
@@ -180,7 +203,8 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
                     className="h-1.5 rounded-full transition-all duration-500"
                     style={{
                       width: isActive ? "32px" : "20px",
-                      backgroundColor: isDone || isActive ? primaryColor : "#EDE8E3",
+                      backgroundColor:
+                        isDone || isActive ? primaryColor : "#EDE8E3",
                       opacity: isActive ? 1 : isDone ? 0.6 : 1,
                     }}
                   />
@@ -257,7 +281,6 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
           </span>
         </p>
       </div>
-
     </div>
   );
 }
