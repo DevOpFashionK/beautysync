@@ -1,4 +1,4 @@
-﻿export type Json =
+﻿ export type Json =
   | string
   | number
   | boolean
@@ -79,6 +79,88 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_hours: {
+        Row: {
+          close_time: string
+          created_at: string | null
+          day_of_week: number
+          id: string
+          is_open: boolean
+          open_time: string
+          salon_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          close_time?: string
+          created_at?: string | null
+          day_of_week: number
+          id?: string
+          is_open?: boolean
+          open_time?: string
+          salon_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          close_time?: string
+          created_at?: string | null
+          day_of_week?: number
+          id?: string
+          is_open?: boolean
+          open_time?: string
+          salon_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_hours_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_logs: {
+        Row: {
+          appointment_id: string | null
+          channel: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          sent_at: string | null
+          status: string
+          type: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          channel: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          sent_at?: string | null
+          status?: string
+          type: string
+        }
+        Update: {
+          appointment_id?: string | null
+          channel?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          sent_at?: string | null
+          status?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
         ]
@@ -213,15 +295,7 @@ export type Database = {
           timezone?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "salons_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       services: {
         Row: {
