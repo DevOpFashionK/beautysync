@@ -81,13 +81,13 @@ const SERVICE_SUGGESTIONS = [
 
 const schema = z.object({
   name: z.string().min(2, "Mínimo 2 caracteres").max(80),
-  duration_minutes: z
-    .number({ invalid_type_error: "Ingresa un número" })
+  duration_minutes: z.coerce
+    .number({ message: "Ingresa un número" })
     .int()
     .min(15, "Mínimo 15 min")
     .max(480, "Máximo 8h"),
-  price: z
-    .number({ invalid_type_error: "Ingresa un precio" })
+  price: z.coerce
+    .number({ message: "Ingresa un precio" })
     .min(0, "Precio inválido")
     .max(99999),
   description: z.string().max(300).optional().or(z.literal("")),
