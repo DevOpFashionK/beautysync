@@ -3,13 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteSupabaseClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
-// Solo los status válidos del enum en DB
 const UpdateAppointmentSchema = z.object({
   status: z.enum(["pending", "confirmed", "cancelled", "completed", "no_show"]),
   cancellation_reason: z.string().max(300).optional().or(z.literal("")),
 });
 
-// PATCH /api/appointments/[id] — cambia el status de una cita
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -17,13 +15,11 @@ export async function PATCH(
   try {
     const { id } = await params;
 
-    // Validar que el id es UUID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
       return NextResponse.json({ error: "ID inválido" }, { status: 400 });
     }
 
-    // Cliente autenticado — lee cookies del request
     const supabase = createRouteSupabaseClient(request);
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -31,7 +27,6 @@ export async function PATCH(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    // Parsear y validar body
     let body: unknown;
     try {
       body = await request.json();
@@ -49,7 +44,6 @@ export async function PATCH(
 
     const { status, cancellation_reason } = result.data;
 
-    // Verificar que la cita existe y pertenece a un salón del usuario
     const { data: existing, error: fetchError } = await supabase
       .from("appointments")
       .select("id, status, salon_id, salons!inner(owner_id)")
@@ -65,8 +59,6 @@ export async function PATCH(
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    // Validar transiciones de status permitidas
-    // No se puede cambiar una cita ya cancelada o completada
     if (existing.status === "cancelled" || existing.status === "completed") {
       return NextResponse.json(
         { error: `No se puede modificar una cita ${existing.status === "cancelled" ? "cancelada" : "completada"}` },
@@ -74,15 +66,18 @@ export async function PATCH(
       );
     }
 
-    // Construir el objeto de actualización
-    const updatePayload: Record<string, unknown> = { status };
+    // Tipado explícito compatible con Supabase
+    const updatePayload: {
+      status: "pending" | "confirmed" | "cancelled" | "completed" | "no_show";
+      cancellation_reason?: string | null;
+      cancelled_at?: string | null;
+    } = { status };
 
     if (status === "cancelled") {
       updatePayload.cancellation_reason = cancellation_reason || null;
       updatePayload.cancelled_at = new Date().toISOString();
     }
 
-    // Actualizar — RLS verifica owner_id automáticamente
     const { data: updated, error: updateError } = await supabase
       .from("appointments")
       .update(updatePayload)
@@ -92,10 +87,7 @@ export async function PATCH(
 
     if (updateError) {
       console.error("[PATCH /api/appointments/[id]]", updateError);
-      return NextResponse.json(
-        { error: "Error al actualizar la cita" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Error al actualizar la cita" }, { status: 500 });
     }
 
     return NextResponse.json({ appointment: updated });
@@ -105,7 +97,6 @@ export async function PATCH(
   }
 }
 
-// GET /api/appointments/[id] — obtener detalle de una cita
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -146,4 +137,3 @@ export async function GET(
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
-
