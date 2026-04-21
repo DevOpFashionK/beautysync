@@ -21,8 +21,7 @@ export default async function ClientsPage() {
 
   if (!salon) redirect("/dashboard");
 
-  // Traer todas las citas con info de servicio para construir perfiles de clientas
-  const { data: appointments } = await supabase
+  const { data: rawAppointments } = await supabase
     .from("appointments")
     .select(`
       id, client_name, client_email, client_phone,
@@ -33,10 +32,20 @@ export default async function ClientsPage() {
     .not("status", "in", '("cancelled","no_show")')
     .order("scheduled_at", { ascending: false });
 
+  const appointments = (rawAppointments ?? []).map((a) => ({
+    ...a,
+    status: (a.status ?? "pending") as
+      | "pending"
+      | "confirmed"
+      | "cancelled"
+      | "completed"
+      | "no_show",
+  }));
+
   return (
     <ClientsClient
-      primaryColor={salon.primary_color || "#D4375F"}
-      appointments={appointments || []}
+      primaryColor={salon.primary_color ?? "#D4375F"}
+      appointments={appointments}
     />
   );
 }
