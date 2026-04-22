@@ -1,8 +1,94 @@
 // lib/resend.ts
+//
+// FIX TIMEZONE EN EMAILS:
+// formatDateTimeES usaba new Date(iso) + toLocaleString con timeZone "America/Bogota".
+// Dos problemas:
+// 1. new Date(iso) convierte el string a UTC → hora incorrecta
+// 2. "America/Bogota" es UTC-5, El Salvador es UTC-6 → 1 hora de diferencia
+//
+// SOLUCIÓN: formatDateTimeES ahora usa parseISOLocal() de @/lib/utils,
+// que extrae año/mes/día/hora/minutos directamente del string ISO sin
+// conversión de timezone — mismo approach que el dashboard.
+// La hora que ve la clienta en el email es exactamente la que eligió.
+
 import { Resend } from "resend";
 
+// Importar parseISOLocal indirectamente a través de las funciones exportadas
+// No podemos importar parseISOLocal directamente (es función privada de utils.ts)
+// así que replicamos la lógica aquí — es pequeña y crítica para los emails.
+// Esta es la única duplicación justificada: utils.ts es client-side safe,
+// resend.ts corre en el servidor y necesita la misma lógica.
+
+const DAYS_ES_FULL = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
+const MONTHS_ES_FULL = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+/**
+ * Parsea un string ISO extrayendo los componentes directamente del texto,
+ * sin pasar por new Date() que haría conversión de timezone.
+ * Acepta todos los formatos de Supabase:
+ *   "2026-04-28 14:00:00+00"
+ *   "2026-04-28T14:00:00Z"
+ *   "2026-04-28T14:00:00+00:00"
+ */
+function parseISOForEmail(isoString: string): {
+  year: number;
+  month: number;
+  day: number;
+  hours: number;
+  minutes: number;
+  dayOfWeek: number;
+} {
+  const clean = isoString
+    .replace(" ", "T")
+    .replace(/\.\d+/, "")
+    .replace(/([Zz]|[+-]\d{2}(:\d{2})?)$/, "");
+
+  const [datePart, timePart = "00:00:00"] = clean.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hours, minutes] = timePart.split(":").map(Number);
+
+  const dow = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return { year, month: month - 1, day, hours, minutes, dayOfWeek: dow };
+}
+
+/**
+ * Formatea fecha y hora para emails en español.
+ * Usa parseISOForEmail para extraer la hora literal sin conversión de timezone.
+ * Resultado: "Martes 28 de abril de 2026 a las 02:00 pm"
+ */
+function formatDateTimeES(isoString: string): string {
+  const { year, month, day, hours, minutes, dayOfWeek } =
+    parseISOForEmail(isoString);
+
+  const ampm = hours >= 12 ? "pm" : "am";
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  const timeStr = `${String(hour12).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${ampm}`;
+
+  return `${DAYS_ES_FULL[dayOfWeek]} ${day} de ${MONTHS_ES_FULL[month]} de ${year} a las ${timeStr}`;
+}
+
 // ✅ Lazy initialization — no se ejecuta al importar, solo cuando se envía un email
-// Esto evita que el build de Next.js falle si RESEND_API_KEY no está definida
 function getResendClient(): Resend {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error("RESEND_API_KEY no está definida");
@@ -20,25 +106,22 @@ export interface AppointmentEmailData {
   salonName: string;
   salonPhone?: string | null;
   serviceName: string;
-  scheduledAt: string; // ISO string — se formatea aquí
+  scheduledAt: string; // ISO string — se parsea con parseISOForEmail
   primaryColor?: string | null;
 }
 
-// ─── Helpers internos ─────────────────────────────────────────────────────────
-
-function formatDateTimeES(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString("es-CO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "America/Bogota",
-  });
+export interface SalonNotificationData {
+  salonName: string;
+  ownerEmail: string;
+  clientName: string;
+  clientPhone: string;
+  clientEmail?: string | null;
+  serviceName: string;
+  scheduledAt: string;
+  primaryColor?: string | null;
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function accentColor(primary?: string | null): string {
   return primary ?? "#D4375F";
@@ -131,7 +214,7 @@ function tplConfirmacion(d: AppointmentEmailData): string {
       }
     </table>
     <p style="margin:0;font-size:14px;color:#9C8E85;line-height:1.6;">
-      Recibirás un recordatorio 24 horas antes de tu cita. 
+      Recibirás un recordatorio 24 horas antes de tu cita.
       Si necesitas cancelar, por favor comunícate directamente con el salón.
     </p>
   `;
@@ -175,14 +258,13 @@ function tplRecordatorio(d: AppointmentEmailData): string {
       </p>
     </div>
     <p style="margin:0;font-size:13px;color:#9C8E85;">
-      Para cancelar o reagendar, comunícate con <strong>${d.salonName}</strong>
-      ${d.salonPhone ? ` al ${d.salonPhone}` : ""}.
+      Para cancelar o reagendar, comunícate con <strong>${d.salonName}</strong>${d.salonPhone ? ` al ${d.salonPhone}` : ""}.
     </p>
   `;
   return emailWrapper(content, accent);
 }
 
-// ─── Template: Cancelación automática ────────────────────────────────────────
+// ─── Template: Cancelación ────────────────────────────────────────────────────
 
 function tplCancelacion(d: AppointmentEmailData): string {
   const accent = accentColor(d.primaryColor);
@@ -218,17 +300,6 @@ function tplCancelacion(d: AppointmentEmailData): string {
 }
 
 // ─── Template: Nueva reserva (para el salón) ─────────────────────────────────
-
-interface SalonNotificationData {
-  salonName: string;
-  ownerEmail: string;
-  clientName: string;
-  clientPhone: string;
-  clientEmail?: string | null;
-  serviceName: string;
-  scheduledAt: string;
-  primaryColor?: string | null;
-}
 
 function tplNuevaReservaSalon(d: SalonNotificationData): string {
   const accent = accentColor(d.primaryColor);
@@ -320,5 +391,3 @@ export async function sendNewBookingToSalon(data: SalonNotificationData) {
     html: tplNuevaReservaSalon(data),
   });
 }
-
-export type { SalonNotificationData };
