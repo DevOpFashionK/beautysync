@@ -19,8 +19,8 @@ function getAdminClient() {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
-      }
-    }
+      },
+    },
   );
 }
 
@@ -95,35 +95,30 @@ export async function sendPendingReminders(): Promise<{
 
   // Ventana: citas en las próximas 24–25h donde reminder_sent = false
   const windowStart = new Date(
-    now.getTime() + 1 * 60 * 60 * 1000,
+    now.getTime() + 23 * 60 * 60 * 1000,
   ).toISOString();
-  const windowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
+  const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000).toISOString();
 
-// Citas que necesitan recordatorio — SIN filtro de ventana temporal (modo prueba)
-const { data: appointments, error } = await supabase
-  .from("appointments")
-  .select(
-    `
+  // Citas que necesitan recordatorio — SIN filtro de ventana temporal (modo prueba)
+  const { data: appointments, error } = await supabase
+    .from("appointments")
+    .select(
+      `
     id, client_name, client_email, client_phone, scheduled_at, status,
     reminder_sent, confirmation_token,
     services ( name ),
     salons ( name, phone, primary_color, owner_id )
   `,
-  )
-  .eq("reminder_sent", false)
-  .in("status", ["pending", "confirmed"])
-  .gte("scheduled_at", new Date().toISOString());
+    )
+    .eq("reminder_sent", false)
+    .in("status", ["pending", "confirmed"])
+    .gte("scheduled_at", windowStart)
+    .lte("scheduled_at", windowEnd);
 
   if (error || !appointments) {
     console.error("[Reminders] Error fetching appointments:", error);
     return { processed: 0, sent: 0, failed: 0, autoCancelled: 0 };
   }
-
-  // ← AGREGAR ESTO TEMPORALMENTE
-  console.log(
-    "[Reminders] Appointments found:",
-    JSON.stringify(appointments, null, 2),
-  );
 
   let sent = 0;
   let failed = 0;
