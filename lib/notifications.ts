@@ -99,21 +99,20 @@ export async function sendPendingReminders(): Promise<{
   ).toISOString();
   const windowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
 
-  // Citas que necesitan recordatorio
-  const { data: appointments, error } = await supabase
-    .from("appointments")
-    .select(
-      `
-      id, client_name, client_email, client_phone, scheduled_at, status,
-      reminder_sent, confirmation_token,
-      services ( name ),
-      salons ( name, phone, primary_color, owner_id )
-    `,
-    )
-    .gte("scheduled_at", windowStart)
-    .lte("scheduled_at", windowEnd)
-    .eq("reminder_sent", false)
-    .in("status", ["pending", "confirmed"]);
+// Citas que necesitan recordatorio — SIN filtro de ventana temporal (modo prueba)
+const { data: appointments, error } = await supabase
+  .from("appointments")
+  .select(
+    `
+    id, client_name, client_email, client_phone, scheduled_at, status,
+    reminder_sent, confirmation_token,
+    services ( name ),
+    salons ( name, phone, primary_color, owner_id )
+  `,
+  )
+  .eq("reminder_sent", false)
+  .in("status", ["pending", "confirmed"])
+  .gte("scheduled_at", new Date().toISOString());
 
   if (error || !appointments) {
     console.error("[Reminders] Error fetching appointments:", error);
