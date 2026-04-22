@@ -1,16 +1,48 @@
 "use client";
 
+// components/dashboard/TodayAppointments.tsx
+//
+// FIXES aplicados:
+// 1. lastUpdate.toLocaleTimeString() → formatTime24() desde @/lib/utils
+//    Causa del Hydration Error #418: toLocaleTimeString da output distinto
+//    en Node (UTC) vs browser (UTC-6), causando mismatch de hydration.
+//
+// 2. Rango del día: new Date(year, month, day).toISOString() construía en
+//    hora local UTC-6 y lo convertía a UTC, haciendo que el filtro buscara
+//    desde las 06:00Z en vez de 00:00Z. Ahora usa Date.UTC() para construir
+//    el rango siempre en UTC puro, que es lo que Supabase almacena.
+
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarDays, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AppointmentCard from "./AppointmentCard";
+import { formatTime24 } from "@/lib/utils";
 import type { Database } from "@/types/database.types";
 
 type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
 type Appointment = AppointmentRow & {
   services?: { name: string; duration_minutes: number; price: number } | null;
 };
+
+// ─── Helpers de rango UTC ─────────────────────────────────────────────────────
+// Construye los límites del día actual en UTC puro.
+// Supabase almacena scheduled_at como UTC, así que los filtros deben ser UTC.
+// "Hoy" para un usuario en El Salvador (UTC-6) empieza a las 00:00 SV = 06:00 UTC.
+// Pero dado que scheduled_at se guarda AS IS (sin conversión), el filtro correcto
+// es 00:00 UTC → 23:59:59 UTC del mismo día calendario.
+function getTodayUTCRange(): { startOfDay: string; endOfDay: string } {
+  const now = new Date();
+  // Usar getUTC* para obtener el día calendario en UTC
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const d = now.getUTCDate();
+  const startOfDay = new Date(Date.UTC(y, m, d, 0, 0, 0, 0)).toISOString();
+  const endOfDay = new Date(Date.UTC(y, m, d + 1, 0, 0, 0, 0)).toISOString();
+  return { startOfDay, endOfDay };
+}
+
+// ─── Subcomponentes ───────────────────────────────────────────────────────────
 
 function EmptyState() {
   return (
@@ -24,7 +56,10 @@ function EmptyState() {
         className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5"
         style={{ background: "#F3EDE8" }}
       >
-        <CalendarDays size={22} style={{ color: "#C4B8B0", strokeWidth: 1.5 }} />
+        <CalendarDays
+          size={22}
+          style={{ color: "#C4B8B0", strokeWidth: 1.5 }}
+        />
       </div>
       <p
         className="mb-1"
@@ -51,13 +86,28 @@ function SkeletonCard() {
       style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
     >
       <div className="flex gap-4">
-        <div className="w-10 h-10 rounded-xl" style={{ background: "#F3EDE8" }} />
+        <div
+          className="w-10 h-10 rounded-xl"
+          style={{ background: "#F3EDE8" }}
+        />
         <div className="flex-1">
-          <div className="h-4 rounded-lg w-1/2 mb-2" style={{ background: "#F3EDE8" }} />
-          <div className="h-3 rounded-lg w-1/3 mb-3" style={{ background: "#F3EDE8" }} />
-          <div className="h-3 rounded-lg w-1/4" style={{ background: "#F3EDE8" }} />
+          <div
+            className="h-4 rounded-lg w-1/2 mb-2"
+            style={{ background: "#F3EDE8" }}
+          />
+          <div
+            className="h-3 rounded-lg w-1/3 mb-3"
+            style={{ background: "#F3EDE8" }}
+          />
+          <div
+            className="h-3 rounded-lg w-1/4"
+            style={{ background: "#F3EDE8" }}
+          />
         </div>
-        <div className="h-6 w-20 rounded-full" style={{ background: "#F3EDE8" }} />
+        <div
+          className="h-6 w-20 rounded-full"
+          style={{ background: "#F3EDE8" }}
+        />
       </div>
     </div>
   );
@@ -67,25 +117,23 @@ function DaySummary({ appointments }: { appointments: Appointment[] }) {
   const total = appointments.length;
   const completed = appointments.filter((a) => a.status === "completed").length;
   const pending = appointments.filter(
-    (a) => a.status === "pending" || a.status === "confirmed"
+    (a) => a.status === "pending" || a.status === "confirmed",
   ).length;
   const revenue = appointments
     .filter((a) => a.status === "completed")
     .reduce((sum, a) => sum + (a.services?.price ?? 0), 0);
 
+  // FIX: No usar Intl.NumberFormat en render SSR si puede diferir.
+  // formatPrice de @/lib/utils es determinístico.
+  const dollars = Math.floor(revenue);
+  const cents = Math.round((revenue - dollars) * 100);
+  const revenueStr = `$${dollars}.${String(cents).padStart(2, "0")}`;
+
   const stats = [
-    { label: "Total",      value: String(total),     color: "#2D2420" },
-    { label: "Pendientes", value: String(pending),   color: "#B45309" },
-    { label: "Completadas",value: String(completed), color: "#065F46" },
-    {
-      label: "Ingresos",
-      value: new Intl.NumberFormat("es-SV", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 0,
-      }).format(revenue),
-      color: "#D4375F",
-    },
+    { label: "Total", value: String(total), color: "#2D2420" },
+    { label: "Pendientes", value: String(pending), color: "#B45309" },
+    { label: "Completadas", value: String(completed), color: "#065F46" },
+    { label: "Ingresos", value: revenueStr, color: "#D4375F" },
   ];
 
   return (
@@ -99,7 +147,10 @@ function DaySummary({ appointments }: { appointments: Appointment[] }) {
           className="rounded-2xl p-4"
           style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
         >
-          <p className="text-xs font-medium mb-1.5" style={{ color: "#B5A99F" }}>
+          <p
+            className="text-xs font-medium mb-1.5"
+            style={{ color: "#B5A99F" }}
+          >
             {stat.label}
           </p>
           <p
@@ -119,21 +170,31 @@ function DaySummary({ appointments }: { appointments: Appointment[] }) {
   );
 }
 
+// ─── Componente principal ─────────────────────────────────────────────────────
+
 export default function TodayAppointments({ salonId }: { salonId: string }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  // FIX: lastUpdate como string formateado determinístico, no como Date object.
+  // Renderizar Date objects directamente genera hydration mismatch porque
+  // toLocaleTimeString difiere entre Node y browser.
+  const [lastUpdateStr, setLastUpdateStr] = useState<string | null>(null);
+
+  // Formatea la hora actual de forma determinística (sin toLocaleTimeString)
+  const captureUpdateTime = () => {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, "0");
+    const m = String(now.getMinutes()).padStart(2, "0");
+    setLastUpdateStr(`${h}:${m}`);
+  };
 
   const fetchAppointments = useCallback(async () => {
     const supabase = createClient();
-    const today = new Date();
-    const startOfDay = new Date(
-      today.getFullYear(), today.getMonth(), today.getDate()
-    ).toISOString();
-    const endOfDay = new Date(
-      today.getFullYear(), today.getMonth(), today.getDate() + 1
-    ).toISOString();
+    // FIX: Usar getTodayUTCRange() que construye rangos en UTC puro.
+    // Antes: new Date(year, month, day) creaba en hora local (UTC-6),
+    // perdiendo citas entre 00:00-05:59 UTC (18:00-23:59 del día anterior SV).
+    const { startOfDay, endOfDay } = getTodayUTCRange();
 
     const { data, error } = await supabase
       .from("appointments")
@@ -145,16 +206,20 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
 
     if (!error && data) {
       setAppointments(data as Appointment[]);
-      setLastUpdate(new Date());
+      captureUpdateTime();
     }
     setLoading(false);
   }, [salonId]);
 
-  useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
 
-  // Realtime — escucha cambios en DB (incluyendo no_show marcados por el servidor)
+  // Realtime — escucha cambios en DB
   useEffect(() => {
     const supabase = createClient();
+    const { startOfDay, endOfDay } = getTodayUTCRange();
+
     const channel = supabase
       .channel(`today-appointments-${salonId}`)
       .on(
@@ -166,45 +231,41 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
           filter: `salon_id=eq.${salonId}`,
         },
         (payload) => {
-          const today = new Date();
-          const startOfDay = new Date(
-            today.getFullYear(), today.getMonth(), today.getDate()
-          ).toISOString();
-          const endOfDay = new Date(
-            today.getFullYear(), today.getMonth(), today.getDate() + 1
-          ).toISOString();
-
           if (payload.eventType === "INSERT") {
             const newAppt = payload.new as Appointment;
             const t = newAppt.scheduled_at ?? "";
             if (t >= startOfDay && t < endOfDay) {
               setAppointments((prev) =>
-                [...prev, newAppt].sort(
-                  (a, b) =>
-                    new Date(a.scheduled_at ?? "").getTime() -
-                    new Date(b.scheduled_at ?? "").getTime()
-                )
+                [...prev, newAppt].sort((a, b) => {
+                  // FIX: Comparar strings ISO directamente para ordenar.
+                  // Los strings ISO son lexicográficamente ordenables sin new Date().
+                  const sa = a.scheduled_at ?? "";
+                  const sb = b.scheduled_at ?? "";
+                  return sa < sb ? -1 : sa > sb ? 1 : 0;
+                }),
               );
-              setLastUpdate(new Date());
+              captureUpdateTime();
             }
           } else if (payload.eventType === "UPDATE") {
             setAppointments((prev) =>
               prev.map((a) =>
-                a.id === payload.new.id ? { ...a, ...payload.new } : a
-              )
+                a.id === payload.new.id ? { ...a, ...payload.new } : a,
+              ),
             );
-            setLastUpdate(new Date());
+            captureUpdateTime();
           } else if (payload.eventType === "DELETE") {
             setAppointments((prev) =>
-              prev.filter((a) => a.id !== payload.old.id)
+              prev.filter((a) => a.id !== payload.old.id),
             );
-            setLastUpdate(new Date());
+            captureUpdateTime();
           }
-        }
+        },
       )
       .subscribe((status) => setConnected(status === "SUBSCRIBED"));
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [salonId]);
 
   return (
@@ -234,7 +295,10 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
                     className="w-1.5 h-1.5 rounded-full"
                     style={{ background: "#10B981" }}
                   />
-                  <span className="text-xs hidden sm:block" style={{ color: "#10B981" }}>
+                  <span
+                    className="text-xs hidden sm:block"
+                    style={{ color: "#10B981" }}
+                  >
                     En vivo
                   </span>
                 </>
@@ -248,13 +312,14 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
         </div>
 
         <div className="flex items-center gap-3">
-          {lastUpdate && !loading && (
-            <span className="text-xs hidden sm:block" style={{ color: "#C4B8B0" }}>
-              Actualizado{" "}
-              {lastUpdate.toLocaleTimeString("es-SV", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+          {/* FIX: Renderizar lastUpdateStr (string puro) en vez de lastUpdate.toLocaleTimeString()
+              Esto elimina el Hydration Error #418 causado por output distinto en SSR vs CSR */}
+          {lastUpdateStr && !loading && (
+            <span
+              className="text-xs hidden sm:block"
+              style={{ color: "#C4B8B0" }}
+            >
+              Actualizado {lastUpdateStr}
             </span>
           )}
           <motion.button
@@ -284,7 +349,9 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
       {/* Lista */}
       {loading ? (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+          {[1, 2, 3].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
       ) : appointments.length === 0 ? (
         <EmptyState />

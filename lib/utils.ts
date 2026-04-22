@@ -4,12 +4,19 @@
 // SSR ya que el formato depende del locale del OS y difiere entre Node y browser.
 //
 // REGLA CRÍTICA DE TIMEZONE:
-// Supabase guarda las horas como strings tipo "2026-04-28T14:00:00+00"
-// new Date("2026-04-28T14:00:00+00") en el servidor (UTC) lee 14:00 ✅
-// new Date("2026-04-28T14:00:00+00") en el browser (UTC-6) lee 08:00 ❌
+// Supabase puede retornar timestamps en múltiples formatos:
+//   "2026-04-28 14:00:00+00"      ← formato Postgres con espacio
+//   "2026-04-28T14:00:00+00:00"   ← ISO 8601 completo
+//   "2026-04-28T14:00:00Z"        ← ISO 8601 con Z
+//   "2026-04-28T14:00:00"         ← sin offset (ya stripeado)
 //
 // SOLUCIÓN: Parsear el string ISO manualmente extrayendo año/mes/día/hora/min
 // directamente del texto, sin dejar que JavaScript haga conversión de timezone.
+//
+// FIX CRÍTICO en parseISOLocal:
+// El regex anterior /([+-]\d{2}:?\d{2}|Z)$/ requería 4 dígitos en el offset
+// y NO capturaba "+00" (solo 2 dígitos). Ahora el regex acepta:
+//   +00  +00:00  -06  -06:00  Z  — cualquier forma de offset UTC válida.
 
 const DAYS_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const DAYS_SHORT_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -25,24 +32,38 @@ const MONTHS_SHORT_ES = [
 // ─── Parser ISO sin conversión de timezone ────────────────────────────────────
 //
 // Extrae los componentes de fecha/hora directamente del string ISO,
-// ignorando cualquier offset. Funciona con:
+// ignorando cualquier offset. Funciona con TODOS los formatos de Supabase:
 //   "2026-04-28T14:00:00"
-//   "2026-04-28T14:00:00+00"
+//   "2026-04-28T14:00:00+00"        ← FIX: antes no stripeaba este
 //   "2026-04-28T14:00:00+00:00"
-//   "2026-04-28 14:00:00+00"  (formato Supabase)
+//   "2026-04-28T14:00:00-06:00"
+//   "2026-04-28T14:00:00Z"
+//   "2026-04-28 14:00:00+00"        ← formato nativo Postgres
+//   "2026-04-28 14:00:00.000+00"    ← con microsegundos
 
 function parseISOLocal(isoString: string): {
   year: number; month: number; day: number;
   hours: number; minutes: number; dayOfWeek: number;
 } {
-  // Normalizar: reemplazar espacio por T, quitar offset
-  const clean = isoString.replace(" ", "T").replace(/([+-]\d{2}:?\d{2}|Z)$/, "");
+  // 1. Normalizar espacio a T (formato Postgres → ISO)
+  // 2. Quitar microsegundos/milisegundos: .000 o .000000
+  // 3. Quitar offset en CUALQUIER forma: Z | +HH | +HH:MM | -HH | -HH:MM
+  const clean = isoString
+    .replace(" ", "T")                        // "2026-04-28 14:00:00+00" → "2026-04-28T14:00:00+00"
+    .replace(/\.\d+/, "")                     // quitar microsegundos si existen
+    .replace(/([Zz]|[+-]\d{2}(:\d{2})?)$/, ""); // quitar offset de 2 o 4 dígitos + Z
+
   const [datePart, timePart = "00:00:00"] = clean.split("T");
   const [year, month, day] = datePart.split("-").map(Number);
   const [hours, minutes] = timePart.split(":").map(Number);
 
-  // Calcular día de la semana sin new Date() con timezone
-  // Usamos Date.UTC que siempre opera en UTC puro
+  // Sanity check: si algún valor es NaN, retornar ceros para no romper la UI
+  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
+    console.error("[parseISOLocal] String ISO inválido:", isoString, "→ clean:", clean);
+    return { year: 2000, month: 0, day: 1, hours: 0, minutes: 0, dayOfWeek: 0 };
+  }
+
+  // Calcular día de la semana en UTC puro para consistencia servidor/cliente
   const dow = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 
   return { year, month: month - 1, day, hours, minutes, dayOfWeek: dow };
@@ -130,7 +151,7 @@ export function formatRelativeDate(isoString: string): string {
 }
 
 /**
- * Etiqueta de grupo para listas de citas: "Hoy", "Mañana", "Ayer", o fecha corta
+ * Etiqueta de grupo para listas de citas: "Hoy", "Mañana", "Ayer", o fecha corta.
  * dateKey formato: "YYYY-MM-DD"
  */
 export function formatGroupDate(dateKey: string): string {
