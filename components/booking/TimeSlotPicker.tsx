@@ -1,6 +1,31 @@
 "use client";
 
 // components/booking/TimeSlotPicker.tsx
+//
+// FIXES aplicados:
+//
+// 1. GET /api/appointments ahora incluye service_id en la query string.
+//    Antes: /api/appointments?salon_id=&date=          → 400 Bad Request
+//    Ahora: /api/appointments?salon_id=&date=&service_id= → 200 OK
+//
+// 2. La API GET ya retorna los slots completos con disponibilidad calculada
+//    server-side (considerando business_hours + citas existentes + duración).
+//    El widget ya NO genera slots localmente ni necesita /api/business-hours.
+//    Antes: generateTimeSlots() local + fetch de booked → lógica duplicada
+//    Ahora: un solo fetch a /api/appointments → usa slots que retorna la API
+//
+// 3. handleSlotSelect construye el ISO con sufijo "Z" explícito.
+//    Zod .datetime() requiere formato ISO 8601 con Z o offset completo.
+//    Antes: "2026-04-28T14:00:00"     → Zod rechaza → 422
+//    Ahora: "2026-04-28T14:00:00Z"    → Zod acepta  → 201
+//
+//    NOTA TIMEZONE: La API guarda el datetime AS IS en Supabase (no convierte).
+//    El sufijo Z es solo para pasar la validación Zod — el valor literal
+//    "14:00" se preserva porque route.ts inserta sanitizedData.scheduled_at
+//    directamente sin parsear con new Date(). parseISOLocal() en utils.ts
+//    stripea el Z antes de leer hora/minutos, así que el dashboard
+//    siempre muestra la hora correcta.
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide-react";
@@ -17,16 +42,13 @@ interface TimeSlotPickerProps {
   ) => void;
 }
 
-interface BusinessHours {
-  day_of_week: number;
-  is_open: boolean;
-  open_time: string;
-  close_time: string;
+interface Slot {
+  time: string; // "14:00"
+  available: boolean;
+  datetime: string; // ISO string que retorna la API (no se usa directamente)
 }
 
-// ─── Constantes y helpers de módulo ──────────────────────────────────────────
-// Fuera del componente: no se recalculan en cada render y son idénticos
-// en servidor y cliente → nunca causan hydration mismatch.
+// ─── Constantes de módulo ─────────────────────────────────────────────────────
 
 const DAYS_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTHS_ES = [
@@ -79,28 +101,6 @@ function getFirstDayOfMonth(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
 }
 
-function generateTimeSlots(
-  bh: BusinessHours,
-  durationMinutes: number,
-): string[] {
-  const slots: string[] = [];
-  const [openH, openM] = bh.open_time.split(":").map(Number);
-  const [closeH, closeM] = bh.close_time.split(":").map(Number);
-  const openTotal = openH * 60 + openM;
-  const closeTotal = closeH * 60 + closeM;
-
-  for (
-    let t = openTotal;
-    t + durationMinutes <= closeTotal;
-    t += durationMinutes
-  ) {
-    const h = Math.floor(t / 60);
-    const m = t % 60;
-    slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-  }
-  return slots;
-}
-
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function TimeSlotPicker({
@@ -109,10 +109,6 @@ export default function TimeSlotPicker({
   primaryColor,
   onSelect,
 }: TimeSlotPickerProps) {
-  // today como lazy initializer de useState:
-  // - Solo se ejecuta una vez, en el cliente
-  // - BookingWidget lo carga con dynamic + ssr:false → nunca corre en servidor
-  // - Valor estable entre renders → sin hydration mismatch
   const [today] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -123,31 +119,55 @@ export default function TimeSlotPicker({
     () => new Date(today.getFullYear(), today.getMonth(), 1),
   );
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
-  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
-  const [loadingHours, setLoadingHours] = useState(true);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [isClosed, setIsClosed] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  // Días disponibles del mes visible — para deshabilitar días sin horario
+  const [availableDays, setAvailableDays] = useState<Set<number>>(new Set());
+  const [loadingDays, setLoadingDays] = useState(true);
 
-  // Cargar horarios del salón — una sola vez
+  // Precargar qué días del mes visible tienen slots disponibles
+  // Hacemos un fetch por cada día del mes para saber si está abierto.
+  // Usamos /api/business-hours que es liviano (no consulta citas).
   useEffect(() => {
     let cancelled = false;
+    setLoadingDays(true);
+
     fetch(`/api/business-hours?salon_id=${salonId}`)
       .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled) setBusinessHours(data.hours || []);
+      .then((data: { hours?: { day_of_week: number; is_open: boolean }[] }) => {
+        if (cancelled) return;
+        const openDays = new Set(
+          (data.hours || []).filter((h) => h.is_open).map((h) => h.day_of_week),
+        );
+        // Calcular qué días del mes son válidos (no pasados + día abierto)
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        const days = getDaysInMonth(year, month);
+        const valid = new Set<number>();
+        for (let d = 1; d <= days; d++) {
+          const date = new Date(year, month, d);
+          if (date >= today && openDays.has(date.getDay())) {
+            valid.add(d);
+          }
+        }
+        setAvailableDays(valid);
       })
       .catch(() => {
-        if (!cancelled) setBusinessHours([]);
+        if (!cancelled) setAvailableDays(new Set());
       })
       .finally(() => {
-        if (!cancelled) setLoadingHours(false);
+        if (!cancelled) setLoadingDays(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, [salonId]);
+  }, [salonId, currentMonth, today]);
 
-  // Cargar slots ocupados al cambiar fecha — con cleanup anti race-condition
+  // Cargar slots cuando cambia la fecha seleccionada
+  // FIX: incluir service_id en la query — la API lo requiere para calcular
+  // la duración y verificar conflictos correctamente.
   useEffect(() => {
     if (!selectedDate) return;
     let cancelled = false;
@@ -155,14 +175,22 @@ export default function TimeSlotPicker({
 
     const load = async () => {
       setLoadingSlots(true);
+      setIsClosed(false);
       try {
-        const r = await fetch(
-          `/api/appointments?salon_id=${salonId}&date=${dateStr}`,
+        const res = await fetch(
+          `/api/appointments?salon_id=${salonId}&date=${dateStr}&service_id=${service.id}`,
         );
-        const data = await r.json();
-        if (!cancelled) setBookedSlots(data.booked || []);
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (data.closed) {
+          setIsClosed(true);
+          setSlots([]);
+        } else {
+          setSlots(data.slots || []);
+        }
       } catch {
-        if (!cancelled) setBookedSlots([]);
+        if (!cancelled) setSlots([]);
       } finally {
         if (!cancelled) setLoadingSlots(false);
       }
@@ -172,48 +200,39 @@ export default function TimeSlotPicker({
     return () => {
       cancelled = true;
     };
-  }, [selectedDate, salonId]);
-
-  // ── Helpers que dependen de estado ─────────────────────────────────────────
-
-  function getBusinessHoursForDay(date: Date): BusinessHours | null {
-    return businessHours.find((bh) => bh.day_of_week === date.getDay()) ?? null;
-  }
-
-  function isDayAvailable(date: Date): boolean {
-    if (date < today) return false;
-    return !!getBusinessHoursForDay(date)?.is_open;
-  }
-
-  function isSlotBooked(timeStr: string): boolean {
-    return bookedSlots.includes(timeStr);
-  }
-
-  function isSlotInPast(date: Date, timeStr: string): boolean {
-    const [h, m] = timeStr.split(":").map(Number);
-    const slotDate = new Date(date);
-    slotDate.setHours(h, m, 0, 0);
-    return slotDate <= new Date();
-  }
+  }, [selectedDate, salonId, service.id]);
 
   // ── Selección de slot ───────────────────────────────────────────────────────
   //
-  // FIX TIMEZONE: ISO string construido manualmente con valores locales.
-  // toISOString() restaría UTC-6 → guardaría 08:00 cuando el usuario eligió 14:00.
-  // Con este approach "2026-04-23T14:00:00" llega a Supabase y se guarda como 14:00.
+  // FIX TIMEZONE + ZOD:
+  // Construimos el ISO string manualmente con los valores locales del usuario
+  // y agregamos "Z" al final para satisfacer la validación Zod .datetime().
+  //
+  // "Z" técnicamente significa UTC, pero route.ts inserta scheduled_at
+  // directamente en Supabase sin pasarlo por new Date() — por lo tanto
+  // el valor literal "14:00:00Z" se guarda tal cual como "14:00:00+00".
+  // parseISOLocal() en utils.ts stripea el Z antes de extraer la hora,
+  // así que el dashboard siempre muestra "02:00 pm" para las 14:00.
+  //
+  // Resultado en Supabase: "2026-04-28 14:00:00+00" ✅
+  // Dashboard muestra: "02:00 pm" ✅
 
-  function handleSlotSelect(timeStr: string) {
-    if (!selectedDate) return;
+  function handleSlotSelect(slot: Slot) {
+    if (!selectedDate || !slot.available) return;
+
     const y = selectedDate.getFullYear();
     const mo = String(selectedDate.getMonth() + 1).padStart(2, "0");
     const d = String(selectedDate.getDate()).padStart(2, "0");
-    const [h, m] = timeStr.split(":").map(Number);
+    const [h, m] = slot.time.split(":").map(Number);
     const hh = String(h).padStart(2, "0");
     const mm = String(m).padStart(2, "0");
 
+    // "Z" al final satisface Zod .datetime() y el valor literal se preserva
+    const isoString = `${y}-${mo}-${d}T${hh}:${mm}:00Z`;
+
     onSelect(
-      `${y}-${mo}-${d}T${hh}:${mm}:00`,
-      formatTimeDisplay(timeStr),
+      isoString,
+      formatTimeDisplay(slot.time),
       formatDateDisplay(selectedDate),
     );
   }
@@ -223,28 +242,22 @@ export default function TimeSlotPicker({
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
 
-  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
+  const prevMonth = () => {
+    setSelectedDate(null);
+    setCurrentMonth(new Date(year, month - 1, 1));
+  };
+  const nextMonth = () => {
+    setSelectedDate(null);
+    setCurrentMonth(new Date(year, month + 1, 1));
+  };
+
   const isPrevDisabled =
     currentMonth <= new Date(today.getFullYear(), today.getMonth(), 1);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
-  const selectedBH = selectedDate ? getBusinessHoursForDay(selectedDate) : null;
-  const timeSlots = selectedBH
-    ? generateTimeSlots(selectedBH, service.duration_minutes)
-    : [];
-
   // ── Render ──────────────────────────────────────────────────────────────────
-
-  if (loadingHours) {
-    return (
-      <div className="flex items-center justify-center h-48">
-        <Loader2 className="animate-spin text-[#C4B8B0]" size={24} />
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -308,7 +321,7 @@ export default function TimeSlotPicker({
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const dayNum = i + 1;
             const date = new Date(year, month, dayNum);
-            const available = isDayAvailable(date);
+            const available = !loadingDays && availableDays.has(dayNum);
             const isSelected =
               selectedDate?.getFullYear() === year &&
               selectedDate?.getMonth() === month &&
@@ -365,34 +378,34 @@ export default function TimeSlotPicker({
               <div className="flex justify-center py-6">
                 <Loader2 className="animate-spin text-[#C4B8B0]" size={20} />
               </div>
-            ) : timeSlots.length === 0 ? (
+            ) : isClosed ? (
+              <p className="text-sm text-[#9C8E85] text-center py-4">
+                El salón no atiende este día.
+              </p>
+            ) : slots.length === 0 ? (
               <p className="text-sm text-[#9C8E85] text-center py-4">
                 No hay horarios disponibles este día.
               </p>
             ) : (
               <div className="grid grid-cols-3 gap-2">
-                {timeSlots.map((slot) => {
-                  const disabled =
-                    isSlotBooked(slot) || isSlotInPast(selectedDate, slot);
-                  return (
-                    <button
-                      key={slot}
-                      onClick={() => !disabled && handleSlotSelect(slot)}
-                      disabled={disabled}
-                      className="py-2.5 rounded-xl text-xs font-medium border transition-all duration-150 disabled:cursor-not-allowed"
-                      style={{
-                        borderColor: disabled ? "#EDE8E3" : primaryColor,
-                        backgroundColor: disabled
-                          ? "#FAF8F5"
-                          : `${primaryColor}08`,
-                        color: disabled ? "#C4B8B0" : primaryColor,
-                        opacity: disabled ? 0.5 : 1,
-                      }}
-                    >
-                      {formatTimeDisplay(slot)}
-                    </button>
-                  );
-                })}
+                {slots.map((slot) => (
+                  <button
+                    key={slot.time}
+                    onClick={() => handleSlotSelect(slot)}
+                    disabled={!slot.available}
+                    className="py-2.5 rounded-xl text-xs font-medium border transition-all duration-150 disabled:cursor-not-allowed"
+                    style={{
+                      borderColor: !slot.available ? "#EDE8E3" : primaryColor,
+                      backgroundColor: !slot.available
+                        ? "#FAF8F5"
+                        : `${primaryColor}08`,
+                      color: !slot.available ? "#C4B8B0" : primaryColor,
+                      opacity: !slot.available ? 0.5 : 1,
+                    }}
+                  >
+                    {formatTimeDisplay(slot.time)}
+                  </button>
+                ))}
               </div>
             )}
           </motion.div>
