@@ -89,9 +89,9 @@ export async function sendPendingReminders(): Promise<{
 
   // Ventana: citas en las próximas 24–25h donde reminder_sent = false
   const windowStart = new Date(
-    now.getTime() + 23 * 60 * 60 * 1000,
+    now.getTime() + 1 * 60 * 60 * 1000,
   ).toISOString();
-  const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000).toISOString();
+  const windowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
 
   // Citas que necesitan recordatorio
   const { data: appointments, error } = await supabase
