@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Clock, Phone, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { formatTime, formatPrice } from "@/lib/utils";
 import type { Database } from "@/types/database.types";
 
 type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
@@ -57,22 +58,6 @@ const statusConfig: Record<string, {
   },
 };
 
-function formatTime(datetime: string): string {
-  return new Date(datetime).toLocaleTimeString("es-SV", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat("es-SV", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(price);
-}
-
 function getInitials(name: string): string {
   return name
     .split(" ")
@@ -81,7 +66,6 @@ function getInitials(name: string): string {
     .join("");
 }
 
-// Paleta de avatares cálida y elegante
 const avatarPalettes = [
   { bg: "#F3E8E8", text: "#9B2335" },
   { bg: "#E8EDF3", text: "#1E3A5F" },
@@ -120,8 +104,6 @@ export default function AppointmentCard({
     setUpdating(false);
   };
 
-  const startTime = appointment.scheduled_at;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -138,13 +120,11 @@ export default function AppointmentCard({
           boxShadow: "0 1px 4px rgba(45,36,32,0.04)",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.boxShadow =
-            "0 4px 16px rgba(45,36,32,0.08)";
+          (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(45,36,32,0.08)";
           (e.currentTarget as HTMLElement).style.borderColor = "#DDD5CC";
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.boxShadow =
-            "0 1px 4px rgba(45,36,32,0.04)";
+          (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 4px rgba(45,36,32,0.04)";
           (e.currentTarget as HTMLElement).style.borderColor = "#EDE8E3";
         }}
       >
@@ -179,27 +159,18 @@ export default function AppointmentCard({
               {/* Status badge */}
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium shrink-0"
-                style={{
-                  background: config.bg,
-                  color: config.color,
-                }}
+                style={{ background: config.bg, color: config.color }}
               >
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: config.dot }}
-                />
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: config.dot }} />
                 {config.label}
               </span>
             </div>
 
             {/* Meta info */}
-            <div
-              className="flex items-center gap-4 mt-2.5 text-xs"
-              style={{ color: "#B5A99F" }}
-            >
+            <div className="flex items-center gap-4 mt-2.5 text-xs" style={{ color: "#B5A99F" }}>
               <span className="flex items-center gap-1.5">
                 <Clock size={12} strokeWidth={1.5} />
-                {startTime ? formatTime(startTime) : "—"}
+                {appointment.scheduled_at ? formatTime(appointment.scheduled_at) : "—"}
                 {appointment.ends_at && ` — ${formatTime(appointment.ends_at)}`}
               </span>
               {appointment.services?.duration_minutes && (
@@ -210,12 +181,8 @@ export default function AppointmentCard({
                   href={`tel:${appointment.client_phone}`}
                   className="flex items-center gap-1 transition-colors"
                   style={{ color: "#B5A99F" }}
-                  onMouseEnter={(e) =>
-                    ((e.currentTarget as HTMLElement).style.color = "#D4375F")
-                  }
-                  onMouseLeave={(e) =>
-                    ((e.currentTarget as HTMLElement).style.color = "#B5A99F")
-                  }
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#D4375F")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#B5A99F")}
                 >
                   <Phone size={11} strokeWidth={1.5} />
                   {appointment.client_phone}
@@ -227,10 +194,7 @@ export default function AppointmentCard({
 
         {/* Acciones */}
         {!isFinished && (
-          <div
-            className="flex gap-2 mt-4 pt-4"
-            style={{ borderTop: "1px solid #F0EBE6" }}
-          >
+          <div className="flex gap-2 mt-4 pt-4" style={{ borderTop: "1px solid #F0EBE6" }}>
             {status === "pending" && (
               <motion.button
                 whileHover={{ scale: 1.01 }}
@@ -275,18 +239,14 @@ export default function AppointmentCard({
                 border: "1px solid rgba(156,163,175,0.15)",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background =
-                  "rgba(239,68,68,0.07)";
+                (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.07)";
                 (e.currentTarget as HTMLElement).style.color = "#DC2626";
-                (e.currentTarget as HTMLElement).style.borderColor =
-                  "rgba(239,68,68,0.15)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(239,68,68,0.15)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background =
-                  "rgba(156,163,175,0.07)";
+                (e.currentTarget as HTMLElement).style.background = "rgba(156,163,175,0.07)";
                 (e.currentTarget as HTMLElement).style.color = "#9CA3AF";
-                (e.currentTarget as HTMLElement).style.borderColor =
-                  "rgba(156,163,175,0.15)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(156,163,175,0.15)";
               }}
             >
               Cancelar
