@@ -13,20 +13,51 @@
 // SOLUCIÓN: Parsear el string ISO manualmente extrayendo año/mes/día/hora/min
 // directamente del texto, sin dejar que JavaScript haga conversión de timezone.
 //
-// FIX CRÍTICO en parseISOLocal:
-// El regex anterior /([+-]\d{2}:?\d{2}|Z)$/ requería 4 dígitos en el offset
-// y NO capturaba "+00" (solo 2 dígitos). Ahora el regex acepta:
-//   +00  +00:00  -06  -06:00  Z  — cualquier forma de offset UTC válida.
+// FIX en formatGroupDate y formatRelativeDate:
+// Antes usaban getUTCFullYear/getUTCMonth/getUTCDate para calcular "hoy",
+// lo que causaba que a las 6pm+ en UTC-6 el servidor ya dijera que era
+// el día siguiente → citas de mañana aparecían como "Hoy".
+// Ahora usan getFullYear/getMonth/getDate (timezone local del browser).
+// Estas funciones solo se llaman desde componentes cliente ("use client"),
+// por lo que new Date() siempre corre en el browser con timezone correcta.
 
-const DAYS_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const DAYS_ES = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
 const DAYS_SHORT_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTHS_ES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
 ];
 const MONTHS_SHORT_ES = [
-  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+  "Ene",
+  "Feb",
+  "Mar",
+  "Abr",
+  "May",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dic",
 ];
 
 // ─── Parser ISO sin conversión de timezone ────────────────────────────────────
@@ -34,7 +65,7 @@ const MONTHS_SHORT_ES = [
 // Extrae los componentes de fecha/hora directamente del string ISO,
 // ignorando cualquier offset. Funciona con TODOS los formatos de Supabase:
 //   "2026-04-28T14:00:00"
-//   "2026-04-28T14:00:00+00"        ← FIX: antes no stripeaba este
+//   "2026-04-28T14:00:00+00"
 //   "2026-04-28T14:00:00+00:00"
 //   "2026-04-28T14:00:00-06:00"
 //   "2026-04-28T14:00:00Z"
@@ -42,30 +73,39 @@ const MONTHS_SHORT_ES = [
 //   "2026-04-28 14:00:00.000+00"    ← con microsegundos
 
 function parseISOLocal(isoString: string): {
-  year: number; month: number; day: number;
-  hours: number; minutes: number; dayOfWeek: number;
+  year: number;
+  month: number;
+  day: number;
+  hours: number;
+  minutes: number;
+  dayOfWeek: number;
 } {
-  // 1. Normalizar espacio a T (formato Postgres → ISO)
-  // 2. Quitar microsegundos/milisegundos: .000 o .000000
-  // 3. Quitar offset en CUALQUIER forma: Z | +HH | +HH:MM | -HH | -HH:MM
   const clean = isoString
-    .replace(" ", "T")                        // "2026-04-28 14:00:00+00" → "2026-04-28T14:00:00+00"
-    .replace(/\.\d+/, "")                     // quitar microsegundos si existen
-    .replace(/([Zz]|[+-]\d{2}(:\d{2})?)$/, ""); // quitar offset de 2 o 4 dígitos + Z
+    .replace(" ", "T")
+    .replace(/\.\d+/, "")
+    .replace(/([Zz]|[+-]\d{2}(:\d{2})?)$/, "");
 
   const [datePart, timePart = "00:00:00"] = clean.split("T");
   const [year, month, day] = datePart.split("-").map(Number);
   const [hours, minutes] = timePart.split(":").map(Number);
 
-  // Sanity check: si algún valor es NaN, retornar ceros para no romper la UI
-  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hours) || isNaN(minutes)) {
-    console.error("[parseISOLocal] String ISO inválido:", isoString, "→ clean:", clean);
+  if (
+    isNaN(year) ||
+    isNaN(month) ||
+    isNaN(day) ||
+    isNaN(hours) ||
+    isNaN(minutes)
+  ) {
+    console.error(
+      "[parseISOLocal] String ISO inválido:",
+      isoString,
+      "→ clean:",
+      clean,
+    );
     return { year: 2000, month: 0, day: 1, hours: 0, minutes: 0, dayOfWeek: 0 };
   }
 
-  // Calcular día de la semana en UTC puro para consistencia servidor/cliente
   const dow = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-
   return { year, month: month - 1, day, hours, minutes, dayOfWeek: dow };
 }
 
@@ -73,18 +113,16 @@ function parseISOLocal(isoString: string): {
 
 /**
  * Formatea hora en formato 12h: "02:30 pm"
- * Lee el string ISO directamente sin conversión de timezone.
  */
 export function formatTime(isoString: string): string {
   const { hours, minutes } = parseISOLocal(isoString);
-  const ampm   = hours >= 12 ? "pm" : "am";
+  const ampm = hours >= 12 ? "pm" : "am";
   const hour12 = hours % 12 === 0 ? 12 : hours % 12;
   return `${String(hour12).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${ampm}`;
 }
 
 /**
  * Formatea hora en formato 24h: "14:30"
- * Lee el string ISO directamente sin conversión de timezone.
  */
 export function formatTime24(isoString: string): string {
   const { hours, minutes } = parseISOLocal(isoString);
@@ -95,7 +133,6 @@ export function formatTime24(isoString: string): string {
 
 /**
  * Formatea fecha completa: "Lunes, 20 de Abril de 2026"
- * Lee el string ISO directamente sin conversión de timezone.
  */
 export function formatDateFull(isoString: string): string {
   const { year, month, day, dayOfWeek } = parseISOLocal(isoString);
@@ -128,41 +165,53 @@ export function formatMonthYear(isoString: string): string {
 
 /**
  * Fecha relativa: "Hoy", "Ayer", "Hace 3 días", etc.
- * Compara fechas en UTC puro para consistencia servidor/cliente.
+ *
+ * FIX: Usa getFullYear/getMonth/getDate (timezone local del browser)
+ * en vez de getUTC* para calcular "hoy". Solo se llama desde componentes
+ * cliente, por lo que new Date() siempre tiene la timezone correcta.
  */
 export function formatRelativeDate(isoString: string): string {
   const { year, month, day } = parseISOLocal(isoString);
-  const now     = new Date();
+  const now = new Date();
+  // Fecha de la cita en UTC puro (solo la parte de fecha, sin hora)
   const dateUTC = Date.UTC(year, month, day);
-  const nowUTC  = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const diffDays = Math.round((nowUTC - dateUTC) / (1000 * 60 * 60 * 24));
+  // "Hoy" del usuario en UTC puro — usar getFullYear/Month/Date (local)
+  const nowLocal = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((nowLocal - dateUTC) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0)  return "Hoy";
-  if (diffDays === 1)  return "Ayer";
+  if (diffDays === 0) return "Hoy";
+  if (diffDays === 1) return "Ayer";
   if (diffDays === -1) return "Mañana";
-  if (diffDays < 0)    return `En ${Math.abs(diffDays)} días`;
-  if (diffDays < 7)    return `Hace ${diffDays} días`;
-  if (diffDays < 14)   return "Hace 1 semana";
-  if (diffDays < 30)   return `Hace ${Math.floor(diffDays / 7)} semanas`;
-  if (diffDays < 60)   return "Hace 1 mes";
-  if (diffDays < 365)  return `Hace ${Math.floor(diffDays / 30)} meses`;
-  if (diffDays < 730)  return "Hace 1 año";
+  if (diffDays < 0) return `En ${Math.abs(diffDays)} días`;
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  if (diffDays < 14) return "Hace 1 semana";
+  if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} semanas`;
+  if (diffDays < 60) return "Hace 1 mes";
+  if (diffDays < 365) return `Hace ${Math.floor(diffDays / 30)} meses`;
+  if (diffDays < 730) return "Hace 1 año";
   return `Hace ${Math.floor(diffDays / 365)} años`;
 }
 
 /**
  * Etiqueta de grupo para listas de citas: "Hoy", "Mañana", "Ayer", o fecha corta.
  * dateKey formato: "YYYY-MM-DD"
+ *
+ * FIX: Usa getFullYear/getMonth/getDate (timezone local del browser)
+ * en vez de getUTC* para calcular "hoy". A las 9:53pm en UTC-6, getUTC*
+ * ya retornaba el día siguiente → citas de mañana aparecían como "Hoy".
+ * Solo se llama desde AppointmentsClient ("use client"), siempre en browser.
  */
 export function formatGroupDate(dateKey: string): string {
   const [year, month, day] = dateKey.split("-").map(Number);
-  const now     = new Date();
+  const now = new Date();
+  // Fecha del grupo en UTC puro
   const dateUTC = Date.UTC(year, month - 1, day);
-  const nowUTC  = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const diffDays = Math.round((dateUTC - nowUTC) / (1000 * 60 * 60 * 24));
+  // "Hoy" del usuario usando timezone local del browser
+  const nowLocal = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((dateUTC - nowLocal) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0)  return "Hoy";
-  if (diffDays === 1)  return "Mañana";
+  if (diffDays === 0) return "Hoy";
+  if (diffDays === 1) return "Mañana";
   if (diffDays === -1) return "Ayer";
 
   const dow = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
@@ -176,7 +225,7 @@ export function formatGroupDate(dateKey: string): string {
  */
 export function formatPrice(amount: number): string {
   const dollars = Math.floor(amount);
-  const cents   = Math.round((amount - dollars) * 100);
+  const cents = Math.round((amount - dollars) * 100);
   return `$${dollars}.${String(cents).padStart(2, "0")}`;
 }
 
@@ -186,7 +235,7 @@ export function formatPrice(amount: number): string {
 export function formatPriceShort(amount: number): string {
   if (amount % 1 === 0) return `$${amount}`;
   const dollars = Math.floor(amount);
-  const cents   = Math.round((amount - dollars) * 100);
+  const cents = Math.round((amount - dollars) * 100);
   return `$${dollars}.${String(cents).padStart(2, "0")}`;
 }
 
