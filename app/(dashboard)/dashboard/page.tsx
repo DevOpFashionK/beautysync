@@ -1,38 +1,25 @@
 // app/(dashboard)/dashboard/page.tsx
 //
 // FIX Hydration Error #418:
-// DashboardHeader se carga con dynamic() + ssr:false para que NUNCA
-// se renderice en el servidor. El servidor no puede conocer la timezone
-// del usuario, así que cualquier contenido que dependa de new Date()
-// local debe cargarse exclusivamente en el cliente.
+// Importa DashboardHeaderWrapper (componente cliente) en vez de DashboardHeader.
+// El wrapper usa dynamic() + ssr:false internamente — Next.js App Router
+// solo permite ssr:false dentro de componentes "use client", no aquí.
+//
+// Server Component → DashboardHeaderWrapper ("use client")
+//   → dynamic(DashboardHeader, { ssr: false })
+//     → DashboardHeader nunca se renderiza en servidor → sin mismatch → sin #418
 
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
-import dynamic from "next/dynamic";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { markPastAppointmentsAsNoShow } from "@/lib/autoNoShow";
 import TodayAppointments from "@/components/dashboard/TodayAppointments";
 import WelcomeBanner from "@/components/dashboard/WelcomeBanner";
 import SubscriptionStatus from "@/components/dashboard/SubscriptionStatus";
-
-// ssr:false → nunca se renderiza en servidor → elimina hydration mismatch #418
-const DashboardHeader = dynamic(
-  () => import("@/components/dashboard/DashboardHeader"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="animate-pulse">
-        <div className="h-3 w-24 rounded-full bg-[#EDE8E3] mb-3" />
-        <div className="h-10 w-72 rounded-xl bg-[#EDE8E3] mb-2" />
-        <div className="h-3 w-40 rounded-full bg-[#EDE8E3]" />
-        <div className="mt-5 h-px w-full bg-[#E8E0D8]" />
-      </div>
-    ),
-  },
-);
+import DashboardHeaderWrapper from "@/components/dashboard/DashboardHeaderWrapper";
 
 export const metadata: Metadata = { title: "Dashboard — BeautySync" };
-export const revalidate = 0; // equivalente a force-dynamic para Server Components
+export const dynamic = "force-dynamic";
 
 interface DashboardPageProps {
   searchParams: Promise<{ welcome?: string }>;
@@ -87,7 +74,8 @@ export default async function DashboardPage({
           />
         )}
 
-        <DashboardHeader
+        {/* Wrapper cliente que carga DashboardHeader con ssr:false */}
+        <DashboardHeaderWrapper
           salonName={salon.name}
           firstName={firstName}
           primaryColor={salon.primary_color ?? "#D4375F"}

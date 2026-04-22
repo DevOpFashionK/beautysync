@@ -3,13 +3,9 @@
 // components/dashboard/DashboardHeader.tsx
 //
 // Saludo y fecha calculados en el cliente, no en el servidor.
-//
-// Este componente se carga con dynamic() + ssr:false desde page.tsx,
-// lo que significa que NUNCA se renderiza en el servidor — elimina
-// el Hydration Error #418 de raíz sin necesidad de suppressHydrationWarning.
-//
-// ssr:false es la solución correcta cuando el contenido depende de datos
-// que solo el browser conoce (timezone local, hora actual del usuario).
+// Este componente se importa desde DashboardHeaderWrapper (también cliente)
+// que usa dynamic() + ssr:false — Next.js App Router solo permite ssr:false
+// dentro de componentes cliente ("use client"), no en Server Components.
 
 import { useEffect, useState } from "react";
 
