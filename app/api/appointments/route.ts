@@ -20,6 +20,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { checkAppointmentLimit } from "@/lib/subscription";
 import { z } from "zod";
 
 // ─── Rate Limiting (in-memory, production → Redis) ───────────────────────────
@@ -394,7 +395,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Verificar servicio
+    // 2. Verificar límite de citas del plan
+    const limitCheck = await checkAppointmentLimit(sanitizedData.salon_id);
+
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            `Este salón alcanzó el límite de ${limitCheck.limit} citas mensuales de su plan. ` +
+            `Contacta al salón para más información.`,
+        },
+        { status: 403 },
+      );
+    }
+
+    // 3. Verificar servicio  ← (este comentario cambia de 2 a 3)
+
     const { data: service, error: serviceError } = await supabase
       .from("services")
       .select("id, duration_minutes, is_active")
@@ -410,7 +426,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Verificar que el día está abierto
+    // 4. Verificar que el día está abierto
     const scheduledStr = sanitizedData.scheduled_at;
     const datePart = scheduledStr.slice(0, 10);
     const [sy, sm, sd] = datePart.split("-").map(Number);
@@ -430,7 +446,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Límite de reservas por cliente por día (máx 2)
+    // 5. Límite de reservas por cliente por día (máx 2)
     const clientDayStart = `${datePart}T00:00:00Z`;
     const clientDayEnd = `${datePart}T23:59:59Z`;
 
@@ -453,7 +469,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Verificar disponibilidad en tiempo real (anti race condition)
+    // 6. Verificar disponibilidad en tiempo real (anti race condition)
     const endsAtStr = addMinutesToISO(scheduledStr, service.duration_minutes);
 
     const { data: conflictingAppts } = await supabase
@@ -471,7 +487,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Crear la cita — scheduled_at se inserta AS IS para preservar hora literal
+    // 7. Crear la cita — scheduled_at se inserta AS IS para preservar hora literal
     const { data: newAppt, error: insertError } = await supabase
       .from("appointments")
       .insert({

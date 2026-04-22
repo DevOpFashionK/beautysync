@@ -2,15 +2,10 @@
 
 /**
  * components/dashboard/SubscriptionGate.tsx
- * Bloqueo elegante cuando la suscripción expira — BeautySync Fase 4
- *
- * Uso en layout.tsx del dashboard:
- *   <SubscriptionGate status={effectiveStatus} trialDaysRemaining={n} primaryColor={...}>
- *     {children}
- *   </SubscriptionGate>
+ * Bloqueo elegante cuando la suscripción expira — BeautySync Fase 5
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Lock, Sparkles, Clock, AlertTriangle } from "lucide-react";
@@ -23,8 +18,9 @@ interface SubscriptionGateProps {
   salonName?: string;
 }
 
-const BLOCKED_STATUSES = ["expired", "canceled", "past_due"];
-const WARNING_DAYS = 3; // Mostrar banner cuando quedan ≤ 3 días
+// ← CORREGIDO: past_due ya no bloquea — solo muestra banner
+const BLOCKED_STATUSES = ["expired", "canceled"];
+const WARNING_DAYS = 3;
 
 export function SubscriptionGate({
   children,
@@ -34,26 +30,30 @@ export function SubscriptionGate({
   salonName,
 }: SubscriptionGateProps) {
   const router = useRouter();
-  const [showBanner, setShowBanner] = useState(false);
+
+  // ── Estado: solo trackea si el usuario cerró el banner ──────────
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
+  const [pastDueBannerDismissed, setPastDueBannerDismissed] = useState(false);
 
   const isBlocked = BLOCKED_STATUSES.includes(status ?? "");
+
   const isTrialWarning =
     status === "trialing" &&
     trialDaysRemaining !== null &&
     trialDaysRemaining !== undefined &&
     trialDaysRemaining <= WARNING_DAYS;
 
-  useEffect(() => {
-    if (isTrialWarning) {
-      setShowBanner(true);
-    }
-  }, [isTrialWarning]);
+  const isPastDue = status === "past_due";
+
+  // ── Valores derivados — sin useEffect ───────────────────────────
+  const showTrialBanner = isTrialWarning && !trialBannerDismissed;
+  const showPastDueBanner = isPastDue && !pastDueBannerDismissed;
 
   return (
     <>
-      {/* Banner de advertencia — trial por expirar */}
+      {/* Banner trial por expirar */}
       <AnimatePresence>
-        {showBanner && !isBlocked && (
+        {showTrialBanner && !isBlocked && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -79,13 +79,52 @@ export function SubscriptionGate({
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => router.push("/dashboard/billing")}
-                  className="bg-white text-sm font-semibold px-3 py-1 rounded-lg transition-opacity hover:opacity-90"
+                  className="bg-white text-sm font-semibold px-3 py-1 rounded-lg
+                    transition-opacity hover:opacity-90"
                   style={{ color: primaryColor }}
                 >
                   Ver planes
                 </button>
                 <button
-                  onClick={() => setShowBanner(false)}
+                  onClick={() => setTrialBannerDismissed(true)}
+                  className="text-white/70 hover:text-white transition-colors text-lg leading-none"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Banner past_due */}
+      <AnimatePresence>
+        {showPastDueBanner && !isBlocked && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 py-2.5 flex items-center justify-between gap-4 bg-amber-500">
+              <div className="flex items-center gap-2 text-white">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <p className="text-sm font-medium">
+                  Hubo un problema con tu último pago. Actualiza tu método de
+                  pago para evitar interrupciones.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => router.push("/dashboard/billing")}
+                  className="bg-white text-sm font-semibold px-3 py-1 rounded-lg
+                    transition-opacity hover:opacity-90 text-amber-600"
+                >
+                  Actualizar pago
+                </button>
+                <button
+                  onClick={() => setPastDueBannerDismissed(true)}
                   className="text-white/70 hover:text-white transition-colors text-lg leading-none"
                 >
                   ×
@@ -109,10 +148,8 @@ export function SubscriptionGate({
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
               style={{ backgroundColor: "rgba(15, 10, 30, 0.85)" }}
             >
-              {/* Backdrop blur */}
               <div className="absolute inset-0 backdrop-blur-sm" />
 
-              {/* Modal */}
               <motion.div
                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -122,43 +159,28 @@ export function SubscriptionGate({
                   stiffness: 300,
                   damping: 30,
                 }}
-                className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+                className="relative bg-white rounded-3xl p-8 max-w-md w-full
+                  shadow-2xl text-center"
               >
-                {/* Icon */}
                 <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center
+                    mx-auto mb-5"
                   style={{ backgroundColor: `${primaryColor}15` }}
                 >
-                  {status === "past_due" ? (
-                    <AlertTriangle
-                      className="w-8 h-8"
-                      style={{ color: primaryColor }}
-                    />
-                  ) : (
-                    <Lock className="w-8 h-8" style={{ color: primaryColor }} />
-                  )}
+                  <Lock className="w-8 h-8" style={{ color: primaryColor }} />
                 </div>
 
-                {/* Título */}
-                <h2 className="font-display text-2xl text-[#2D2420] mb-2">
-                  {status === "past_due"
-                    ? "Problema con tu pago"
-                    : status === "canceled"
-                      ? "Suscripción cancelada"
-                      : "Tu acceso ha expirado"}
+                <h2
+                  className="text-2xl text-[#2D2420] mb-2"
+                  style={{ fontFamily: "Cormorant Garamond, serif" }}
+                >
+                  {status === "canceled"
+                    ? "Suscripción cancelada"
+                    : "Tu acceso ha expirado"}
                 </h2>
 
-                {/* Subtítulo */}
                 <p className="text-[#9C8E85] text-sm leading-relaxed mb-6">
-                  {status === "past_due" ? (
-                    <>
-                      Hay un problema con el pago de{" "}
-                      <strong className="text-[#2D2420]">
-                        {salonName ?? "tu salón"}
-                      </strong>
-                      . Actualiza tu método de pago para restablecer el acceso.
-                    </>
-                  ) : status === "canceled" ? (
+                  {status === "canceled" ? (
                     <>
                       Tu suscripción de{" "}
                       <strong className="text-[#2D2420]">
@@ -169,7 +191,7 @@ export function SubscriptionGate({
                     </>
                   ) : (
                     <>
-                      El período de prueba de{" "}
+                      El período de acceso de{" "}
                       <strong className="text-[#2D2420]">
                         {salonName ?? "tu salón"}
                       </strong>{" "}
@@ -179,7 +201,6 @@ export function SubscriptionGate({
                   )}
                 </p>
 
-                {/* Features rápidos */}
                 <div className="bg-[#FAF8F5] rounded-2xl p-4 mb-6 text-left space-y-2">
                   {[
                     "Widget de reservas activo 24/7",
@@ -196,20 +217,18 @@ export function SubscriptionGate({
                   ))}
                 </div>
 
-                {/* CTA */}
                 <button
                   onClick={() => router.push("/dashboard/billing")}
-                  className="w-full py-3.5 rounded-xl font-semibold text-white text-sm
-                    transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+                  className="w-full py-3.5 rounded-xl font-semibold text-white
+                    text-sm transition-all duration-200 hover:opacity-90
+                    active:scale-[0.98]"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  {status === "past_due"
-                    ? "Actualizar método de pago"
-                    : "Activar mi plan"}
+                  Activar mi plan
                 </button>
 
                 <p className="text-xs text-[#C4B8B0] mt-4">
-                  Desde $100.000/mes · Sin contratos · Cancela cuando quieras
+                  Desde $19/mes USD · Sin contratos · Cancela cuando quieras
                 </p>
               </motion.div>
             </motion.div>

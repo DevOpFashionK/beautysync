@@ -29,36 +29,35 @@ const WOMPI_EVENTS_SECRET = process.env.WOMPI_EVENTS_SECRET ?? "";
 export const PLANS = {
   starter: {
     id: "starter",
-    name: "Starter",
-    price: 25, // USD/mes
-    priceCOP: 100_000, // COP — ajustar según TRM
-    amountInCents: 10_000_000, // Wompi trabaja en centavos COP
-    currency: "COP",
+    name: "Esencial", // ← cambiado
+    priceUSD: 19, // ← renombrado de priceCOP, valor nuevo
+    amountInCents: 1900, // ← USD: $19.00 = 1900 cents
+    currency: "USD", // ← cambiado de COP
     features: [
-      "Hasta 100 citas/mes",
+      "Hasta 60 citas por mes",
       "Widget público de reservas",
-      "Recordatorios automáticos por email",
-      "1 empleado/estilista",
-      "Soporte por email",
+      "Emails de confirmación a clientas",
+      "Recordatorios automáticos 24h",
+      "Dashboard de agenda",
     ],
-    cta: "Comenzar con Starter",
+    cta: "Comenzar con Esencial", // ← cambiado
     popular: false,
   },
   pro: {
     id: "pro",
     name: "Pro",
-    price: 35, // USD/mes
-    priceCOP: 140_000,
-    amountInCents: 14_000_000,
-    currency: "COP",
+    priceUSD: 39, // ← renombrado, valor nuevo
+    amountInCents: 3900, // ← USD: $39.00 = 3900 cents
+    currency: "USD", // ← cambiado de COP
     features: [
       "Citas ilimitadas",
       "Widget público de reservas",
-      "Recordatorios por email y WhatsApp",
-      "Empleados ilimitados",
-      "Métricas e informes",
-      "Exportar a CSV",
-      "Soporte prioritario",
+      "Emails de confirmación a clientas",
+      "Recordatorios automáticos 24h",
+      "Color y logo personalizado",
+      "Hasta 5 empleadas",
+      "Reportes de ingresos mensuales",
+      "Soporte prioritario por email",
     ],
     cta: "Comenzar con Pro",
     popular: true,
@@ -96,7 +95,7 @@ export interface WompiTransaction {
 }
 
 export interface WompiWebhookEvent {
-  event: string; // "transaction.updated"
+  event: string;
   data: {
     transaction: WompiTransaction;
   };
@@ -124,8 +123,7 @@ export function generatePaymentReference(
 }
 
 /**
- * Parsea la referencia para extraer salonId y planId
- * Nota: salonId está truncado — se debe buscar en DB por referencia completa
+ * Parsea la referencia para extraer planId
  */
 export function parsePaymentReference(reference: string): {
   planId: PlanId | null;
@@ -139,20 +137,18 @@ export function parsePaymentReference(reference: string): {
 
 /**
  * Verifica la firma del webhook de Wompi
- * https://docs.wompi.co/docs/colombia/eventos/#verificacion-de-firma
  */
 export function verifyWompiWebhookSignature(event: WompiWebhookEvent): boolean {
   if (!WOMPI_EVENTS_SECRET) {
     console.warn(
       "[Wompi] WOMPI_EVENTS_SECRET no configurado — saltando verificación",
     );
-    return true; // En dev sin secret configurado, permitir
+    return true;
   }
 
   try {
     const { properties, checksum } = event.signature;
 
-    // Concatenar los valores de las propiedades en orden + timestamp + secret
     const transaction = event.data.transaction;
     const concatValues = properties
       .map((prop) => {
@@ -210,7 +206,6 @@ export async function getWompiTransaction(
 
 /**
  * Genera la URL de Wompi Checkout
- * Se redirige al usuario a esta URL para pagar
  */
 export function buildWompiCheckoutUrl(params: {
   reference: string;
@@ -239,9 +234,6 @@ export function buildWompiCheckoutUrl(params: {
   }
   if (params.customerPhone) {
     url.searchParams.set("customer-data:phone-number", params.customerPhone);
-  }
-  if (params.description) {
-    url.searchParams.set("signature:integrity", ""); // se calcula abajo
   }
 
   return url.toString();
@@ -285,11 +277,8 @@ export function getSubscriptionLabel(
   const labels: Record<SubscriptionStatus, string> = {
     trialing: trialEndsAt
       ? `Trial activo hasta ${new Date(trialEndsAt).toLocaleDateString(
-          "es-CO",
-          {
-            day: "numeric",
-            month: "long",
-          },
+          "es-SV", // ← cambiado de es-CO a es-SV
+          { day: "numeric", month: "long" },
         )}`
       : "Trial activo",
     active: "Activa",

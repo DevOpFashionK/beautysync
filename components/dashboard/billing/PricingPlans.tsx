@@ -13,7 +13,6 @@ import { PLANS, type PlanId } from "@/lib/wompi";
 interface PricingPlansProps {
   currentPlan?: string | null;
   currentStatus?: string | null;
-  /** Color primario del salón para highlight dinámico */
   primaryColor?: string;
 }
 
@@ -45,7 +44,6 @@ export function PricingPlans({
         return;
       }
 
-      // Redirigir a Wompi Checkout (o URL demo)
       window.location.href = data.checkoutUrl;
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -68,7 +66,7 @@ export function PricingPlans({
           El salón que trabaja solo
         </h2>
         <p className="text-[#9C8E85] text-sm max-w-md mx-auto">
-          Sin contratos. Cancela cuando quieras. Precios en pesos colombianos.
+          Sin contratos. Cancela cuando quieras. Precios en dólares.
         </p>
       </div>
 
@@ -105,7 +103,6 @@ export function PricingPlans({
                       ? "border-2 shadow-lg"
                       : "border border-[#EDE8E3] shadow-sm hover:shadow-md"
                   }
-                  ${isCurrentPlan ? "" : ""}
                 `}
                 style={{
                   borderColor: plan.popular
@@ -134,17 +131,16 @@ export function PricingPlans({
                     </span>
                   </div>
 
+                  {/* ← ÚNICO BLOQUE MODIFICADO: precio en USD */}
                   <div className="flex items-end gap-1">
                     <span className="font-display text-4xl text-[#2D2420]">
-                      ${plan.priceCOP.toLocaleString("es-CO")}
+                      ${plan.priceUSD}
                     </span>
                     <span className="text-[#9C8E85] text-sm mb-1">
-                      /mes COP
+                      /mes USD
                     </span>
                   </div>
-                  <p className="text-xs text-[#C4B8B0] mt-0.5">
-                    ≈ USD ${plan.price}/mes
-                  </p>
+                  {/* ← FIN BLOQUE MODIFICADO */}
                 </div>
 
                 {/* Features */}
@@ -179,10 +175,7 @@ export function PricingPlans({
                       transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                     style={
                       plan.popular
-                        ? {
-                            backgroundColor: primaryColor,
-                            color: "#FFFFFF",
-                          }
+                        ? { backgroundColor: primaryColor, color: "#FFFFFF" }
                         : {
                             backgroundColor: "transparent",
                             color: primaryColor,

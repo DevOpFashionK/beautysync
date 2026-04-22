@@ -2,6 +2,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSubscriptionStatus } from "@/lib/subscription"; // ← NUEVO
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -15,23 +16,19 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Paso 1: setear en el request (para que el Server Component lo lea)
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           );
-          // Paso 2: recrear response con cookies actualizadas
           supabaseResponse = NextResponse.next({ request });
-          // Paso 3: setear en la response (para que el browser las reciba)
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   // IMPORTANTE: No escribir lógica entre createServerClient y getUser()
-  // Supabase necesita refrescar el token si está expirado
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -40,14 +37,15 @@ export async function middleware(request: NextRequest) {
 
   // ── Rutas protegidas ────────────────────────────────────────────
   const isProtectedRoute = pathname.startsWith("/dashboard");
-  
+
   // ── Rutas de auth (redirigir si ya hay sesión) ──────────────────
   const isAuthRoute =
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/register");
+    pathname.startsWith("/login") || pathname.startsWith("/register");
+
+  // ── NUEVO: Rutas de billing (excluir del check de suscripción) ──
+  const isBillingRoute = pathname.startsWith("/dashboard/billing");
 
   if (isProtectedRoute && !user) {
-    // Sin sesión → al login, preservando la URL de destino
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("redirectTo", pathname);
@@ -55,28 +53,50 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAuthRoute && user) {
-    // Ya autenticado → al dashboard
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/dashboard";
     redirectUrl.searchParams.delete("redirectTo");
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Devolver siempre supabaseResponse (NO NextResponse.next())
-  // para que las cookies de sesión se propaguen correctamente
+  // ── NUEVO: Verificar suscripción en rutas del dashboard ─────────
+  // Solo corre si: hay sesión + es ruta del dashboard + NO es billing
+  // (billing se excluye para evitar loop infinito de redirecciones)
+  if (isProtectedRoute && user && !isBillingRoute) {
+    try {
+      // Obtener salon_id desde el perfil del usuario
+      const { data: salon } = await supabase
+        .from("salons")
+        .select("id")
+        .eq("owner_id", user.id)
+        .single();
+
+      // Si no tiene salón aún (onboarding incompleto), dejar pasar
+      // El onboarding mismo maneja este caso
+      if (salon?.id) {
+        const result = await getSubscriptionStatus(salon.id);
+
+        if (!result.active) {
+          // Suscripción inactiva → redirigir a billing con motivo
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = "/dashboard/billing";
+          redirectUrl.searchParams.set("reason", result.reason);
+          return NextResponse.redirect(redirectUrl);
+        }
+      }
+    } catch (error) {
+      // Si falla la verificación, dejamos pasar — no bloqueamos
+      // el negocio por un error interno de nuestra parte
+      console.error("[middleware] Error verificando suscripción:", error);
+    }
+  }
+  // ── FIN NUEVO ────────────────────────────────────────────────────
+
   return supabaseResponse;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Ejecutar en todas las rutas EXCEPTO:
-     * - _next/static (archivos estáticos)
-     * - _next/image (optimización de imágenes)
-     * - favicon.ico
-     * - /book/* (widget público — sin autenticación)
-     * - archivos con extensión (png, jpg, svg, etc.)
-     */
     "/((?!_next/static|_next/image|favicon.ico|book/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
