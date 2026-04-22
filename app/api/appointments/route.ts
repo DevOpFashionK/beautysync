@@ -1,20 +1,22 @@
 // app/api/appointments/route.ts
 //
-// FIXES aplicados:
+// ARQUITECTURA DE TIMEZONE:
 //
-// 1. Zod schema: scheduled_at ahora acepta cualquier string ISO 8601 válido,
-//    incluyendo "2026-04-28T14:00:00Z" que es lo que envía el widget.
-//    Antes: z.string().datetime() → requería formato muy estricto, rechazaba strings
-//    con Z si no tenían milisegundos → 422 Unprocessable Content
-//    Ahora: z.string().regex() con regex ISO permisivo → acepta todas las variantes
+// El servidor corre en UTC. El cliente puede estar en cualquier timezone.
+// Nunca asumir que la fecha del servidor == fecha del cliente.
 //
-// 2. scheduled_at se inserta en Supabase AS IS (sin pasar por new Date()).
-//    Esto preserva la hora literal que eligió el usuario.
-//    "2026-04-28T14:00:00Z" → Supabase guarda "2026-04-28 14:00:00+00" ✅
-//    parseISOLocal() en utils.ts stripea el Z/offset → dashboard muestra "02:00 pm" ✅
+// REGLAS:
+// 1. Fechas claramente pasadas (antes de ayer UTC): rechazar siempre.
+//    Si en UTC ya pasó ayer completo, no puede ser "hoy" en ningún timezone del mundo.
+// 2. El día actual del usuario: el cliente envía ?offset=N (minutos de getTimezoneOffset()).
+//    El servidor usa ese offset para calcular "hoy" desde la perspectiva del cliente
+//    y así marcar correctamente los slots pasados del día actual.
+// 3. Días futuros: nunca rechazar, siempre generar slots.
 //
-// 3. ends_at se calcula sumando minutos al scheduled_at parseado manualmente,
-//    sin usar new Date(scheduled_at) que haría conversión de timezone.
+// FLUJO scheduled_at:
+// - Widget construye: "2026-04-28T14:00:00Z" (Z para pasar validación Zod)
+// - route.ts inserta AS IS en Supabase → "2026-04-28 14:00:00+00"
+// - parseISOLocal() en utils.ts stripea Z/offset → lee "14:00" → dashboard muestra "02:00 pm" ✅
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -40,11 +42,9 @@ function checkRateLimit(
 }
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
-//
-// FIX: scheduled_at usa regex permisivo en vez de z.string().datetime().
-// z.string().datetime() de Zod v3 es muy estricto y en algunas versiones
-// rechaza strings con Z sin milisegundos. El regex acepta todas las variantes
-// que puede enviar el widget: con Z, con offset, con o sin milisegundos.
+// scheduled_at usa regex permisivo en vez de z.string().datetime().
+// z.string().datetime() de Zod v3 rechaza strings con Z sin milisegundos
+// en algunas versiones. El regex acepta todas las variantes ISO válidas.
 
 const ISO_REGEX =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/;
@@ -87,20 +87,16 @@ function sanitize(value: string): string {
     .trim();
 }
 
-// ─── Helper: "HH:MM:SS" → minutos ────────────────────────────────────────────
+// ─── Helper: "HH:MM" o "HH:MM:SS" → minutos ──────────────────────────────────
 function timeToMinutes(timeStr: string): number {
   const [hours, minutes] = timeStr.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
 // ─── Helper: sumar minutos a un ISO string sin conversión de timezone ─────────
-//
-// FIX: No usar new Date(isoString) para calcular ends_at porque haría
-// conversión de timezone en el servidor UTC, desplazando la hora.
-// En cambio parseamos manualmente y construimos el resultado como string.
-
+// No usar new Date(isoString) para calcular ends_at porque haría
+// conversión de timezone en el servidor UTC, desplazando la hora literal.
 function addMinutesToISO(isoString: string, minutesToAdd: number): string {
-  // Normalizar: quitar offset/Z, separar fecha y hora
   const clean = isoString.replace(/(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/, "");
   const [datePart, timePart = "00:00:00"] = clean.split("T");
   const [year, month, day] = datePart.split("-").map(Number);
@@ -117,7 +113,6 @@ function addMinutesToISO(isoString: string, minutesToAdd: number): string {
   const newHours = Math.floor(totalMinutes / 60);
   const newMinutes = totalMinutes % 60;
 
-  // Manejar cambio de día si la cita cruza medianoche (raro pero posible)
   let newDay = day + extraDays;
   let newMonth = month;
   let newYear = year;
@@ -131,22 +126,46 @@ function addMinutesToISO(isoString: string, minutesToAdd: number): string {
     }
   }
 
-  const y = String(newYear);
-  const mo = String(newMonth).padStart(2, "0");
-  const d = String(newDay).padStart(2, "0");
-  const hh = String(newHours).padStart(2, "0");
-  const mm = String(newMinutes).padStart(2, "0");
-
-  return `${y}-${mo}-${d}T${hh}:${mm}:00Z`;
+  return [
+    `${newYear}-${String(newMonth).padStart(2, "0")}-${String(newDay).padStart(2, "0")}`,
+    `T${String(newHours).padStart(2, "0")}:${String(newMinutes).padStart(2, "0")}:00Z`,
+  ].join("");
 }
 
-// ─── GET /api/appointments?salon_id=&date=&service_id= ────────────────────────
+// ─── Helper: calcular "hoy" desde la perspectiva del cliente ─────────────────
+// El cliente envía ?offset=N donde N = new Date().getTimezoneOffset() del browser.
+// getTimezoneOffset() retorna minutos DETRÁS de UTC:
+//   UTC-6 (El Salvador) → offset = +360
+//   UTC+1 (España)      → offset = -60
+// Para reconstruir la hora local del cliente: UTC_ms - offset_ms
+function getClientDateInfo(offsetMinutes: number): {
+  clientToday: string;
+  clientNowMinutes: number;
+} {
+  const clientNowMs = Date.now() - offsetMinutes * 60 * 1000;
+  const clientNow = new Date(clientNowMs);
+  const y = clientNow.getUTCFullYear();
+  const m = String(clientNow.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(clientNow.getUTCDate()).padStart(2, "0");
+  return {
+    clientToday: `${y}-${m}-${d}`,
+    clientNowMinutes: clientNow.getUTCHours() * 60 + clientNow.getUTCMinutes(),
+  };
+}
+
+// ─── GET /api/appointments?salon_id=&date=&service_id=&offset= ────────────────
+//
+// offset: minutos de timezone del cliente (new Date().getTimezoneOffset()).
+//         Opcional — si no se envía, se asume UTC (offset=0).
+//         El cliente SIEMPRE debe enviarlo para cálculo correcto de slots pasados.
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const salon_id = searchParams.get("salon_id");
     const date = searchParams.get("date");
     const service_id = searchParams.get("service_id");
+    const offsetStr = searchParams.get("offset");
 
     if (!salon_id || !date || !service_id) {
       return NextResponse.json(
@@ -162,16 +181,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validar que la fecha no sea pasada — comparar strings YYYY-MM-DD
-    const todayStr = (() => {
-      const now = new Date();
-      const y = now.getUTCFullYear();
-      const m = String(now.getUTCMonth() + 1).padStart(2, "0");
-      const d = String(now.getUTCDate()).padStart(2, "0");
-      return `${y}-${m}-${d}`;
+    // Parsear offset — valor de getTimezoneOffset() del browser
+    // Rango válido: -840 (UTC+14) a +720 (UTC-12)
+    const offsetMinutes = (() => {
+      if (!offsetStr) return 0;
+      const n = parseInt(offsetStr, 10);
+      if (isNaN(n) || n < -840 || n > 720) return 0;
+      return n;
     })();
 
-    if (date < todayStr) {
+    // REGLA 1: Rechazar fechas claramente pasadas.
+    // Usar "ayer UTC" como límite: si la fecha es anterior a ayer en UTC,
+    // no puede ser hoy ni futuro en NINGÚN timezone del mundo.
+    // Esto evita rechazar "hoy" para usuarios en timezones detrás de UTC
+    // (como UTC-6 después de las 6pm, donde el servidor ya dice que es mañana).
+    const [ry, rm, rd] = date.split("-").map(Number);
+    const requestedDateUTC = Date.UTC(ry, rm - 1, rd);
+    const now = new Date();
+    const yesterdayUTC = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - 1,
+    );
+
+    if (requestedDateUTC < yesterdayUTC) {
       return NextResponse.json(
         { error: "No se pueden reservar fechas pasadas" },
         { status: 400 },
@@ -212,9 +245,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Verificar business_hours
-    // Calcular día de la semana desde el string date sin new Date() con timezone
-    const [y, mo, d] = date.split("-").map(Number);
-    const dayOfWeek = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+    // dayOfWeek calculado en UTC puro desde el string date
+    const dayOfWeek = new Date(Date.UTC(ry, rm - 1, rd)).getUTCDay();
 
     const { data: businessHours, error: hoursError } = await supabase
       .from("business_hours")
@@ -250,17 +282,14 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Generar slots
-    // FIX: no usar new Date() con string local para construir slots —
-    // comparar usando minutos numéricos para evitar cualquier timezone issue.
     const duration = service.duration_minutes;
-    const SLOT_INTERVAL = 30; // minutos entre slots
+    const SLOT_INTERVAL = 30;
     const openMinutes = timeToMinutes(businessHours.open_time);
     const closeMinutes = timeToMinutes(businessHours.close_time);
 
-    // Hora actual en UTC para marcar slots pasados
-    const nowUTC = new Date();
-    const nowMinutesUTC = nowUTC.getUTCHours() * 60 + nowUTC.getUTCMinutes();
-    const isToday = date === todayStr;
+    // REGLA 2: Calcular hora actual del cliente con su offset para marcar slots pasados
+    const { clientToday, clientNowMinutes } = getClientDateInfo(offsetMinutes);
+    const isToday = date === clientToday;
 
     const slots: { time: string; available: boolean; datetime: string }[] = [];
 
@@ -276,19 +305,18 @@ export async function GET(request: NextRequest) {
       const timeLabel = `${hh}:${mm}`;
       const datetime = `${date}T${hh}:${mm}:00Z`;
       const endMin = minutes + duration;
+      const endHH = String(Math.floor(endMin / 60)).padStart(2, "0");
+      const endMM = String(endMin % 60).padStart(2, "0");
+      const slotEnd = `${date}T${endHH}:${endMM}:00Z`;
 
-      // Slot pasado — solo aplica si es hoy
-      const isPast = isToday && minutes <= nowMinutesUTC;
+      // Slot pasado: solo aplica si el cliente está viendo su día actual
+      const isPast = isToday && minutes <= clientNowMinutes;
 
-      // Conflicto con citas existentes
-      // Comparamos strings ISO directamente (lexicográficamente válido para UTC)
-      const slotStart = datetime;
-      const slotEnd = `${date}T${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}:00Z`;
-
+      // Conflicto con citas existentes — comparación lexicográfica de ISO strings UTC
       const hasConflict = (existingAppointments || []).some((appt) => {
         const apptStart = appt.scheduled_at ?? "";
         const apptEnd = appt.ends_at ?? "";
-        return slotStart < apptEnd && slotEnd > apptStart;
+        return datetime < apptEnd && slotEnd > apptStart;
       });
 
       slots.push({
@@ -383,9 +411,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Verificar que el día está abierto
-    // FIX: calcular dayOfWeek desde el string ISO sin new Date() con timezone
     const scheduledStr = sanitizedData.scheduled_at;
-    const datePart = scheduledStr.slice(0, 10); // "YYYY-MM-DD"
+    const datePart = scheduledStr.slice(0, 10);
     const [sy, sm, sd] = datePart.split("-").map(Number);
     const dayOfWeek = new Date(Date.UTC(sy, sm - 1, sd)).getUTCDay();
 
@@ -427,7 +454,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Verificar disponibilidad en tiempo real (anti race condition)
-    // FIX: ends_at calculado sin new Date() para preservar hora literal
     const endsAtStr = addMinutesToISO(scheduledStr, service.duration_minutes);
 
     const { data: conflictingAppts } = await supabase
@@ -445,7 +471,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Crear la cita
+    // 6. Crear la cita — scheduled_at se inserta AS IS para preservar hora literal
     const { data: newAppt, error: insertError } = await supabase
       .from("appointments")
       .insert({
@@ -455,8 +481,8 @@ export async function POST(request: NextRequest) {
         client_email: sanitizedData.client_email,
         client_phone: sanitizedData.client_phone,
         client_notes: sanitizedData.client_notes,
-        scheduled_at: scheduledStr, // AS IS — preserva hora literal
-        ends_at: endsAtStr, // calculado sin new Date()
+        scheduled_at: scheduledStr,
+        ends_at: endsAtStr,
         status: "pending",
       })
       .select("id, scheduled_at, status")
@@ -470,7 +496,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Notificaciones — fire and forget
+    // Notificaciones — fire and forget (no bloquea la respuesta al widget)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const cronSecret = process.env.CRON_SECRET;
 
