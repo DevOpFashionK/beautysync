@@ -1,30 +1,52 @@
 // app/(dashboard)/dashboard/page.tsx
 //
-// FIX: Saludo y fecha movidos a DashboardHeader (componente cliente).
-// El servidor NO calcula hour ni dateStr — esos datos dependen de la
-// timezone del usuario y solo el browser la conoce correctamente.
+// FIX Hydration Error #418:
+// DashboardHeader se carga con dynamic() + ssr:false para que NUNCA
+// se renderice en el servidor. El servidor no puede conocer la timezone
+// del usuario, así que cualquier contenido que dependa de new Date()
+// local debe cargarse exclusivamente en el cliente.
 
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
+import dynamic from "next/dynamic";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { markPastAppointmentsAsNoShow } from "@/lib/autoNoShow";
 import TodayAppointments from "@/components/dashboard/TodayAppointments";
 import WelcomeBanner from "@/components/dashboard/WelcomeBanner";
 import SubscriptionStatus from "@/components/dashboard/SubscriptionStatus";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
+
+// ssr:false → nunca se renderiza en servidor → elimina hydration mismatch #418
+const DashboardHeader = dynamic(
+  () => import("@/components/dashboard/DashboardHeader"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="animate-pulse">
+        <div className="h-3 w-24 rounded-full bg-[#EDE8E3] mb-3" />
+        <div className="h-10 w-72 rounded-xl bg-[#EDE8E3] mb-2" />
+        <div className="h-3 w-40 rounded-full bg-[#EDE8E3]" />
+        <div className="mt-5 h-px w-full bg-[#E8E0D8]" />
+      </div>
+    ),
+  },
+);
 
 export const metadata: Metadata = { title: "Dashboard — BeautySync" };
-export const dynamic = "force-dynamic";
+export const revalidate = 0; // equivalente a force-dynamic para Server Components
 
 interface DashboardPageProps {
   searchParams: Promise<{ welcome?: string }>;
 }
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
   const supabase = await createServerSupabaseClient();
-  const params   = await searchParams;
+  const params = await searchParams;
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const { data: salon } = await supabase
@@ -47,7 +69,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .eq("user_id", user.id)
     .single();
 
-  // Auto no_show server-side — una sola vez, sin hooks ni errores 405
   await markPastAppointmentsAsNoShow(salon.id);
 
   const isWelcome = params.welcome === "true";
@@ -56,7 +77,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   return (
     <div className="min-h-screen bg-[#FAF8F5]">
       <div className="max-w-5xl mx-auto px-6 pt-8 pb-16 md:px-10 flex flex-col gap-8">
-
         {isWelcome && <WelcomeBanner salonName={salon.name} />}
 
         {subscription && (
@@ -67,7 +87,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           />
         )}
 
-        {/* Header con saludo y fecha — calculados en el cliente para respetar timezone local */}
         <DashboardHeader
           salonName={salon.name}
           firstName={firstName}
@@ -75,7 +94,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         />
 
         <TodayAppointments salonId={salon.id} />
-
       </div>
     </div>
   );

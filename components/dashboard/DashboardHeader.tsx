@@ -2,16 +2,14 @@
 
 // components/dashboard/DashboardHeader.tsx
 //
-// Saludo y fecha calculados en el CLIENTE, no en el servidor.
+// Saludo y fecha calculados en el cliente, no en el servidor.
 //
-// PROBLEMA: page.tsx calculaba hour y dateStr con new Date() en el servidor
-// (UTC). A las 9:53pm en El Salvador (UTC-6), el servidor ya dice que son
-// las 3:53am del día siguiente → saludo incorrecto y fecha incorrecta.
+// Este componente se carga con dynamic() + ssr:false desde page.tsx,
+// lo que significa que NUNCA se renderiza en el servidor — elimina
+// el Hydration Error #418 de raíz sin necesidad de suppressHydrationWarning.
 //
-// SOLUCIÓN: Mover estos cálculos a un componente "use client" que corre
-// en el browser, donde new Date() usa la timezone local del usuario.
-// Se monta con suppressHydrationWarning para evitar mismatch en el primer
-// render (el servidor no puede saber la hora local del cliente).
+// ssr:false es la solución correcta cuando el contenido depende de datos
+// que solo el browser conoce (timezone local, hora actual del usuario).
 
 import { useEffect, useState } from "react";
 
@@ -65,10 +63,9 @@ export default function DashboardHeader({
   firstName,
   primaryColor,
 }: DashboardHeaderProps) {
-  const [greeting, setGreeting] = useState("");
-  const [dateFormatted, setDateFormatted] = useState("");
+  const [greeting, setGreeting] = useState<string>("");
+  const [dateFormatted, setDateFormatted] = useState<string>("");
 
-  // Calcular en el cliente una vez montado — aquí new Date() usa timezone local
   useEffect(() => {
     const now = new Date();
     setGreeting(getGreeting(now.getHours()));
@@ -85,10 +82,7 @@ export default function DashboardHeader({
       </p>
 
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
-        {/* suppressHydrationWarning porque el servidor renderiza "" y el cliente
-            renderiza el saludo real — es intencional y seguro aquí */}
         <h1
-          suppressHydrationWarning
           style={{
             fontFamily: "'Cormorant Garamond', Georgia, serif",
             fontSize: "clamp(2rem, 4vw, 3rem)",
@@ -102,7 +96,6 @@ export default function DashboardHeader({
           {firstName ? `, ${firstName}` : ""}.
         </h1>
         <p
-          suppressHydrationWarning
           className="text-sm pb-1"
           style={{ color: "#B5A99F", fontWeight: 400 }}
         >
