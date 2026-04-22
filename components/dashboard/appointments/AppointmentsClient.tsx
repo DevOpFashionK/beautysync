@@ -2,17 +2,25 @@
 
 // components/dashboard/appointments/AppointmentsClient.tsx
 //
-// FIXES aplicados:
-// 1. Import corregido: { AppointmentDetailModal } (named export, no default)
-// 2. prop onStatusUpdate alineada — el modal ahora usa el mismo nombre
-// 3. appointment={selectedAppointment} ya es válido (modal acepta Appointment | null)
-//    y AnimatePresence dentro del modal maneja el ciclo de vida correctamente.
-//    No se necesita render condicional aquí — el modal lo gestiona internamente.
+// NUEVO — Realtime:
+// Suscripción Supabase Realtime para INSERT, UPDATE y DELETE en appointments.
+// - INSERT: agrega la cita si está dentro del rango de los últimos 30 días.
+//           Hace fetch adicional para obtener el JOIN de services, ya que
+//           Supabase Realtime solo envía columnas de la tabla propia.
+// - UPDATE: actualiza status y datos en lista y modal si está abierto.
+// - DELETE: elimina de la lista y cierra modal si corresponde.
+// - Indicador visual "En vivo" con dot animado.
+// - Cleanup correcto en unmount.
+//
+// TIPOS: payload.new y payload.old de Supabase Realtime tienen tipo
+// Record<string, unknown>. Se castean a Partial<Appointment> & { id: string }
+// para satisfacer TypeScript sin perder seguridad de tipos.
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search } from "lucide-react";
 import { formatGroupDate } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import AppointmentRow from "./AppointmentRow";
 import { AppointmentDetailModal } from "./AppointmentDetailModal";
 import AppointmentsEmptyState from "./AppointmentsEmptyState";
@@ -38,6 +46,9 @@ export interface Appointment {
   created_at: string | null;
   services: AppointmentService | null;
 }
+
+// Tipo para el payload de Realtime — todos los campos son opcionales excepto id
+type RealtimeAppointment = Partial<Appointment> & { id: string };
 
 type StatusFilter =
   | "all"
@@ -77,6 +88,12 @@ export const STATUS_COLORS: Record<
   no_show: { bg: "bg-gray-50", text: "text-gray-500", dot: "bg-gray-400" },
 };
 
+function getThirtyDaysAgoStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function AppointmentsClient({
   salonId,
   primaryColor,
@@ -88,6 +105,110 @@ export default function AppointmentsClient({
   const [search, setSearch] = useState("");
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
+  const [connected, setConnected] = useState(false);
+
+  // Fetch completo de una cita con JOIN de services
+  // Necesario porque Realtime no incluye datos de tablas relacionadas
+  const fetchFullAppointment = useCallback(
+    async (id: string): Promise<Appointment | null> => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("appointments")
+        .select(
+          `
+          id, client_name, client_email, client_phone, client_notes,
+          scheduled_at, ends_at, status, cancellation_reason, cancelled_at, created_at,
+          services(id, name, duration_minutes, price)
+        `,
+        )
+        .eq("id", id)
+        .single();
+      if (error || !data) return null;
+      return data as Appointment;
+    },
+    [],
+  );
+
+  // Suscripción Realtime
+  useEffect(() => {
+    const supabase = createClient();
+    const thirtyDaysAgo = getThirtyDaysAgoStr();
+
+    const channel = supabase
+      .channel(`appointments-list-${salonId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "appointments",
+          filter: `salon_id=eq.${salonId}`,
+        },
+        async (payload) => {
+          if (payload.eventType === "INSERT") {
+            const raw = payload.new as RealtimeAppointment;
+            const dateKey = (raw.scheduled_at ?? "").slice(0, 10);
+            // Ignorar citas fuera del rango de 30 días
+            if (!raw.id || dateKey < thirtyDaysAgo) return;
+            // Fetch completo para obtener services JOIN
+            const full = await fetchFullAppointment(raw.id);
+            if (!full) return;
+            setAppointments((prev) => {
+              // Evitar duplicados (puede llegar dos veces en dev con StrictMode)
+              if (prev.some((a) => a.id === full.id)) return prev;
+              return [full, ...prev].sort((a, b) =>
+                b.scheduled_at.localeCompare(a.scheduled_at),
+              );
+            });
+          }
+
+          if (payload.eventType === "UPDATE") {
+            const updated = payload.new as RealtimeAppointment;
+            setAppointments((prev) =>
+              prev.map((a) =>
+                a.id === updated.id
+                  ? {
+                      ...a,
+                      status: updated.status ?? a.status,
+                      cancellation_reason:
+                        updated.cancellation_reason ?? a.cancellation_reason,
+                      cancelled_at: updated.cancelled_at ?? a.cancelled_at,
+                      scheduled_at: updated.scheduled_at ?? a.scheduled_at,
+                      ends_at: updated.ends_at ?? a.ends_at,
+                    }
+                  : a,
+              ),
+            );
+            // Sincronizar modal si está abierto con esta cita
+            setSelectedAppointment((prev) =>
+              prev?.id === updated.id
+                ? {
+                    ...prev,
+                    status: updated.status ?? prev.status,
+                    cancellation_reason:
+                      updated.cancellation_reason ?? prev.cancellation_reason,
+                    cancelled_at: updated.cancelled_at ?? prev.cancelled_at,
+                  }
+                : prev,
+            );
+          }
+
+          if (payload.eventType === "DELETE") {
+            const deleted = payload.old as RealtimeAppointment;
+            if (!deleted.id) return;
+            setAppointments((prev) => prev.filter((a) => a.id !== deleted.id));
+            setSelectedAppointment((prev) =>
+              prev?.id === deleted.id ? null : prev,
+            );
+          }
+        },
+      )
+      .subscribe((status) => setConnected(status === "SUBSCRIBED"));
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [salonId, fetchFullAppointment]);
 
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
@@ -104,7 +225,6 @@ export default function AppointmentsClient({
     });
   }, [appointments, statusFilter, search]);
 
-  // Agrupar por fecha (YYYY-MM-DD) — determinístico, no usa toLocaleDateString
   const grouped = useMemo(() => {
     const groups: Record<string, Appointment[]> = {};
     for (const appt of filtered) {
@@ -143,7 +263,6 @@ export default function AppointmentsClient({
           : a,
       ),
     );
-    // Sincronizar el appointment seleccionado si está abierto
     if (selectedAppointment?.id === id) {
       setSelectedAppointment((prev) =>
         prev
@@ -186,6 +305,33 @@ export default function AppointmentsClient({
               <p className="text-[#9C8E85] text-sm mt-2">
                 Últimos 30 días · {appointments.length} citas en total
               </p>
+            </div>
+
+            {/* Indicador En vivo */}
+            <div className="flex items-center gap-1.5 mt-2 shrink-0">
+              {connected ? (
+                <>
+                  <motion.div
+                    animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
+                    transition={{ repeat: Infinity, duration: 2.5 }}
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: "#10B981" }}
+                  />
+                  <span
+                    className="text-xs hidden sm:block"
+                    style={{ color: "#10B981" }}
+                  >
+                    En vivo
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C4B8B0]" />
+                  <span className="text-xs hidden sm:block text-[#C4B8B0]">
+                    Reconectando…
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -304,8 +450,6 @@ export default function AppointmentsClient({
       </div>
 
       {/* ── Detail Modal ── */}
-      {/* appointment puede ser null — AppointmentDetailModal lo maneja internamente
-          con AnimatePresence para animar la entrada y salida correctamente */}
       <AppointmentDetailModal
         appointment={selectedAppointment}
         primaryColor={primaryColor}
