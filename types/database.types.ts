@@ -1,4 +1,4 @@
-﻿ export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -22,6 +22,7 @@ export type Database = {
           client_name: string
           client_notes: string | null
           client_phone: string
+          confirmation_token: string | null
           created_at: string | null
           ends_at: string
           id: string
@@ -39,6 +40,7 @@ export type Database = {
           client_name: string
           client_notes?: string | null
           client_phone: string
+          confirmation_token?: string | null
           created_at?: string | null
           ends_at: string
           id?: string
@@ -56,6 +58,7 @@ export type Database = {
           client_name?: string
           client_notes?: string | null
           client_phone?: string
+          confirmation_token?: string | null
           created_at?: string | null
           ends_at?: string
           id?: string

@@ -99,7 +99,7 @@ export async function sendPendingReminders(): Promise<{
     .select(
       `
       id, client_name, client_email, client_phone, scheduled_at, status,
-      reminder_sent,
+      reminder_sent, confirmation_token,
       services ( name ),
       salons ( name, phone, primary_color, owner_id )
     `,
@@ -140,6 +140,7 @@ export async function sendPendingReminders(): Promise<{
       serviceName: service.name,
       scheduledAt: appt.scheduled_at,
       primaryColor: salon.primary_color,
+      confirmationToken: appt.confirmation_token,
     };
 
     try {

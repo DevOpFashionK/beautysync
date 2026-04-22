@@ -108,6 +108,7 @@ export interface AppointmentEmailData {
   serviceName: string;
   scheduledAt: string; // ISO string — se parsea con parseISOForEmail
   primaryColor?: string | null;
+  confirmationToken?: string | null; // ← NUEVO: para el botón del recordatorio
 }
 
 export interface SalonNotificationData {
@@ -225,6 +226,31 @@ function tplConfirmacion(d: AppointmentEmailData): string {
 
 function tplRecordatorio(d: AppointmentEmailData): string {
   const accent = accentColor(d.primaryColor);
+  const APP_URL =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://beautysync.vercel.app";
+
+  // Bloque CTA — solo aparece si hay token
+  const ctaBlock = d.confirmationToken
+    ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+      <tr>
+        <td align="center" style="padding:8px 0 4px;">
+          <a href="${APP_URL}/confirm/${d.confirmationToken}"
+             style="display:inline-block;background:${accent};color:#FFFFFF;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;font-family:Arial,sans-serif;letter-spacing:0.02em;">
+            Confirmar mi cita
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td align="center">
+          <p style="margin:8px 0 0;font-size:12px;color:#9C8E85;">
+            Un clic es suficiente. No necesitas crear una cuenta.
+          </p>
+        </td>
+      </tr>
+    </table>`
+    : "";
+
   const content = `
     <h1 style="margin:0 0 8px;font-family:Georgia,serif;font-size:28px;color:#2D2420;font-weight:400;">
       Recordatorio de cita 💅
@@ -252,6 +278,7 @@ function tplRecordatorio(d: AppointmentEmailData): string {
         </td>
       </tr>
     </table>
+    ${ctaBlock}
     <div style="background:${accent}18;border-left:3px solid ${accent};border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;">
       <p style="margin:0;font-size:14px;color:#2D2420;line-height:1.6;">
         ⏰ <strong>Recuerda llegar 5 minutos antes</strong> de tu cita para una mejor experiencia.
