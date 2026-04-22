@@ -114,6 +114,12 @@ export async function sendPendingReminders(): Promise<{
     return { processed: 0, sent: 0, failed: 0, autoCancelled: 0 };
   }
 
+  // ← AGREGAR ESTO TEMPORALMENTE
+  console.log(
+    "[Reminders] Appointments found:",
+    JSON.stringify(appointments, null, 2),
+  );
+
   let sent = 0;
   let failed = 0;
 
