@@ -3,7 +3,14 @@
 // components/dashboard/settings/LogoUploader.tsx
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, ImageIcon, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import {
+  Upload,
+  ImageIcon,
+  Loader2,
+  CheckCircle,
+  AlertTriangle,
+  Lock,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useSalon } from "@/context/SalonContext";
 
@@ -14,7 +21,12 @@ interface LogoUploaderProps {
 
 const MAX_SIZE_MB = 2;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/svg+xml",
+];
 const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "svg"];
 
 function validateFile(file: File): string | null {
@@ -27,9 +39,12 @@ function validateFile(file: File): string | null {
   return null;
 }
 
-export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProps) {
+export default function LogoUploader({
+  salonId,
+  primaryColor,
+}: LogoUploaderProps) {
   // Lee y actualiza el Context directamente — actualiza el sidebar en tiempo real
-  const { salon, updateLogoUrl } = useSalon();
+  const { salon, updateLogoUrl, canCustomizeBrand } = useSalon();
   const currentLogoUrl = salon.logoUrl;
 
   const [preview, setPreview] = useState<string | null>(currentLogoUrl);
@@ -94,7 +109,7 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
         setUploading(false);
       }
     },
-    [salonId, currentLogoUrl, updateLogoUrl]
+    [salonId, currentLogoUrl, updateLogoUrl],
   );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,7 +133,7 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
       reader.readAsDataURL(file);
       uploadFile(file);
     },
-    [uploadFile]
+    [uploadFile],
   );
 
   const handleRemoveLogo = async () => {
@@ -127,7 +142,9 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
 
     try {
       const supabase = createClient();
-      const filePaths = ALLOWED_EXTENSIONS.map((ext) => `${salonId}/logo.${ext}`);
+      const filePaths = ALLOWED_EXTENSIONS.map(
+        (ext) => `${salonId}/logo.${ext}`,
+      );
       await supabase.storage.from("salon-assets").remove(filePaths);
 
       const { error: dbError } = await supabase
@@ -148,6 +165,88 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
     }
   };
 
+  // ─── Plan no Pro: mostrar bloqueo ────────────────────────────────────────────
+  if (!canCustomizeBrand) {
+    return (
+      <div className="flex flex-col gap-3">
+        {/* Header */}
+        <div className="flex items-center gap-2">
+          <div
+            className="w-5 h-5 rounded-md flex items-center justify-center"
+            style={{ backgroundColor: `${primaryColor}14` }}
+          >
+            <ImageIcon size={11} style={{ color: primaryColor }} />
+          </div>
+          <h2 className="font-semibold text-[#2D2420] text-sm">
+            Logo del salón
+          </h2>
+          <span
+            className="text-xs px-2 py-0.5 rounded-full font-medium text-white ml-1"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Plan Pro
+          </span>
+        </div>
+
+        <p className="text-xs text-[#9C8E85] leading-relaxed -mt-1">
+          Aparece en el widget de reservas y en el dashboard.
+        </p>
+
+        {/* Si ya tiene logo, mostrarlo en modo solo lectura */}
+        {currentLogoUrl && (
+          <div className="flex items-center gap-4">
+            <div
+              className="shrink-0 w-20 h-20 rounded-2xl border-2 border-dashed
+                         flex items-center justify-center overflow-hidden"
+              style={{ borderColor: `${primaryColor}40` }}
+            >
+              <img
+                src={currentLogoUrl}
+                alt="Logo del salón"
+                className="w-full h-full object-contain p-1"
+              />
+            </div>
+            <p className="text-xs text-[#9C8E85] leading-relaxed">
+              Tu logo actual se seguirá mostrando, pero no podrás cambiarlo
+              hasta activar el Plan Pro.
+            </p>
+          </div>
+        )}
+
+        {/* Bloqueo visual */}
+        <div
+          className="rounded-2xl border-2 border-dashed p-6 text-center"
+          style={{ borderColor: "#EDE8E3", backgroundColor: "#FAF8F5" }}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: `${primaryColor}12` }}
+            >
+              <Lock size={18} style={{ color: primaryColor }} />
+            </div>
+            <p className="text-sm font-semibold text-[#2D2420]">
+              Feature exclusiva del Plan Pro
+            </p>
+            <p className="text-xs text-[#9C8E85] max-w-xs leading-relaxed">
+              Sube el logo de tu salón y refuerza tu marca en el widget de
+              reservas y el dashboard.
+            </p>
+            <a
+              href="/dashboard/billing/upgrade"
+              className="mt-2 inline-block px-5 py-2 rounded-xl text-sm font-semibold
+                         text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: primaryColor }}
+            >
+              Ver Plan Pro
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Plan Pro o trialing: funcionalidad completa ──────────────────────────────
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
@@ -161,8 +260,8 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
       </div>
 
       <p className="text-xs text-[#9C8E85] leading-relaxed -mt-1">
-        Aparece en el widget de reservas y en el dashboard.
-        Formatos: JPG, PNG, WebP, SVG · Máximo {MAX_SIZE_MB}MB
+        Aparece en el widget de reservas y en el dashboard. Formatos: JPG, PNG,
+        WebP, SVG · Máximo {MAX_SIZE_MB}MB
       </p>
 
       <AnimatePresence>
@@ -188,7 +287,9 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
             className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3"
           >
             <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-            <p className="text-xs text-emerald-600">Logo actualizado correctamente</p>
+            <p className="text-xs text-emerald-600">
+              Logo actualizado correctamente
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -209,7 +310,11 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
               />
               {(uploading || removing) && (
                 <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                  <Loader2 size={16} className="animate-spin" style={{ color: primaryColor }} />
+                  <Loader2
+                    size={16}
+                    className="animate-spin"
+                    style={{ color: primaryColor }}
+                  />
                 </div>
               )}
             </>
@@ -224,7 +329,10 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
         {/* Drop zone */}
         <div
           className="flex-1"
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
         >
@@ -238,7 +346,11 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
           >
             {uploading ? (
               <div className="flex flex-col items-center gap-2 py-1">
-                <Loader2 size={18} className="animate-spin" style={{ color: primaryColor }} />
+                <Loader2
+                  size={18}
+                  className="animate-spin"
+                  style={{ color: primaryColor }}
+                />
                 <p className="text-xs text-[#9C8E85]">Subiendo logo...</p>
               </div>
             ) : (
@@ -248,7 +360,9 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
                   <p className="text-xs font-medium text-[#2D2420]">
                     {isDragging ? "Suelta aquí" : "Arrastra o haz clic"}
                   </p>
-                  <p className="text-[10px] text-[#9C8E85] mt-0.5">para subir tu logo</p>
+                  <p className="text-[10px] text-[#9C8E85] mt-0.5">
+                    para subir tu logo
+                  </p>
                 </div>
               </div>
             )}
@@ -273,7 +387,11 @@ export default function LogoUploader({ salonId, primaryColor }: LogoUploaderProp
                            text-red-400 hover:bg-red-50 transition-all
                            disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {removing ? <Loader2 size={12} className="animate-spin" /> : "Eliminar"}
+                {removing ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  "Eliminar"
+                )}
               </button>
             )}
           </div>

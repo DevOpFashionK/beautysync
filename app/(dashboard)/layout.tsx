@@ -9,7 +9,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { SalonProvider } from "@/context/SalonContext";
+import { SalonProvider, type SubscriptionData } from "@/context/SalonContext";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { SubscriptionGate } from "@/components/dashboard/SubscriptionGate";
 
@@ -20,7 +20,9 @@ export default async function DashboardLayout({
 }) {
   const supabase = await createServerSupabaseClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const { data: salon } = await supabase
@@ -37,22 +39,30 @@ export default async function DashboardLayout({
     .eq("salon_id", salon.id)
     .maybeSingle();
 
-  // Calcular estado efectivo de suscripción
+  // Calcular estado efectivo de suscripción (hora El Salvador UTC-6)
+  const nowSV = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/El_Salvador" }),
+  );
+
   let effectiveStatus = subscription?.status ?? null;
   if (
     effectiveStatus === "trialing" &&
     subscription?.trial_ends_at &&
-    new Date(subscription.trial_ends_at) < new Date()
+    new Date(subscription.trial_ends_at) < nowSV
   ) {
     effectiveStatus = "expired";
   }
 
   let trialDaysRemaining: number | null = null;
   if (effectiveStatus === "trialing" && subscription?.trial_ends_at) {
-    const trialEnd = new Date(subscription.trial_ends_at);
+    const trialEnd = new Date(
+      new Date(subscription.trial_ends_at).toLocaleString("en-US", {
+        timeZone: "America/El_Salvador",
+      }),
+    );
     trialDaysRemaining = Math.max(
       0,
-      Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      Math.ceil((trialEnd.getTime() - nowSV.getTime()) / (1000 * 60 * 60 * 24)),
     );
   }
 
@@ -62,12 +72,21 @@ export default async function DashboardLayout({
   const initialSalon = {
     id: salon.id,
     name: salon.name,
-    primaryColor,          // primary_color  → primaryColor
-    logoUrl: salon.logo_url, // logo_url     → logoUrl
+    primaryColor,
+    logoUrl: salon.logo_url,
+  };
+
+  const initialSubscription: SubscriptionData = {
+    plan: subscription?.plan ?? null,
+    status: subscription?.status ?? null,
+    effectiveStatus,
   };
 
   return (
-    <SalonProvider initialSalon={initialSalon}>
+    <SalonProvider
+      initialSalon={initialSalon}
+      initialSubscription={initialSubscription}
+    >
       <SubscriptionGate
         status={effectiveStatus}
         trialDaysRemaining={trialDaysRemaining}
@@ -77,9 +96,7 @@ export default async function DashboardLayout({
         {/* Estructura idéntica a Fase 3 — sin padding aquí */}
         <div className="flex h-screen bg-[#FAF8F5] overflow-hidden">
           <DashboardSidebar />
-          <main className="flex-1 overflow-y-auto">
-            {children}
-          </main>
+          <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </SubscriptionGate>
     </SalonProvider>
