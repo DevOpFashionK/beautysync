@@ -85,9 +85,8 @@ const step2Schema = z.object({
     .transform(sanitizeText),
   phone: z
     .string()
-    .max(20, "Teléfono demasiado largo")
-    .regex(PHONE_REGEX, "Formato de teléfono inválido")
-    .transform(sanitizeText)
+    .length(8, "El teléfono debe tener exactamente 8 dígitos")
+    .regex(/^\d{8}$/, "Solo números, sin espacios ni guiones")
     .optional()
     .or(z.literal("")),
   primary_color: z.string().regex(HEX_COLOR_REGEX, "Color inválido"),
@@ -403,15 +402,75 @@ function Step2({
         maxLength={200}
         autoComplete="street-address"
       />
-      <InputField
-        label="Teléfono (opcional)"
-        type="tel"
-        placeholder="+503 7000-0000"
-        error={errors.phone?.message}
-        registration={register("phone")}
-        maxLength={20}
-        autoComplete="tel"
-      />
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-neutral-600">
+          Teléfono (opcional)
+        </label>
+        <div
+          className="flex items-center rounded-xl overflow-hidden transition-all duration-150"
+          style={{ border: "1.5px solid rgba(255,255,255,0.12)" }}
+          onFocusCapture={(e) => {
+            const el = e.currentTarget as HTMLDivElement;
+            el.style.borderColor = "rgba(112,0,255,0.6)";
+            el.style.boxShadow = "0 0 0 3px rgba(112,0,255,0.1)";
+          }}
+          onBlurCapture={(e) => {
+            const el = e.currentTarget as HTMLDivElement;
+            el.style.borderColor = "rgba(255,255,255,0.12)";
+            el.style.boxShadow = "none";
+          }}
+        >
+          {/* Prefijo fijo */}
+          <div
+            className="flex items-center gap-1.5 px-3 py-2.5 shrink-0"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              borderRight: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <span className="text-sm">🇸🇻</span>
+            <span
+              className="text-sm font-medium"
+              style={{ color: "var(--muted-lavender)" }}
+            >
+              +503
+            </span>
+          </div>
+
+          {/* Input solo 8 dígitos */}
+          <input
+            {...register("phone")}
+            type="tel"
+            inputMode="numeric"
+            maxLength={8}
+            placeholder="7000 0000"
+            autoComplete="tel-national"
+            className="flex-1 px-3 py-2.5 text-sm outline-none bg-transparent"
+            style={{ color: "#fff" }}
+            onKeyDown={(e) => {
+              const allowed = [
+                "Backspace",
+                "Delete",
+                "Tab",
+                "ArrowLeft",
+                "ArrowRight",
+              ];
+              if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
+          />
+        </div>
+        {errors.phone && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-xs text-red-500"
+          >
+            {errors.phone.message}
+          </motion.p>
+        )}
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-neutral-600">
@@ -796,7 +855,7 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
         name: sanitizeText(step2Data.salon_name),
         slug: `${slug}-${Date.now().toString(36)}`,
         address: sanitizeText(step2Data.address),
-        phone: step2Data.phone ? sanitizeText(step2Data.phone) : null,
+        phone: step2Data.phone ? `+503 ${step2Data.phone}` : null,
         primary_color: step2Data.primary_color,
         timezone: "America/El_Salvador",
       });
