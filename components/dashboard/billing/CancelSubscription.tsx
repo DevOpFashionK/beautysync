@@ -189,8 +189,11 @@ export function CancelSubscription({
                     onClick={() => setShowModal(false)}
                     disabled={loading}
                     className="flex-1 py-2.5 rounded-xl text-sm font-medium
-                      border border-[#EDE8E3] text-[#9C8E85] hover:bg-[#FAF8F5]
-                      transition-colors disabled:opacity-40"
+                      border transition-colors disabled:opacity-40"
+                      style={{
+                        borderColor : primaryColor,
+                        color : primaryColor,
+                      }}
                   >
                     Mantener plan
                   </button>
