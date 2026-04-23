@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteSupabaseClient } from "@/lib/supabase/server";
 import { createTrialSubscription } from "@/lib/subscription";
+import { sendWelcomeEmail } from "@/lib/resend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     // Seguridad crítica: evita que un usuario cree trial para el salón de otro
     const { data: salon, error: salonError } = await supabase
       .from("salons")
-      .select("id, owner_id")
+      .select("id, owner_id, name, primary_color")
       .eq("id", salonId)
       .eq("owner_id", user.id)
       .single();
@@ -73,6 +74,19 @@ export async function POST(request: NextRequest) {
     console.log(
       `[Onboarding] Trial creado — salón: ${salonId}, vence: ${subscription.trial_ends_at}`,
     );
+
+    try {
+      await sendWelcomeEmail({
+        ownerEmail: user.email!,
+        ownerName: user.user_metadata?.full_name ?? "Dueña",
+        salonName: salon.name,
+        trialEndsAt: subscription.trial_ends_at,
+        primaryColor: salon.primary_color ?? "#D4375F",
+      });
+      console.log(`[Onboarding] Email de bienvenida enviado a ${user.email}`);
+    } catch (err) {
+      console.error("[Onboarding] Error enviando email de bienvenida:", err);
+    }
 
     return NextResponse.json({
       ok: true,

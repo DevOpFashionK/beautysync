@@ -418,3 +418,130 @@ export async function sendNewBookingToSalon(data: SalonNotificationData) {
     html: tplNuevaReservaSalon(data),
   });
 }
+
+// ─── Tipo: Email de bienvenida (para la dueña del salón) ─────────────────────
+
+export interface WelcomeEmailData {
+  ownerEmail: string;
+  ownerName: string;
+  salonName: string;
+  trialEndsAt: string | null; // ISO string — fecha de vencimiento del trial
+  primaryColor?: string | null;
+}
+
+// ─── Template: Bienvenida + info del trial ────────────────────────────────────
+
+function tplBienvenida(d: WelcomeEmailData): string {
+  const accent = accentColor(d.primaryColor);
+  const APP_URL =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://beautysync.vercel.app";
+
+  // Formatear fecha de vencimiento del trial
+  const { year, month, day } = parseISOForEmail(d.trialEndsAt!);
+  const trialEndFormatted = `${day} de ${MONTHS_ES_FULL[month]} de ${year}`;
+
+  const content = `
+    <h1 style="margin:0 0 8px;font-family:Georgia,serif;font-size:28px;color:#2D2420;font-weight:400;">
+      ¡Bienvenida a BeautySync! ✨
+    </h1>
+    <p style="margin:0 0 28px;font-size:15px;color:#9C8E85;">
+      Hola <strong style="color:#2D2420;">${d.ownerName}</strong>, tu salón
+      <strong style="color:#2D2420;">${d.salonName}</strong> está listo.
+      Tienes <strong style="color:${accent};">14 días gratis</strong> para explorar todo lo que BeautySync puede hacer por ti.
+    </p>
+
+    <!-- Info del trial -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#FAF8F5;border-radius:12px;padding:24px;margin-bottom:28px;">
+      <tr>
+        <td style="padding:6px 0;">
+          <p style="margin:0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#9C8E85;">
+            Tu período de prueba
+          </p>
+          <p style="margin:4px 0 0;font-size:18px;color:#2D2420;font-weight:600;">
+            14 días gratuitos
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px 0 6px;border-top:1px solid #EDE8E3;">
+          <p style="margin:0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#9C8E85;">
+            Vence el
+          </p>
+          <p style="margin:4px 0 0;font-size:16px;color:#2D2420;font-weight:600;">
+            ${trialEndFormatted}
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px 0 6px;border-top:1px solid #EDE8E3;">
+          <p style="margin:0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#9C8E85;">
+            Tarjeta de crédito
+          </p>
+          <p style="margin:4px 0 0;font-size:16px;color:#2D2420;">
+            No requerida durante el trial
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Qué incluye -->
+    <p style="margin:0 0 12px;font-size:14px;font-weight:600;color:#2D2420;">
+      Durante tu prueba tienes acceso a:
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+      ${[
+        "Widget de reservas online para tus clientas",
+        "Dashboard de agenda en tiempo real",
+        "Emails de confirmación automáticos",
+        "Recordatorios 24h antes de cada cita",
+      ]
+        .map(
+          (feature) => `
+      <tr>
+        <td style="padding:6px 0;">
+          <p style="margin:0;font-size:14px;color:#2D2420;">
+            <span style="color:${accent};font-weight:700;">✓</span>
+            &nbsp;${feature}
+          </p>
+        </td>
+      </tr>`,
+        )
+        .join("")}
+    </table>
+
+    <!-- CTA -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        <td align="center" style="padding:8px 0;">
+          <a href="${APP_URL}/dashboard"
+            style="display:inline-block;background:${accent};color:#FFFFFF;text-decoration:none;
+                   padding:14px 40px;border-radius:8px;font-size:15px;font-weight:600;
+                   font-family:Arial,sans-serif;letter-spacing:0.02em;">
+            Ir a mi dashboard
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0;font-size:13px;color:#9C8E85;line-height:1.6;">
+      ¿Tienes preguntas? Escríbenos a
+      <a href="mailto:soporte@beautysync.co"
+        style="color:${accent};text-decoration:none;font-weight:600;">
+        soporte@beautysync.co
+      </a>
+    </p>
+  `;
+  return emailWrapper(content, accent);
+}
+
+// ─── Función pública: Email de bienvenida ─────────────────────────────────────
+
+export async function sendWelcomeEmail(data: WelcomeEmailData) {
+  return getResendClient().emails.send({
+    from: FROM,
+    to: data.ownerEmail,
+    subject: `✨ Bienvenida a BeautySync — Tu prueba de 14 días ha comenzado`,
+    html: tplBienvenida(data),
+  });
+}
