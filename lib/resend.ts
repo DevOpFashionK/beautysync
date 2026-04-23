@@ -545,3 +545,128 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
     html: tplBienvenida(data),
   });
 }
+
+// ─── Tipo: Email de trial por vencer (para la dueña del salón) ───────────────
+
+export interface TrialExpiringEmailData {
+  ownerEmail: string;
+  ownerName: string;
+  salonName: string;
+  trialEndsAt: string; // ISO string — fecha exacta de vencimiento
+  daysRemaining: number; // 3, 2 o 1
+  primaryColor?: string | null;
+}
+
+// ─── Template: Trial por vencer ───────────────────────────────────────────────
+
+function tplTrialExpirando(d: TrialExpiringEmailData): string {
+  const accent = accentColor(d.primaryColor);
+  const APP_URL =
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://beautysync.vercel.app";
+
+  const { year, month, day } = parseISOForEmail(d.trialEndsAt);
+  const trialEndFormatted = `${day} de ${MONTHS_ES_FULL[month]} de ${year}`;
+
+  const urgencyColor = d.daysRemaining === 1 ? "#C0392B" : accent;
+
+  const dayLabel = d.daysRemaining === 1 ? "1 día" : `${d.daysRemaining} días`;
+
+  const content = `
+    <h1 style="margin:0 0 8px;font-family:Georgia,serif;font-size:28px;color:#2D2420;font-weight:400;">
+      Tu prueba vence en ${dayLabel} ⏳
+    </h1>
+    <p style="margin:0 0 28px;font-size:15px;color:#9C8E85;">
+      Hola <strong style="color:#2D2420;">${d.ownerName}</strong>, el período de prueba gratuito
+      de <strong style="color:#2D2420;">${d.salonName}</strong> está por terminar.
+      Para seguir recibiendo reservas sin interrupciones, activa tu plan antes del
+      <strong style="color:${urgencyColor};">${trialEndFormatted}</strong>.
+    </p>
+
+    <!-- Días restantes destacados -->
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#FAF8F5;border-radius:12px;padding:24px;margin-bottom:28px;
+             border-left:4px solid ${urgencyColor};">
+      <tr>
+        <td style="padding:6px 0;">
+          <p style="margin:0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#9C8E85;">
+            Tiempo restante
+          </p>
+          <p style="margin:4px 0 0;font-size:28px;color:${urgencyColor};font-weight:700;">
+            ${dayLabel}
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px 0 6px;border-top:1px solid #EDE8E3;">
+          <p style="margin:0;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#9C8E85;">
+            Tu prueba vence el
+          </p>
+          <p style="margin:4px 0 0;font-size:16px;color:#2D2420;font-weight:600;">
+            ${trialEndFormatted}
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Qué pasa si no se suscribe -->
+    <p style="margin:0 0 12px;font-size:14px;font-weight:600;color:#2D2420;">
+      Si tu prueba vence sin un plan activo:
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+      ${[
+        "Tu widget de reservas dejará de aceptar citas",
+        "Las clientas no podrán agendar en línea",
+        "Los emails automáticos se pausarán",
+      ]
+        .map(
+          (item) => `
+      <tr>
+        <td style="padding:6px 0;">
+          <p style="margin:0;font-size:14px;color:#2D2420;">
+            <span style="color:${urgencyColor};font-weight:700;">✕</span>
+            &nbsp;${item}
+          </p>
+        </td>
+      </tr>`,
+        )
+        .join("")}
+    </table>
+
+    <!-- CTA principal -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        <td align="center" style="padding:8px 0;">
+          <a href="${APP_URL}/dashboard/billing/upgrade"
+            style="display:inline-block;background:${urgencyColor};color:#FFFFFF;text-decoration:none;
+                   padding:14px 40px;border-radius:8px;font-size:15px;font-weight:600;
+                   font-family:Arial,sans-serif;letter-spacing:0.02em;">
+            Activar mi plan ahora
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0;font-size:13px;color:#9C8E85;line-height:1.6;">
+      ¿Tienes preguntas? Escríbenos a
+      <a href="mailto:soporte@beautysync.co"
+        style="color:${accent};text-decoration:none;font-weight:600;">
+        soporte@beautysync.co
+      </a>
+    </p>
+  `;
+  return emailWrapper(content, accent);
+}
+
+// ─── Función pública: Email de trial por vencer ───────────────────────────────
+
+export async function sendTrialExpiringEmail(data: TrialExpiringEmailData) {
+  const dayLabel =
+    data.daysRemaining === 1 ? "1 día" : `${data.daysRemaining} días`;
+
+  return getResendClient().emails.send({
+    from: FROM,
+    to: data.ownerEmail,
+    subject: `⏳ Tu prueba de BeautySync vence en ${dayLabel} — activa tu plan`,
+    html: tplTrialExpirando(data),
+  });
+}

@@ -1,6 +1,7 @@
 // app/api/billing/expire-subscriptions/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendPendingTrialExpiringEmails } from "@/lib/notifications";
 
 // Cliente con Service Role Key — necesario para escribir en subscriptions (bypass RLS)
 function getServiceClient() {
@@ -68,6 +69,29 @@ export async function GET(request: NextRequest) {
     errors.push(`active: ${msg}`);
   }
 
+  // ── 3. Emails de trial por vencer (1, 2 o 3 días) ──────────────────
+  let trialEmailsSent = 0;
+  let trialEmailsFailed = 0;
+
+  try {
+    const result = await sendPendingTrialExpiringEmails();
+    trialEmailsSent = result.sent;
+    trialEmailsFailed = result.failed;
+    console.log(
+      `[Cron:expire] Emails trial-expiring — enviados: ${result.sent}, fallidos: ${result.failed}`,
+    );
+    if (result.failed > 0) {
+      errors.push(
+        `trial-emails: ${result.failed} fallidos de ${result.processed}`,
+      );
+    }
+  } catch (err) {
+    const msg =
+      err instanceof Error ? err.message : "Error enviando emails de trial";
+    console.error("[Cron:expire] Error en trial-expiring emails:", msg);
+    errors.push(`trial-emails: ${msg}`);
+  }
+
   // ── Respuesta ────────────────────────────────────────────────────────
   const hasErrors = errors.length > 0;
   return NextResponse.json(
@@ -76,9 +100,11 @@ export async function GET(request: NextRequest) {
       expiredTrials,
       expiredActive,
       total: expiredTrials + expiredActive,
+      trialEmailsSent,
+      trialEmailsFailed,
       ...(hasErrors && { errors }),
     },
-    { status: hasErrors ? 207 : 200 }, // 207 = partial success
+    { status: hasErrors ? 207 : 200 },
   );
 }
 

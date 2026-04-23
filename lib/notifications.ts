@@ -1,4 +1,5 @@
 // lib/notifications.ts
+// lib/notifications.ts
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import {
@@ -6,8 +7,10 @@ import {
   sendReminderEmail,
   sendCancellationEmail,
   sendNewBookingToSalon,
+  sendTrialExpiringEmail,
   type AppointmentEmailData,
   type SalonNotificationData,
+  type TrialExpiringEmailData,
 } from "@/lib/resend";
 
 // Cliente admin (service role) para escribir notification_logs sin RLS
@@ -225,4 +228,116 @@ export async function sendPendingReminders(): Promise<{
   }
 
   return { processed: appointments.length, sent, failed, autoCancelled };
+}
+
+// ─── 4. Emails de trial por vencer (llamado por cron) ────────────────────────
+
+export async function sendPendingTrialExpiringEmails(): Promise<{
+  processed: number;
+  sent: number;
+  failed: number;
+}> {
+  const supabase = getAdminClient();
+
+  // Fecha actual en hora de El Salvador (UTC-6)
+  const nowUTC = new Date();
+  const nowSV = new Date(nowUTC.getTime() - 6 * 60 * 60 * 1000);
+  const todayStr = nowSV.toISOString().slice(0, 10); // "YYYY-MM-DD"
+
+  // Rango: desde mañana hasta 3 días — cubrimos los 3 casos en una sola query
+  const rangeStart = `${todayStr}T06:00:00+00:00`; // hoy medianoche SV = 06:00 UTC
+  const d3 = new Date(nowSV);
+  d3.setUTCDate(d3.getUTCDate() + 3);
+  const rangeEnd = `${d3.toISOString().slice(0, 10)}T23:59:59+00:00`;
+
+  const { data: subs, error: subsError } = await supabase
+    .from("subscriptions")
+    .select(
+      `
+      id, trial_ends_at, salon_id,
+      salons ( id, name, primary_color, owner_id )
+    `,
+    )
+    .eq("status", "trialing")
+    .is("trial_expiring_notified_at", null)
+    .gte("trial_ends_at", rangeStart)
+    .lte("trial_ends_at", rangeEnd);
+
+  if (subsError || !subs) {
+    console.error("[TrialExpiring] Error fetching subscriptions:", subsError);
+    return { processed: 0, sent: 0, failed: 0 };
+  }
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const sub of subs) {
+    const salon = Array.isArray(sub.salons) ? sub.salons[0] : sub.salons;
+
+    if (!salon || !sub.trial_ends_at) {
+      console.warn(
+        `[TrialExpiring] Suscripción ${sub.id} sin salón o sin trial_ends_at — omitida`,
+      );
+      continue;
+    }
+
+    // Calcular días restantes (comparando solo fechas, sin horas)
+    const trialDateStr = sub.trial_ends_at.slice(0, 10);
+    const trialDate = new Date(`${trialDateStr}T00:00:00Z`);
+    const todayDate = new Date(`${todayStr}T00:00:00Z`);
+    const diffMs = trialDate.getTime() - todayDate.getTime();
+    const daysRemaining = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    if (![1, 2, 3].includes(daysRemaining)) {
+      console.warn(
+        `[TrialExpiring] Suscripción ${sub.id} — ${daysRemaining} días fuera de ventana, omitida`,
+      );
+      continue;
+    }
+
+    // Obtener email del owner (requiere service role)
+    const { data: userData, error: userError } =
+      await supabase.auth.admin.getUserById(salon.owner_id);
+
+    if (userError || !userData?.user?.email) {
+      console.error(
+        `[TrialExpiring] No se pudo obtener email del owner ${salon.owner_id}:`,
+        userError,
+      );
+      failed++;
+      continue;
+    }
+
+    const emailData: TrialExpiringEmailData = {
+      ownerEmail: userData.user.email,
+      ownerName: userData.user.user_metadata?.full_name ?? "Dueña",
+      salonName: salon.name,
+      trialEndsAt: sub.trial_ends_at,
+      daysRemaining,
+      primaryColor: salon.primary_color,
+    };
+
+    try {
+      await sendTrialExpiringEmail(emailData);
+
+      await supabase
+        .from("subscriptions")
+        .update({ trial_expiring_notified_at: new Date().toISOString() })
+        .eq("id", sub.id);
+
+      console.log(
+        `[TrialExpiring] Email enviado — salón: ${salon.name}, días: ${daysRemaining}`,
+      );
+      sent++;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      console.error(
+        `[TrialExpiring] Error enviando para salón ${salon.name}:`,
+        msg,
+      );
+      failed++;
+    }
+  }
+
+  return { processed: subs.length, sent, failed };
 }
