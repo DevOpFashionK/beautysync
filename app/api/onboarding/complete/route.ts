@@ -1,8 +1,13 @@
 // app/api/onboarding/complete/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteSupabaseClient } from "@/lib/supabase/server";
-import { createTrialSubscription } from "@/lib/subscription";
 import { sendWelcomeEmail } from "@/lib/resend";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,37 +49,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── 4. Verificar que no tenga ya una suscripción ─────────────────
-    // Idempotencia: si ya existe, no creamos duplicado, simplemente OK
-    const { data: existing } = await supabase
+    // ── 4. Leer la suscripción que el trigger ya creó ────────────────────
+    // El trigger on_salon_created crea la suscripción automáticamente
+    // al insertar el salón. Solo la leemos para obtener trial_ends_at.
+    const { data: subscription } = await supabaseAdmin
       .from("subscriptions")
-      .select("id, status")
+      .select("id, status, trial_ends_at")
       .eq("salon_id", salonId)
       .single();
 
-    if (existing) {
-      console.log(
-        `[Onboarding] Suscripción ya existe para salón ${salonId} — status: ${existing.status}`,
-      );
-      return NextResponse.json({ ok: true, alreadyExists: true });
-    }
-
-    // ── 5. Crear trial ───────────────────────────────────────────────
-    // createTrialSubscription usa SERVICE_ROLE_KEY internamente (bypass RLS)
-    const subscription = await createTrialSubscription(salonId);
-
     if (!subscription) {
-      console.error(`[Onboarding] Error creando trial para salón ${salonId}`);
-      return NextResponse.json(
-        { error: "No se pudo crear la suscripción de prueba" },
-        { status: 500 },
+      // El trigger falló — situación anómala, loggear pero no bloquear
+      console.error(
+        `[Onboarding] Trigger no creó suscripción para salón ${salonId}`,
       );
+      return NextResponse.json({ ok: true, triggerMissed: true });
     }
 
     console.log(
-      `[Onboarding] Trial creado — salón: ${salonId}, vence: ${subscription.trial_ends_at}`,
+      `[Onboarding] Suscripción confirmada — salón: ${salonId}, status: ${subscription.status}`,
     );
 
+    // ── 5. Enviar email de bienvenida ────────────────────────────────────
     try {
       await sendWelcomeEmail({
         ownerEmail: user.email!,
