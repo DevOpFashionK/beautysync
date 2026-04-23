@@ -808,6 +808,24 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
         return;
       }
 
+      // Obtener el id del salón recién creado
+      const { data: newSalon } = await supabase
+        .from("salons")
+        .select("id")
+        .eq("owner_id", verifyData.user.id)
+        .single();
+
+      // ✅ Activar trial de 14 días
+      try {
+        await fetch("/api/onboarding/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ salonId: newSalon?.id }),
+        });
+      } catch {
+        console.error("[Onboarding] No se pudo crear el trial");
+      }
+
       router.push("/dashboard?welcome=true");
     } catch {
       setError("Ocurrió un error inesperado. Intenta de nuevo.");

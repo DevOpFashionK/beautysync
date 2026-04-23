@@ -79,7 +79,7 @@ export async function middleware(request: NextRequest) {
         if (!result.active) {
           // Suscripción inactiva → redirigir a billing con motivo
           const redirectUrl = request.nextUrl.clone();
-          redirectUrl.pathname = "/dashboard/billing";
+          redirectUrl.pathname = "/dashboard/billing/upgrade";
           redirectUrl.searchParams.set("reason", result.reason);
           return NextResponse.redirect(redirectUrl);
         }
