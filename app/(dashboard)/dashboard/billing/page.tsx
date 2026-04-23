@@ -10,6 +10,7 @@ import { isSubscriptionActive } from "@/lib/wompi";
 import { BillingStatus } from "@/components/dashboard/billing/BillingStatus";
 import { PricingPlans } from "@/components/dashboard/billing/PricingPlans";
 import { PaymentMethod } from "@/components/dashboard/billing/PaymentMethod";
+import { CancelSubscription } from "@/components/dashboard/billing/CancelSubscription";
 import { Receipt, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -52,30 +53,42 @@ export default async function BillingPage({
     .maybeSingle();
 
   const primaryColor = salon.primary_color ?? "#D4375F";
-
-  // Calcular estado efectivo y días restantes
+  // Calcular estado efectivo y días restantes (hora El Salvador UTC-6)
+  const nowSV = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/El_Salvador" }),
+  );
   let effectiveStatus = subscription?.status ?? null;
   let daysRemaining: number | null = null;
 
   if (
     effectiveStatus === "trialing" &&
     subscription?.trial_ends_at &&
-    new Date(subscription.trial_ends_at) < new Date()
+    new Date(subscription.trial_ends_at) < nowSV
   ) {
     effectiveStatus = "expired";
   }
 
   if (effectiveStatus === "trialing" && subscription?.trial_ends_at) {
-    const trialEnd = new Date(subscription.trial_ends_at);
+    const trialEnd = new Date(
+      new Date(subscription.trial_ends_at).toLocaleString("en-US", {
+        timeZone: "America/El_Salvador",
+      }),
+    );
     daysRemaining = Math.max(
       0,
-      Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+      Math.ceil((trialEnd.getTime() - nowSV.getTime()) / (1000 * 60 * 60 * 24)),
     );
   } else if (effectiveStatus === "active" && subscription?.current_period_end) {
-    const periodEnd = new Date(subscription.current_period_end);
+    const periodEnd = new Date(
+      new Date(subscription.current_period_end).toLocaleString("en-US", {
+        timeZone: "America/El_Salvador",
+      }),
+    );
     daysRemaining = Math.max(
       0,
-      Math.ceil((periodEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+      Math.ceil(
+        (periodEnd.getTime() - nowSV.getTime()) / (1000 * 60 * 60 * 24),
+      ),
     );
   }
 
@@ -168,6 +181,17 @@ export default async function BillingPage({
             />
           </div>
         )}
+
+        {/* Cancelar suscripción — solo si está activa */}
+        {isActive && subscription?.status === "active" && (
+          <CancelSubscription
+            primaryColor={primaryColor}
+            accessUntil={subscription.current_period_end ?? null}
+          />
+        )}
+
+        {/* Separador */}
+        <div className="border-t border-[#EDE8E3]" />
 
         {/* Separador */}
         <div className="border-t border-[#EDE8E3]" />
