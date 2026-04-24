@@ -12,6 +12,7 @@ import BusinessHoursConfig from "@/components/dashboard/settings/BusinessHoursCo
 import LogoUploader from "@/components/dashboard/settings/LogoUploader";
 import ChangePasswordForm from "@/components/dashboard/settings/ChangePasswordForm";
 import ChangeEmailForm from "@/components/dashboard/settings/ChangeEmailForm";
+import DeleteAccount from "@/components/dashboard/settings/DeleteAccount";
 import { useSalon } from "@/context/SalonContext";
 
 const settingsSchema = z.object({
@@ -460,6 +461,25 @@ export default function SettingsPage() {
           className="bg-white rounded-2xl border border-[#EDE8E3] p-6 mt-6"
         >
           <ChangeEmailForm primaryColor={primaryColor} />
+        </motion.div>
+
+        {/* ── NUEVO: Zona de peligro */}
+        {/* Separador visual antes de la zona de peligro */}
+        <div className="mt-10 mb-6 flex items-center gap-3">
+          <div className="flex-1 h-px bg-red-100" />
+          <span className="text-xs font-semibold text-red-300 tracking-[0.15em] uppercase">
+            Zona de peligro
+          </span>
+          <div className="flex-1 h-px bg-red-100" />
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.24 }}
+          className="bg-white rounded-2xl border border-red-100 p-6"
+        >
+          <DeleteAccount primaryColor={primaryColor} />
         </motion.div>
       </div>
     </div>
