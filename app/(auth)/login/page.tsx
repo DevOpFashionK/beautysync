@@ -426,7 +426,7 @@ export default function LoginPage() {
                 <div className="lf-field">
                   <div className="lf-label-row">
                     <label className="lf-label">Contraseña</label>
-                    <a href="#" className="lf-forgot">¿La olvidaste?</a>
+                    <Link href="/forgot-password" className="lf-forgot">¿La olvidaste?</Link>
                   </div>
                   <div className="lf-input-wrap">
                     <input
