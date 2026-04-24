@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Loader2, Save, CheckCircle, Copy, ExternalLink } from "lucide-react";
 import BusinessHoursConfig from "@/components/dashboard/settings/BusinessHoursConfig";
 import LogoUploader from "@/components/dashboard/settings/LogoUploader";
+import ChangePasswordForm from "@/components/dashboard/settings/ChangePasswordForm";
 import { useSalon } from "@/context/SalonContext";
 
 const settingsSchema = z.object({
@@ -437,6 +438,16 @@ export default function SettingsPage() {
           className="bg-white rounded-2xl border border-[#EDE8E3] p-6"
         >
           <BusinessHoursConfig salonId={salon.id} primaryColor={primaryColor} />
+        </motion.div>
+
+        {/* ── NUEVO: Cambiar contraseña  */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.16 }}
+          className="bg-white rounded-2xl border border-[#EDE8E3] p-6 mt-6"
+        >
+          <ChangePasswordForm primaryColor={primaryColor} />
         </motion.div>
       </div>
     </div>
