@@ -56,24 +56,30 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const supabase = createClient();
 
-    // Supabase detecta automáticamente el #access_token en la URL
-    // y dispara PASSWORD_RECOVERY cuando es válido
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        // Token válido — mostrar formulario
+    // Primero verificar si ya hay una sesión recovery activa
+    // (el SDK pudo haber procesado el hash antes de que montara el componente)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
         setPageState("ready");
       }
     });
 
-    // Si después de 4 segundos no llegó el evento → token inválido o ausente
+    // También escuchar el evento por si llega después
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        setPageState("ready");
+      }
+    });
+
+    // 6 segundos de margen para cubrir conexiones lentas
     const timeout = setTimeout(() => {
       setPageState((current) => {
         if (current === "loading") return "invalid";
         return current;
       });
-    }, 4000);
+    }, 6000);
 
     return () => {
       subscription.unsubscribe();
@@ -91,14 +97,12 @@ export default function ResetPasswordPage() {
     });
 
     if (error) {
-      // Mensaje genérico — no exponer detalles internos
       setAuthError(
         "No se pudo actualizar la contraseña. El enlace puede haber expirado. Solicita uno nuevo.",
       );
       return;
     }
 
-    // Éxito — sesión activa, redirigir al dashboard
     setPageState("success");
     setTimeout(() => {
       router.replace("/dashboard");
