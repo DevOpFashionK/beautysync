@@ -22,6 +22,7 @@ interface ChangePasswordFormProps {
 
 const passwordSchema = z
   .object({
+    currentPassword: z.string().min(1, "Ingresa tu contraseña actual"),
     password: z
       .string()
       .min(8, "Mínimo 8 caracteres")
@@ -38,6 +39,7 @@ type PasswordForm = z.infer<typeof passwordSchema>;
 export default function ChangePasswordForm({
   primaryColor,
 }: ChangePasswordFormProps) {
+  const [showCurrent, setShowCurrent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,11 +71,37 @@ export default function ChangePasswordForm({
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.updateUser({
+
+      // ── Paso 1: verificar contraseña actual ────────────────────────────
+      // Supabase no tiene verifyPassword() — el patrón oficial es
+      // intentar signInWithPassword y comprobar si falla.
+      const { data: userData } = await supabase.auth.getUser();
+      const email = userData.user?.email;
+
+      if (!email) {
+        setErrorMsg("No se pudo verificar tu sesión. Recarga la página.");
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: data.currentPassword,
+      });
+
+      if (signInError) {
+        // Error específico — no revelar si la cuenta existe o no,
+        // pero en este contexto el usuario ya está logueado, así que
+        // es seguro indicar que la contraseña actual es incorrecta.
+        setErrorMsg("La contraseña actual es incorrecta.");
+        return;
+      }
+
+      // ── Paso 2: actualizar a la nueva contraseña ───────────────────────
+      const { error: updateError } = await supabase.auth.updateUser({
         password: data.password,
       });
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       setSuccess(true);
       reset();
@@ -112,13 +140,46 @@ export default function ChangePasswordForm({
       </div>
 
       <p className="text-xs text-[#9C8E85] leading-relaxed -mt-1">
-        Usa una contraseña segura de al menos 8 caracteres.
+        Confirma tu contraseña actual antes de establecer una nueva.
       </p>
 
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col gap-4 mt-1"
       >
+        {/* Contraseña actual */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase">
+            Contraseña actual
+          </label>
+          <div className={inputWrapperClass}>
+            <input
+              type={showCurrent ? "text" : "password"}
+              className={inputClass}
+              placeholder="Tu contraseña actual"
+              autoComplete="current-password"
+              {...register("currentPassword")}
+              {...focusHandlers}
+            />
+            <button
+              type="button"
+              onClick={() => setShowCurrent((v) => !v)}
+              className="px-3 text-[#C4B8B0] hover:text-[#9C8E85] transition-colors shrink-0"
+              tabIndex={-1}
+            >
+              {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+          {errors.currentPassword && (
+            <p className="text-xs text-red-500">
+              {errors.currentPassword.message}
+            </p>
+          )}
+        </div>
+
+        {/* Divisor visual */}
+        <div className="border-t border-[#EDE8E3]" />
+
         {/* Nueva contraseña */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase">
@@ -223,7 +284,7 @@ export default function ChangePasswordForm({
         >
           {saving ? (
             <>
-              <Loader2 size={15} className="animate-spin" /> Guardando…
+              <Loader2 size={15} className="animate-spin" /> Verificando…
             </>
           ) : (
             <>
