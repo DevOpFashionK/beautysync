@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,7 +17,6 @@ import {
   Clock,
 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 // ─── CONSTANTES DE SEGURIDAD ──────────────────────────────────────────────────
 const MAX_LOGIN_ATTEMPTS = 5; // intentos antes de bloqueo temporal
@@ -47,8 +47,6 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 // ─── HOOK RATE LIMITING / LOCKOUT ────────────────────────────────────────────
-// Protección contra fuerza bruta en el cliente
-// (complementa la protección server-side de Supabase Auth)
 function useBruteForceProtection() {
   const attempts = useRef<number[]>([]);
   const lockedUntil = useRef<number>(0);
@@ -60,7 +58,6 @@ function useBruteForceProtection() {
   } => {
     const now = Date.now();
 
-    // ¿Está en período de bloqueo?
     if (lockedUntil.current > now) {
       return {
         allowed: false,
@@ -69,7 +66,6 @@ function useBruteForceProtection() {
       };
     }
 
-    // Limpiar intentos fuera de la ventana
     attempts.current = attempts.current.filter(
       (t) => now - t < ATTEMPT_WINDOW_MS,
     );
@@ -100,6 +96,31 @@ function useBruteForceProtection() {
   return { checkAttempt, resetAttempts };
 }
 
+// ─── TIMEOUT BANNER — Fase 7.5 ───────────────────────────────────────────────
+// Separado en su propio componente porque useSearchParams()
+// requiere Suspense boundary en Next.js 16 con static prerendering.
+function TimeoutBanner() {
+  const searchParams = useSearchParams();
+  const sessionExpired = searchParams.get("timeout") === "true";
+
+  if (!sessionExpired) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="lf-timeout-banner"
+    >
+      <Clock size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+      <span>
+        Tu sesión se cerró por inactividad. Inicia sesión de nuevo para
+        continuar.
+      </span>
+    </motion.div>
+  );
+}
+
+// ─── LOGIN PAGE ───────────────────────────────────────────────────────────────
 export default function LoginPage() {
   const router = useRouter();
   const [authError, setAuthError] = useState<string | null>(null);
@@ -107,10 +128,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [attemptWarning, setAttemptWarning] = useState<string | null>(null);
   const { checkAttempt, resetAttempts } = useBruteForceProtection();
-
-  // ─── SESSION TIMEOUT PARAM ── Fase 7.5 ───────────────────────────────────
-  const searchParams = useSearchParams();
-  const sessionExpired = searchParams.get("timeout") === "true";
 
   // Countdown del lockout
   const startCountdown = useCallback((seconds: number) => {
@@ -138,7 +155,6 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginForm) => {
-    // Verificar rate limit frontend
     const { allowed, lockedSeconds, attemptsLeft } = checkAttempt();
 
     if (!allowed) {
@@ -149,7 +165,6 @@ export default function LoginPage() {
       return;
     }
 
-    // Advertencia de intentos restantes
     if (attemptsLeft <= 2 && attemptsLeft > 0) {
       setAttemptWarning(
         `Atención: te quedan ${attemptsLeft} intento${attemptsLeft !== 1 ? "s" : ""} antes del bloqueo temporal.`,
@@ -176,7 +191,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Login exitoso — resetear contador
       resetAttempts();
       router.push("/dashboard");
       router.refresh();
@@ -432,19 +446,9 @@ export default function LoginPage() {
                 autoComplete="on"
               >
                 {/* Banner de session timeout — Fase 7.5 */}
-                {sessionExpired && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="lf-timeout-banner"
-                  >
-                    <Clock size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-                    <span>
-                      Tu sesión se cerró por inactividad. Inicia sesión de nuevo
-                      para continuar.
-                    </span>
-                  </motion.div>
-                )}
+                <Suspense fallback={null}>
+                  <TimeoutBanner />
+                </Suspense>
 
                 {/* Banner de lockout */}
                 {isLocked && (
