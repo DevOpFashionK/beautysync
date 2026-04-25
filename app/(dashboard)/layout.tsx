@@ -1,6 +1,6 @@
 /**
  * app/(dashboard)/layout.tsx
- * BeautySync — Fase 4
+ * BeautySync — Fase 4 → Fase 7.5
  *
  * REGLA: NO agregar padding aquí. Cada página maneja su propio layout interno.
  * FIX: Mapear primary_color → primaryColor y logo_url → logoUrl antes de
@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 import { SalonProvider, type SubscriptionData } from "@/context/SalonContext";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { SubscriptionGate } from "@/components/dashboard/SubscriptionGate";
+import SessionTimeout from "@/components/providers/SessionTimeout"; // ← NUEVO Fase 7.5
 
 export default async function DashboardLayout({
   children,
@@ -39,7 +40,6 @@ export default async function DashboardLayout({
     .eq("salon_id", salon.id)
     .maybeSingle();
 
-  // Calcular estado efectivo de suscripción (hora El Salvador UTC-6)
   const nowSV = new Date(
     new Date().toLocaleString("en-US", { timeZone: "America/El_Salvador" }),
   );
@@ -68,7 +68,6 @@ export default async function DashboardLayout({
 
   const primaryColor = salon.primary_color ?? "#D4375F";
 
-  // MAPEO CRÍTICO: Supabase devuelve snake_case, SalonContext espera camelCase
   const initialSalon = {
     id: salon.id,
     name: salon.name,
@@ -87,6 +86,7 @@ export default async function DashboardLayout({
       initialSalon={initialSalon}
       initialSubscription={initialSubscription}
     >
+      <SessionTimeout /> {/* ← NUEVO Fase 7.5 */}
       <SubscriptionGate
         status={effectiveStatus}
         trialDaysRemaining={trialDaysRemaining}

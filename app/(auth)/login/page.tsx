@@ -7,13 +7,21 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, ArrowRight, Eye, EyeOff, ShieldAlert } from "lucide-react";
+import {
+  Loader2,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  ShieldAlert,
+  Clock,
+} from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 // ─── CONSTANTES DE SEGURIDAD ──────────────────────────────────────────────────
-const MAX_LOGIN_ATTEMPTS = 5;       // intentos antes de bloqueo temporal
+const MAX_LOGIN_ATTEMPTS = 5; // intentos antes de bloqueo temporal
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutos
-const ATTEMPT_WINDOW_MS = 10 * 60 * 1000;  // ventana de 10 minutos
+const ATTEMPT_WINDOW_MS = 10 * 60 * 1000; // ventana de 10 minutos
 
 // ─── SANITIZACIÓN ─────────────────────────────────────────────────────────────
 function sanitizeEmail(value: string): string {
@@ -33,7 +41,7 @@ const loginSchema = z.object({
   password: z
     .string()
     .min(1, "Ingresa tu contraseña")
-    .max(72, "Contraseña demasiado larga"),  // bcrypt limit, evita DoS
+    .max(72, "Contraseña demasiado larga"), // bcrypt limit, evita DoS
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -62,7 +70,9 @@ function useBruteForceProtection() {
     }
 
     // Limpiar intentos fuera de la ventana
-    attempts.current = attempts.current.filter((t) => now - t < ATTEMPT_WINDOW_MS);
+    attempts.current = attempts.current.filter(
+      (t) => now - t < ATTEMPT_WINDOW_MS,
+    );
 
     if (attempts.current.length >= MAX_LOGIN_ATTEMPTS) {
       lockedUntil.current = now + LOCKOUT_DURATION_MS;
@@ -98,6 +108,10 @@ export default function LoginPage() {
   const [attemptWarning, setAttemptWarning] = useState<string | null>(null);
   const { checkAttempt, resetAttempts } = useBruteForceProtection();
 
+  // ─── SESSION TIMEOUT PARAM ── Fase 7.5 ───────────────────────────────────
+  const searchParams = useSearchParams();
+  const sessionExpired = searchParams.get("timeout") === "true";
+
   // Countdown del lockout
   const startCountdown = useCallback((seconds: number) => {
     setLockoutSeconds(seconds);
@@ -114,7 +128,11 @@ export default function LoginPage() {
     }, 1000);
   }, []);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     mode: "onBlur",
   });
@@ -125,7 +143,7 @@ export default function LoginPage() {
 
     if (!allowed) {
       setAuthError(
-        `Demasiados intentos fallidos. Espera ${Math.ceil(lockedSeconds / 60)} min ${lockedSeconds % 60} seg antes de intentar de nuevo.`
+        `Demasiados intentos fallidos. Espera ${Math.ceil(lockedSeconds / 60)} min ${lockedSeconds % 60} seg antes de intentar de nuevo.`,
       );
       startCountdown(lockedSeconds);
       return;
@@ -134,7 +152,7 @@ export default function LoginPage() {
     // Advertencia de intentos restantes
     if (attemptsLeft <= 2 && attemptsLeft > 0) {
       setAttemptWarning(
-        `Atención: te quedan ${attemptsLeft} intento${attemptsLeft !== 1 ? "s" : ""} antes del bloqueo temporal.`
+        `Atención: te quedan ${attemptsLeft} intento${attemptsLeft !== 1 ? "s" : ""} antes del bloqueo temporal.`,
       );
     } else {
       setAttemptWarning(null);
@@ -152,7 +170,9 @@ export default function LoginPage() {
       if (error) {
         // CRÍTICO: Mensaje genérico — no revelar si el email existe o no
         // Evita "User Enumeration Attack"
-        setAuthError("Credenciales incorrectas. Verifica tu email y contraseña.");
+        setAuthError(
+          "Credenciales incorrectas. Verifica tu email y contraseña.",
+        );
         return;
       }
 
@@ -162,7 +182,9 @@ export default function LoginPage() {
       router.refresh();
     } catch {
       // Nunca exponer stack traces o detalles técnicos
-      setAuthError("No se pudo conectar. Verifica tu conexión e intenta de nuevo.");
+      setAuthError(
+        "No se pudo conectar. Verifica tu conexión e intenta de nuevo.",
+      );
     }
   };
 
@@ -310,6 +332,14 @@ export default function LoginPage() {
           color: #fca5a5; text-align: center; display: block; margin-top: 0.25rem;
         }
 
+        /* Timeout banner — Fase 7.5 */
+        .lf-timeout-banner {
+          background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);
+          border-radius: 10px; padding: 0.875rem 1rem;
+          font-size: 0.875rem; color: #93c5fd; margin-bottom: 1.25rem;
+          display: flex; align-items: flex-start; gap: 0.625rem; line-height: 1.5;
+        }
+
         /* CTA */
         .lf-cta {
           width: 100%; padding: 0.9375rem 1.5rem;
@@ -344,8 +374,14 @@ export default function LoginPage() {
             <p className="ll-tagline">El salón que trabaja solo</p>
           </div>
           <div className="ll-mid">
-            <h1 className="ll-welcome">Bienvenida<em>de vuelta</em></h1>
-            <p className="ll-desc">Tu dashboard te está esperando.<br />Todas tus citas, en tiempo real.</p>
+            <h1 className="ll-welcome">
+              Bienvenida<em>de vuelta</em>
+            </h1>
+            <p className="ll-desc">
+              Tu dashboard te está esperando.
+              <br />
+              Todas tus citas, en tiempo real.
+            </p>
             <div className="ll-stats">
               {[
                 { val: "24/7", label: "Agenda activa", rose: false },
@@ -354,14 +390,19 @@ export default function LoginPage() {
                 { val: "∞", label: "Citas disponibles", rose: true },
               ].map((s) => (
                 <div key={s.label} className="ll-stat">
-                  <p className={`ll-stat-val${s.rose ? " rose" : ""}`}>{s.val}</p>
+                  <p className={`ll-stat-val${s.rose ? " rose" : ""}`}>
+                    {s.val}
+                  </p>
                   <p className="ll-stat-label">{s.label}</p>
                 </div>
               ))}
             </div>
           </div>
           <div className="ll-bottom">
-            <div className="ll-secure"><div className="ll-dot" />Conexión segura y encriptada</div>
+            <div className="ll-secure">
+              <div className="ll-dot" />
+              Conexión segura y encriptada
+            </div>
           </div>
         </aside>
 
@@ -385,16 +426,42 @@ export default function LoginPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              <form onSubmit={handleSubmit(onSubmit)} noValidate autoComplete="on">
+              <form
+                onSubmit={handleSubmit(onSubmit)}
+                noValidate
+                autoComplete="on"
+              >
+                {/* Banner de session timeout — Fase 7.5 */}
+                {sessionExpired && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="lf-timeout-banner"
+                  >
+                    <Clock size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span>
+                      Tu sesión se cerró por inactividad. Inicia sesión de nuevo
+                      para continuar.
+                    </span>
+                  </motion.div>
+                )}
 
                 {/* Banner de lockout */}
                 {isLocked && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="lf-lockout-banner">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="lf-lockout-banner"
+                  >
                     <ShieldAlert size={20} className="shrink-0 mt-0.5" />
                     <div>
-                      <p>Cuenta bloqueada temporalmente por múltiples intentos fallidos.</p>
+                      <p>
+                        Cuenta bloqueada temporalmente por múltiples intentos
+                        fallidos.
+                      </p>
                       <span className="lf-lockout-countdown">
-                        {Math.floor(lockoutSeconds / 60)}:{String(lockoutSeconds % 60).padStart(2, "0")}
+                        {Math.floor(lockoutSeconds / 60)}:
+                        {String(lockoutSeconds % 60).padStart(2, "0")}
                       </span>
                     </div>
                   </motion.div>
@@ -402,7 +469,11 @@ export default function LoginPage() {
 
                 {/* Advertencia de intentos */}
                 {attemptWarning && !isLocked && (
-                  <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="lf-warn-banner">
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="lf-warn-banner"
+                  >
                     ⚠ {attemptWarning}
                   </motion.div>
                 )}
@@ -413,45 +484,63 @@ export default function LoginPage() {
                     <label className="lf-label">Email</label>
                   </div>
                   <input
-                    type="email" placeholder="maria@misalon.com"
-                    maxLength={254} autoComplete="email"
+                    type="email"
+                    placeholder="maria@misalon.com"
+                    maxLength={254}
+                    autoComplete="email"
                     className={`lf-input${errors.email ? " err" : ""}`}
                     disabled={isLocked}
                     {...register("email")}
                   />
-                  {errors.email && <p className="lf-err-msg">{errors.email.message}</p>}
+                  {errors.email && (
+                    <p className="lf-err-msg">{errors.email.message}</p>
+                  )}
                 </div>
 
                 {/* Contraseña */}
                 <div className="lf-field">
                   <div className="lf-label-row">
                     <label className="lf-label">Contraseña</label>
-                    <Link href="/forgot-password" className="lf-forgot">¿La olvidaste?</Link>
+                    <Link href="/forgot-password" className="lf-forgot">
+                      ¿La olvidaste?
+                    </Link>
                   </div>
                   <div className="lf-input-wrap">
                     <input
                       type={showPassword ? "text" : "password"}
                       placeholder="Tu contraseña"
-                      maxLength={72} autoComplete="current-password"
+                      maxLength={72}
+                      autoComplete="current-password"
                       className={`lf-input pw${errors.password ? " err" : ""}`}
                       disabled={isLocked}
                       {...register("password")}
                     />
                     <button
-                      type="button" className="lf-toggle"
+                      type="button"
+                      className="lf-toggle"
                       onClick={() => setShowPassword((v) => !v)}
                       disabled={isLocked}
-                      aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      aria-label={
+                        showPassword
+                          ? "Ocultar contraseña"
+                          : "Mostrar contraseña"
+                      }
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
-                  {errors.password && <p className="lf-err-msg">{errors.password.message}</p>}
+                  {errors.password && (
+                    <p className="lf-err-msg">{errors.password.message}</p>
+                  )}
                 </div>
 
                 {/* Error de autenticación — genérico, sin detallar */}
                 {authError && !isLocked && (
-                  <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="lf-err-banner">
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="lf-err-banner"
+                  >
                     ⚠ {authError}
                   </motion.div>
                 )}
@@ -462,12 +551,20 @@ export default function LoginPage() {
                   disabled={isSubmitting || isLocked}
                   className="lf-cta"
                 >
-                  {isSubmitting
-                    ? <><Loader2 size={16} className="animate-spin" /> Verificando…</>
-                    : isLocked
-                      ? <><ShieldAlert size={16} /> Bloqueado temporalmente</>
-                      : <>Entrar al dashboard <ArrowRight size={16} /></>
-                  }
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />{" "}
+                      Verificando…
+                    </>
+                  ) : isLocked ? (
+                    <>
+                      <ShieldAlert size={16} /> Bloqueado temporalmente
+                    </>
+                  ) : (
+                    <>
+                      Entrar al dashboard <ArrowRight size={16} />
+                    </>
+                  )}
                 </button>
               </form>
 
@@ -478,7 +575,8 @@ export default function LoginPage() {
               </div>
 
               <div className="lf-register">
-                Crea tu cuenta gratis — <Link href="/register">Registrarse</Link>
+                Crea tu cuenta gratis —{" "}
+                <Link href="/register">Registrarse</Link>
               </div>
             </motion.div>
           </div>
