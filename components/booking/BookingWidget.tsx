@@ -82,7 +82,7 @@ const stepperStyles = `
   margin-bottom: 28px;
   gap: 4px;
   width: 100%;
-  padding-right: 8px;
+  padding-right: 2px;
 }
 
   .bw-steps {
@@ -130,18 +130,17 @@ const stepperStyles = `
     border: 1px solid rgba(255,255,255,0.12);
   }
 
-  .bw-step-label {
+.bw-step-label {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
   transition: color 0.2s;
   font-family: var(--font-jakarta), sans-serif;
-  display: none;
+  display: block;
 }
 
 .bw-step-label.active {
-  display: block;
   color: rgba(245,242,238,0.95);
 }
 
@@ -150,7 +149,7 @@ const stepperStyles = `
 }
 
 .bw-step-label.pending {
-  display: none;
+  color: rgba(245,242,238,0.28);
 }
 
   .bw-connector {
