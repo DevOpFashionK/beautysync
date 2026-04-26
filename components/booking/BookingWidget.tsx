@@ -77,12 +77,13 @@ const slideVariants = {
 // ─── Estilos del stepper ──────────────────────────────────────────────────────
 const stepperStyles = `
   .bw-stepper {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 28px;
-    gap: 8px;
-  }
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  gap: 4px;
+  overflow: hidden;
+}
 
   .bw-steps {
     display: flex;
@@ -130,17 +131,27 @@ const stepperStyles = `
   }
 
   .bw-step-label {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    transition: color 0.2s;
-    font-family: var(--font-jakarta), sans-serif;
-  }
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: color 0.2s;
+  font-family: var(--font-jakarta), sans-serif;
+  display: none;
+}
 
-  .bw-step-label.active  { color: rgba(245,242,238,0.95); }
-  .bw-step-label.done    { color: rgba(245,242,238,0.45); }
-  .bw-step-label.pending { color: rgba(245,242,238,0.25); }
+.bw-step-label.active {
+  display: block;
+  color: rgba(245,242,238,0.95);
+}
+
+.bw-step-label.done {
+  display: none;
+}
+
+.bw-step-label.pending {
+  display: none;
+}
 
   .bw-connector {
     flex: 1;
@@ -391,7 +402,7 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
       {showStepper && <div className="bw-divider" />}
 
       {/* ── Contenido del paso activo ── */}
-      <div style={{ position: "relative", overflow: "hidden", minHeight: 360 }}>
+      <div style={{ position: "relative", overflow: "hidden", minHeight: 420 }}>
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={step}
