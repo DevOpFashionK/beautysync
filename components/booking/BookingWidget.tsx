@@ -82,7 +82,7 @@ const stepperStyles = `
   margin-bottom: 28px;
   gap: 4px;
   width: 100%;
-  padding-right: 4px;
+  padding-right: 8px;
 }
 
   .bw-steps {
