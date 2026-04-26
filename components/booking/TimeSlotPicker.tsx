@@ -1,13 +1,13 @@
 "use client";
 
 // components/booking/TimeSlotPicker.tsx
-// Fase 8.1 — Calendario más pulido, slots con mejor jerarquía visual
+// Fase 8.1 v2 — Calendario y slots adaptados a la estética oscura premium
 //
 // FIXES preservados del original:
-// 1. GET /api/appointments incluye service_id y offset en la query string.
-// 2. La API GET retorna slots con disponibilidad calculada server-side.
-// 3. handleSlotSelect construye el ISO con sufijo "Z" para Zod en route.ts.
-// 4. dynamic() en BookingWidget evita hydration mismatch (ssr: false).
+// 1. offset = new Date().getTimezoneOffset() → el servidor calcula "hoy" correctamente
+// 2. La API GET retorna slots con disponibilidad calculada server-side
+// 3. handleSlotSelect construye el ISO con sufijo "Z" para Zod en route.ts
+// 4. dynamic() en BookingWidget evita hydration mismatch (ssr: false)
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,7 +38,6 @@ interface Slot {
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-
 const DAYS_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MONTHS_ES = [
   "Enero",
@@ -65,7 +64,6 @@ const DAYS_FULL_ES = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function formatDateKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -92,35 +90,279 @@ function getFirstDayOfMonth(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
 }
 
+// ─── Estilos ──────────────────────────────────────────────────────────────────
+const styles = `
+  /* ── Header ── */
+  .tsp-title {
+    font-family: var(--font-cormorant), Georgia, serif;
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: rgba(245, 242, 238, 0.95);
+    line-height: 1.15;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .tsp-subtitle {
+    font-size: 13px;
+    color: rgba(245, 242, 238, 0.4);
+    font-family: var(--font-jakarta), sans-serif;
+    margin-bottom: 20px;
+  }
+
+  /* ── Calendario ── */
+  .tsp-cal {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 18px 16px;
+    margin-bottom: 20px;
+  }
+
+  /* Navegación mes */
+  .tsp-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .tsp-nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .tsp-nav-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .tsp-nav-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+
+  .tsp-month-label {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .tsp-month-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: rgba(245, 242, 238, 0.9);
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .tsp-month-year {
+    font-size: 13px;
+    color: rgba(245, 242, 238, 0.35);
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  /* Grid de días */
+  .tsp-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  .tsp-day-label {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(245, 242, 238, 0.25);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 0 10px;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .tsp-day-btn {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    background: transparent;
+    transition: all 0.15s;
+    position: relative;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .tsp-day-btn.available {
+    color: rgba(245, 242, 238, 0.85);
+    font-weight: 600;
+  }
+
+  .tsp-day-btn.available:hover {
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .tsp-day-btn.unavailable {
+    color: rgba(245, 242, 238, 0.18);
+    cursor: not-allowed;
+  }
+
+  .tsp-day-btn.today {
+    font-weight: 700;
+  }
+
+  .tsp-day-btn.selected {
+    color: #fff !important;
+    font-weight: 700;
+  }
+
+  /* Punto indicador de disponibilidad */
+  .tsp-dot {
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    opacity: 0.55;
+  }
+
+  /* ── Slots ── */
+  .tsp-slots-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .tsp-slots-date {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(245, 242, 238, 0.8);
+    text-transform: capitalize;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .tsp-slots-count {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .tsp-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .tsp-slot-btn {
+    padding: 10px 6px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    cursor: pointer;
+    font-family: var(--font-jakarta), sans-serif;
+    text-align: center;
+  }
+
+  .tsp-slot-btn.available {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .tsp-slot-btn.available:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .tsp-slot-btn.unavailable {
+    background: transparent;
+    opacity: 0.28;
+    cursor: not-allowed;
+  }
+
+  /* Hint sin fecha seleccionada */
+  .tsp-hint {
+    text-align: center;
+    font-size: 13px;
+    color: rgba(245, 242, 238, 0.25);
+    padding: 20px 0 8px;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  /* Empty state */
+  .tsp-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 0;
+    text-align: center;
+  }
+
+  .tsp-empty-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2px;
+  }
+
+  .tsp-empty-text {
+    font-size: 13px;
+    color: rgba(245, 242, 238, 0.35);
+    line-height: 1.5;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  /* Skeleton */
+  @keyframes tsp-shimmer {
+    0%   { opacity: 0.3; }
+    50%  { opacity: 0.6; }
+    100% { opacity: 0.3; }
+  }
+
+  .tsp-skeleton-cell {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.07);
+    animation: tsp-shimmer 1.6s ease-in-out infinite;
+  }
+`;
+
 // ─── Subcomponentes ───────────────────────────────────────────────────────────
 
-// Skeleton de carga para los días del calendario
 function CalendarSkeleton() {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        gap: "4px",
-      }}
-    >
+    <div className="tsp-grid" style={{ gap: "4px 0" }}>
       {Array.from({ length: 35 }).map((_, i) => (
         <div
           key={i}
-          style={{
-            aspectRatio: "1",
-            borderRadius: "50%",
-            backgroundColor: "#EDE8E3",
-            opacity: 0.4 + (i % 3) * 0.2,
-            animation: "pulse 1.5s ease-in-out infinite",
-          }}
+          className="tsp-skeleton-cell"
+          style={{ animationDelay: `${(i % 7) * 0.05}s` }}
         />
       ))}
     </div>
   );
 }
 
-// Estado vacío de slots
 function NoSlotsState({
   isClosed,
   primaryColor,
@@ -132,46 +374,30 @@ function NoSlotsState({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 8,
-        padding: "24px 0",
-        textAlign: "center",
-      }}
+      className="tsp-empty"
     >
       <div
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          backgroundColor: `${primaryColor}12`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        className="tsp-empty-icon"
+        style={{ background: `${primaryColor}14` }}
       >
         <CalendarX size={18} style={{ color: primaryColor, opacity: 0.6 }} />
       </div>
-      <p style={{ fontSize: "0.8125rem", color: "#9C8E85", lineHeight: 1.5 }}>
+      <p className="tsp-empty-text">
         {isClosed
           ? "El salón no atiende este día."
-          : "No hay horarios disponibles.\nPrueba con otro día."}
+          : "Sin horarios disponibles.\nPrueba con otro día."}
       </p>
     </motion.div>
   );
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-
 export default function TimeSlotPicker({
   salonId,
   service,
   primaryColor,
   onSelect,
 }: TimeSlotPickerProps) {
-  // Timezone offset del browser — se envía al servidor para calcular "hoy" correctamente
   const [timezoneOffset] = useState<number>(() =>
     new Date().getTimezoneOffset(),
   );
@@ -192,7 +418,7 @@ export default function TimeSlotPicker({
   const [availableDays, setAvailableDays] = useState<Set<number>>(new Set());
   const [loadingDays, setLoadingDays] = useState(true);
 
-  // ── Precargar días disponibles del mes visible ──────────────────────────────
+  // ── Precargar días disponibles ──────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     setLoadingDays(true);
@@ -210,9 +436,7 @@ export default function TimeSlotPicker({
         const valid = new Set<number>();
         for (let d = 1; d <= days; d++) {
           const date = new Date(year, month, d);
-          if (date >= today && openDays.has(date.getDay())) {
-            valid.add(d);
-          }
+          if (date >= today && openDays.has(date.getDay())) valid.add(d);
         }
         setAvailableDays(valid);
       })
@@ -266,14 +490,12 @@ export default function TimeSlotPicker({
   // ── Selección de slot ───────────────────────────────────────────────────────
   function handleSlotSelect(slot: Slot) {
     if (!selectedDate || !slot.available) return;
-
     const y = selectedDate.getFullYear();
     const mo = String(selectedDate.getMonth() + 1).padStart(2, "0");
     const d = String(selectedDate.getDate()).padStart(2, "0");
     const [h, m] = slot.time.split(":").map(Number);
     const hh = String(h).padStart(2, "0");
     const mm = String(m).padStart(2, "0");
-
     onSelect(
       `${y}-${mo}-${d}T${hh}:${mm}:00Z`,
       formatTimeDisplay(slot.time),
@@ -299,34 +521,21 @@ export default function TimeSlotPicker({
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
-
-  // Slots disponibles vs ocupados (para el contador)
   const availableSlots = slots.filter((s) => s.available).length;
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div>
+    <>
+      <style>{styles}</style>
+
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ marginBottom: 20 }}
+        transition={{ duration: 0.3 }}
       >
-        <h2
-          style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            fontSize: "1.625rem",
-            fontWeight: 600,
-            color: "#2D2420",
-            lineHeight: 1.2,
-            marginBottom: 4,
-          }}
-        >
-          Elige fecha y hora
-        </h2>
-        <p style={{ fontSize: "0.8125rem", color: "#9C8E85" }}>
-          Los días disponibles están resaltados
-        </p>
+        <h2 className="tsp-title">Elige fecha y hora</h2>
+        <p className="tsp-subtitle">Los días disponibles están resaltados</p>
       </motion.div>
 
       {/* ── Calendario ── */}
@@ -334,106 +543,32 @@ export default function TimeSlotPicker({
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        style={{
-          borderRadius: 18,
-          border: "1.5px solid #EDE8E3",
-          backgroundColor: "#fff",
-          padding: "18px 16px",
-          marginBottom: 16,
-        }}
+        className="tsp-cal"
       >
-        {/* Navegación de mes */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 16,
-          }}
-        >
+        {/* Navegación mes */}
+        <div className="tsp-nav">
           <button
             onClick={prevMonth}
             disabled={isPrevDisabled}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 10,
-              border: "1.5px solid #EDE8E3",
-              backgroundColor: isPrevDisabled ? "transparent" : "#FAF8F5",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: isPrevDisabled ? "not-allowed" : "pointer",
-              opacity: isPrevDisabled ? 0.3 : 1,
-              transition: "all 0.15s",
-            }}
+            className="tsp-nav-btn"
           >
-            <ChevronLeft size={15} style={{ color: "#9C8E85" }} />
+            <ChevronLeft size={15} color="rgba(245,242,238,0.6)" />
           </button>
 
-          {/* Mes y año */}
-          <div style={{ textAlign: "center" }}>
-            <span
-              style={{
-                fontSize: "0.9375rem",
-                fontWeight: 700,
-                color: "#2D2420",
-              }}
-            >
-              {MONTHS_ES[month]}
-            </span>
-            <span
-              style={{
-                fontSize: "0.8125rem",
-                fontWeight: 400,
-                color: "#9C8E85",
-                marginLeft: 6,
-              }}
-            >
-              {year}
-            </span>
+          <div className="tsp-month-label">
+            <span className="tsp-month-name">{MONTHS_ES[month]}</span>
+            <span className="tsp-month-year">{year}</span>
           </div>
 
-          <button
-            onClick={nextMonth}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 10,
-              border: "1.5px solid #EDE8E3",
-              backgroundColor: "#FAF8F5",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            <ChevronRight size={15} style={{ color: "#9C8E85" }} />
+          <button onClick={nextMonth} className="tsp-nav-btn">
+            <ChevronRight size={15} color="rgba(245,242,238,0.6)" />
           </button>
         </div>
 
-        {/* Etiquetas de días de la semana */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            marginBottom: 8,
-          }}
-        >
+        {/* Labels días de la semana */}
+        <div className="tsp-grid">
           {DAYS_ES.map((d) => (
-            <div
-              key={d}
-              style={{
-                textAlign: "center",
-                fontSize: "10px",
-                fontWeight: 600,
-                color: "#C4B8B0",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                padding: "4px 0",
-              }}
-            >
+            <div key={d} className="tsp-day-label">
               {d}
             </div>
           ))}
@@ -443,19 +578,11 @@ export default function TimeSlotPicker({
         {loadingDays ? (
           <CalendarSkeleton />
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              gap: "4px 0",
-            }}
-          >
-            {/* Celdas vacías antes del primer día */}
+          <div className="tsp-grid" style={{ gap: "3px 0" }}>
             {Array.from({ length: firstDay }).map((_, i) => (
-              <div key={`empty-${i}`} />
+              <div key={`e-${i}`} />
             ))}
 
-            {/* Días del mes */}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const dayNum = i + 1;
               const date = new Date(year, month, dayNum);
@@ -474,62 +601,29 @@ export default function TimeSlotPicker({
                   key={dayNum}
                   onClick={() => available && setSelectedDate(date)}
                   disabled={!available}
+                  className={[
+                    "tsp-day-btn",
+                    available ? "available" : "unavailable",
+                    isToday ? "today" : "",
+                    isSelected ? "selected" : "",
+                  ].join(" ")}
                   style={{
-                    aspectRatio: "1",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: "50%",
-                    fontSize: "13px",
-                    fontWeight: isSelected
-                      ? 700
-                      : isToday
-                        ? 700
-                        : available
-                          ? 500
-                          : 400,
-                    cursor: available ? "pointer" : "not-allowed",
-                    border:
-                      isToday && !isSelected
-                        ? `1.5px solid ${primaryColor}50`
-                        : "1.5px solid transparent",
                     backgroundColor: isSelected ? primaryColor : "transparent",
-                    color: isSelected
-                      ? "#fff"
-                      : available
-                        ? "#2D2420"
-                        : "#D4CFC9",
-                    opacity: available ? 1 : 0.45,
-                    transition: "all 0.15s",
-                    position: "relative",
-                    fontFamily: "inherit",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (available && !isSelected) {
-                      e.currentTarget.style.backgroundColor = `${primaryColor}14`;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                    }
+                    borderColor:
+                      isToday && !isSelected
+                        ? `${primaryColor}50`
+                        : "transparent",
+                    boxShadow: isSelected
+                      ? `0 0 16px ${primaryColor}40`
+                      : "none",
                   }}
                 >
                   {dayNum}
-                  {/* Punto indicador de disponibilidad */}
+                  {/* Punto indicador */}
                   {available && !isSelected && (
                     <span
-                      style={{
-                        position: "absolute",
-                        bottom: 3,
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        width: 4,
-                        height: 4,
-                        borderRadius: "50%",
-                        backgroundColor: primaryColor,
-                        opacity: 0.5,
-                      }}
+                      className="tsp-dot"
+                      style={{ backgroundColor: primaryColor }}
                     />
                   )}
                 </button>
@@ -549,99 +643,65 @@ export default function TimeSlotPicker({
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22 }}
           >
-            {/* Header de slots */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 12,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <Clock size={13} style={{ color: "#9C8E85" }} />
-                <span
-                  style={{
-                    fontSize: "0.8125rem",
-                    fontWeight: 600,
-                    color: "#2D2420",
-                    textTransform: "capitalize",
-                  }}
-                >
-                  {formatDateDisplay(selectedDate)}
-                </span>
+            {/* Header slots */}
+            <div className="tsp-slots-header">
+              <div className="tsp-slots-date">
+                <Clock size={13} style={{ color: primaryColor }} />
+                {formatDateDisplay(selectedDate)}
               </div>
 
-              {/* Contador de slots disponibles */}
               {!loadingSlots && !isClosed && slots.length > 0 && (
                 <motion.span
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={{ opacity: 0, scale: 0.85 }}
                   animate={{ opacity: 1, scale: 1 }}
+                  className="tsp-slots-count"
                   style={{
-                    fontSize: "0.6875rem",
-                    fontWeight: 600,
                     color: primaryColor,
-                    backgroundColor: `${primaryColor}12`,
-                    padding: "3px 10px",
-                    borderRadius: 100,
+                    background: `${primaryColor}16`,
                   }}
                 >
-                  {availableSlots}{" "}
-                  {availableSlots === 1 ? "horario libre" : "horarios libres"}
+                  {availableSlots} libre{availableSlots !== 1 ? "s" : ""}
                 </motion.span>
               )}
             </div>
 
-            {/* Contenido de slots */}
+            {/* Contenido */}
             {loadingSlots ? (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "center",
-                  alignItems: "center",
                   padding: "24px 0",
                 }}
               >
                 <Loader2
                   size={20}
                   className="animate-spin"
-                  style={{ color: "#C4B8B0" }}
+                  style={{ color: "rgba(245,242,238,0.3)" }}
                 />
               </div>
             ) : isClosed || slots.length === 0 ? (
               <NoSlotsState isClosed={isClosed} primaryColor={primaryColor} />
             ) : (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: 8,
-                }}
-              >
+              <div className="tsp-slots-grid">
                 {slots.map((slot, idx) => (
                   <motion.button
                     key={slot.time}
-                    initial={{ opacity: 0, scale: 0.92 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.03, duration: 0.2 }}
+                    transition={{ delay: idx * 0.025, duration: 0.18 }}
+                    whileHover={slot.available ? { scale: 1.04 } : {}}
+                    whileTap={slot.available ? { scale: 0.96 } : {}}
                     onClick={() => handleSlotSelect(slot)}
                     disabled={!slot.available}
-                    whileHover={slot.available ? { scale: 1.04 } : {}}
-                    whileTap={slot.available ? { scale: 0.97 } : {}}
+                    className={`tsp-slot-btn ${slot.available ? "available" : "unavailable"}`}
                     style={{
-                      padding: "10px 6px",
-                      borderRadius: 12,
-                      fontSize: "0.8125rem",
-                      fontWeight: 600,
-                      border: `1.5px solid ${slot.available ? `${primaryColor}50` : "#EDE8E3"}`,
-                      backgroundColor: slot.available
-                        ? `${primaryColor}08`
-                        : "#FAF8F5",
-                      color: slot.available ? primaryColor : "#C4B8B0",
-                      opacity: slot.available ? 1 : 0.5,
-                      cursor: slot.available ? "pointer" : "not-allowed",
-                      transition: "all 0.15s",
-                      fontFamily: "inherit",
+                      borderColor: slot.available
+                        ? `${primaryColor}40`
+                        : "rgba(255,255,255,0.06)",
+                      color: slot.available
+                        ? primaryColor
+                        : "rgba(245,242,238,0.25)",
                     }}
                   >
                     {formatTimeDisplay(slot.time)}
@@ -653,22 +713,17 @@ export default function TimeSlotPicker({
         )}
       </AnimatePresence>
 
-      {/* Hint cuando no hay fecha seleccionada */}
+      {/* Hint sin fecha seleccionada */}
       {!selectedDate && !loadingDays && (
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          style={{
-            textAlign: "center",
-            fontSize: "0.8125rem",
-            color: "#C4B8B0",
-            padding: "16px 0 8px",
-          }}
+          transition={{ delay: 0.4 }}
+          className="tsp-hint"
         >
           👆 Toca un día para ver los horarios
         </motion.p>
       )}
-    </div>
+    </>
   );
 }

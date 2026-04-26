@@ -1,5 +1,5 @@
 // app/book/[slug]/page.tsx
-// Server Component — carga datos del salón y servicios antes de renderizar
+// Fase 8.1 v2 — Diseño premium: fondo oscuro cálido, glassmorphism, color de marca como acento
 
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
@@ -44,7 +44,6 @@ export default async function BookPage({ params }: BookPageProps) {
   const { slug } = await params;
   const supabase = await createServerSupabaseClient();
 
-  // 1. Obtener datos del salón por slug
   const { data: salon, error: salonError } = await supabase
     .from("salons")
     .select(
@@ -54,12 +53,8 @@ export default async function BookPage({ params }: BookPageProps) {
     .single();
 
   if (salonError || !salon) notFound();
+  if (!salon.is_active) return <SalonInactivePage salonName={salon.name} />;
 
-  if (!salon.is_active) {
-    return <SalonInactivePage salonName={salon.name} />;
-  }
-
-  // 2. Verificar suscripción activa o trialing
   const { data: subscription } = await supabase
     .from("subscriptions")
     .select("status, trial_ends_at, current_period_end")
@@ -74,7 +69,6 @@ export default async function BookPage({ params }: BookPageProps) {
     return <SalonInactivePage salonName={salon.name} reason="subscription" />;
   }
 
-  // 3. Obtener servicios activos
   const { data: services, error: servicesError } = await supabase
     .from("services")
     .select("id, name, duration_minutes, price, description")
@@ -88,8 +82,7 @@ export default async function BookPage({ params }: BookPageProps) {
 
   const primaryColor = salon.primary_color || "#D4375F";
 
-  // ── Helpers para el hero ──────────────────────────────────────────────────
-  // Iniciales del salón (máx 2 caracteres) para el avatar fallback
+  // Iniciales para el avatar fallback
   const initials = salon.name
     .split(" ")
     .slice(0, 2)
@@ -100,266 +93,370 @@ export default async function BookPage({ params }: BookPageProps) {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        /* ─── Reset y variables ──────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+          --color-brand: ${primaryColor};
+          --font-display: var(--font-cormorant), 'Georgia', serif;
+          --font-body: var(--font-jakarta), var(--font-inter), -apple-system, sans-serif;
 
-        body {
-          background: #FAF8F5;
-          font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-          -webkit-font-smoothing: antialiased;
+          /* Paleta oscura cálida */
+          --bg-base:    #0D0C0B;
+          --bg-surface: #151311;
+          --bg-card:    rgba(255, 255, 255, 0.04);
+          --border:     rgba(255, 255, 255, 0.08);
+          --border-accent: rgba(255, 255, 255, 0.14);
+          --text-primary:   #F5F2EE;
+          --text-secondary: rgba(245, 242, 238, 0.55);
+          --text-muted:     rgba(245, 242, 238, 0.3);
         }
 
-        /* ─── Hero ──────────────────────────────────────── */
-        .bk-hero {
-          position: relative;
-          width: 100%;
-          padding: 48px 24px 72px;
+        body {
+          background: var(--bg-base);
+          font-family: var(--font-body);
+          -webkit-font-smoothing: antialiased;
+          min-height: 100vh;
+        }
+
+        /* ─── Layout raíz ───────────────────────────────────── */
+        .bk-root {
+          min-height: 100vh;
           display: flex;
           flex-direction: column;
-          align-items: center;
-          text-align: center;
+          position: relative;
+          overflow-x: hidden;
+        }
+
+        /* ─── Fondo con orbs de color de marca ──────────────── */
+        .bk-bg {
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
           overflow: hidden;
         }
 
-        /* Fondo degradado con color de marca */
-        .bk-hero-bg {
+        .bk-orb-1 {
+          position: absolute;
+          width: 600px;
+          height: 600px;
+          border-radius: 50%;
+          top: -200px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: radial-gradient(
+            circle,
+            color-mix(in srgb, var(--color-brand) 28%, transparent) 0%,
+            transparent 70%
+          );
+          filter: blur(1px);
+        }
+
+        .bk-orb-2 {
+          position: absolute;
+          width: 400px;
+          height: 400px;
+          border-radius: 50%;
+          bottom: -100px;
+          right: -100px;
+          background: radial-gradient(
+            circle,
+            color-mix(in srgb, var(--color-brand) 12%, transparent) 0%,
+            transparent 70%
+          );
+        }
+
+        /* Patrón de ruido sutil sobre el fondo */
+        .bk-noise {
           position: absolute;
           inset: 0;
-          z-index: 0;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+          opacity: 0.4;
         }
 
-        /* Capa de color de marca */
-        .bk-hero-color {
-          position: absolute;
-          inset: 0;
-          opacity: 0.92;
-        }
-
-        /* Patrón de puntos sutil */
-        .bk-hero-dots {
-          position: absolute;
-          inset: 0;
-          background-image: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
-          background-size: 24px 24px;
-          pointer-events: none;
-        }
-
-        /* Brillo inferior para transición suave al contenido */
-        .bk-hero-fade {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 80px;
-          background: linear-gradient(to bottom, transparent, #FAF8F5);
-          pointer-events: none;
-        }
-
-        /* Contenido del hero sobre el fondo */
-        .bk-hero-content {
+        /* ─── Contenido principal ───────────────────────────── */
+        .bk-content {
           position: relative;
           z-index: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
+          padding: 48px 20px 64px;
+          width: 100%;
+          max-width: 480px;
+          margin: 0 auto;
+          gap: 32px;
+        }
+
+        /* ─── Cabecera del salón ────────────────────────────── */
+        .bk-salon-header {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           gap: 16px;
+          text-align: center;
+          width: 100%;
+        }
+
+        /* Badge superior */
+        .bk-live-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid var(--border-accent);
+          border-radius: 100px;
+          padding: 5px 14px 5px 10px;
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--text-secondary);
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .bk-live-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: var(--color-brand);
+          box-shadow: 0 0 8px var(--color-brand);
+          animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.6; transform: scale(0.85); }
         }
 
         /* Avatar del salón */
+        .bk-avatar-wrap {
+          position: relative;
+        }
+
         .bk-avatar {
-          width: 80px;
-          height: 80px;
-          border-radius: 22px;
-          background: rgba(255,255,255,0.15);
-          border: 2px solid rgba(255,255,255,0.3);
+          width: 88px;
+          height: 88px;
+          border-radius: 26px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid var(--border-accent);
           display: flex;
           align-items: center;
           justify-content: center;
           overflow: hidden;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-          backdrop-filter: blur(8px);
+          box-shadow:
+            0 0 0 6px rgba(255, 255, 255, 0.03),
+            0 20px 60px rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(12px);
         }
 
         .bk-avatar img {
           width: 100%;
           height: 100%;
           object-fit: contain;
-          padding: 8px;
+          padding: 10px;
         }
 
         .bk-avatar-initials {
-          font-family: 'Cormorant Garamond', Georgia, serif;
-          font-size: 28px;
+          font-family: var(--font-display);
+          font-size: 32px;
           font-weight: 600;
-          color: rgba(255,255,255,0.9);
-          letter-spacing: 0.04em;
+          color: var(--color-brand);
+          letter-spacing: 0.02em;
+        }
+
+        /* Anillo de color de marca alrededor del avatar */
+        .bk-avatar-ring {
+          position: absolute;
+          inset: -4px;
+          border-radius: 30px;
+          border: 1.5px solid color-mix(in srgb, var(--color-brand) 40%, transparent);
+          pointer-events: none;
         }
 
         /* Nombre del salón */
         .bk-salon-name {
-          font-family: 'Cormorant Garamond', Georgia, serif;
-          font-size: 2rem;
+          font-family: var(--font-display);
+          font-size: 2.25rem;
           font-weight: 600;
-          color: #fff;
-          line-height: 1.15;
-          letter-spacing: 0.01em;
-          text-shadow: 0 2px 12px rgba(0,0,0,0.18);
+          color: var(--text-primary);
+          line-height: 1.1;
+          letter-spacing: -0.01em;
         }
 
-        /* Tagline */
-        .bk-tagline {
-          font-size: 0.8125rem;
-          font-weight: 500;
-          color: rgba(255,255,255,0.75);
-          letter-spacing: 0.04em;
+        /* Dirección */
+        .bk-salon-address {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 12px;
+          color: var(--text-muted);
+          font-weight: 400;
         }
 
-        /* Dirección / info del salón */
-        .bk-salon-meta {
+        /* Divider decorativo */
+        .bk-divider {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .bk-divider-line {
+          flex: 1;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            var(--border-accent),
+            transparent
+          );
+        }
+
+        .bk-divider-gem {
+          font-size: 10px;
+          color: var(--color-brand);
+          opacity: 0.6;
+        }
+
+        /* ─── Card del widget ───────────────────────────────── */
+        .bk-card {
+          width: 100%;
+          background: rgba(255, 255, 255, 0.035);
+          border: 1px solid var(--border-accent);
+          border-radius: 28px;
+          padding: 32px 28px;
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+            0 32px 80px rgba(0, 0, 0, 0.4),
+            0 8px 32px rgba(0, 0, 0, 0.3);
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* Brillo sutil en la esquina superior */
+        .bk-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 20%;
+          right: 20%;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.18),
+            transparent
+          );
+          pointer-events: none;
+        }
+
+        /* ─── Footer ────────────────────────────────────────── */
+        .bk-footer {
           display: flex;
           align-items: center;
           gap: 6px;
-          font-size: 0.75rem;
-          color: rgba(255,255,255,0.6);
-        }
-
-        /* Badge "Reserva gratis · Sin registro" */
-        .bk-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: rgba(255,255,255,0.15);
-          border: 1px solid rgba(255,255,255,0.22);
-          border-radius: 100px;
-          padding: 5px 14px;
-          font-size: 0.6875rem;
-          font-weight: 600;
-          color: rgba(255,255,255,0.9);
-          letter-spacing: 0.04em;
-          backdrop-filter: blur(8px);
-        }
-
-        .bk-badge-dot {
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.8);
-        }
-
-        /* ─── Widget card ────────────────────────────────── */
-        .bk-card-wrap {
-          position: relative;
-          z-index: 10;
-          width: 100%;
-          max-width: 440px;
-          margin: -40px auto 0;
-          padding: 0 16px 48px;
-        }
-
-        .bk-card {
-          background: #fff;
-          border-radius: 24px;
-          border: 1px solid #EDE8E3;
-          padding: 28px 24px;
-          box-shadow:
-            0 4px 6px rgba(0,0,0,0.04),
-            0 12px 40px rgba(0,0,0,0.08),
-            0 0 0 1px rgba(255,255,255,0.6) inset;
-        }
-
-        /* ─── Footer ─────────────────────────────────────── */
-        .bk-footer {
-          text-align: center;
-          padding-bottom: 32px;
-          font-size: 0.6875rem;
-          color: #C4B8B0;
+          font-size: 11px;
+          color: var(--text-muted);
+          font-weight: 400;
         }
 
         .bk-footer a {
+          color: var(--text-secondary);
           font-weight: 600;
-          color: #9C8E85;
           text-decoration: none;
+          transition: color 0.15s;
         }
 
-        .bk-footer a:hover { text-decoration: underline; }
+        .bk-footer a:hover {
+          color: var(--color-brand);
+        }
+
+        /* ─── Responsive ────────────────────────────────────── */
+        @media (max-width: 480px) {
+          .bk-content { padding: 36px 16px 48px; }
+          .bk-card { padding: 24px 20px; border-radius: 22px; }
+          .bk-salon-name { font-size: 1.875rem; }
+        }
 
         @media (min-width: 640px) {
-          .bk-hero { padding: 64px 24px 80px; }
           .bk-salon-name { font-size: 2.5rem; }
-          .bk-card-wrap { padding: 0 24px 64px; }
-          .bk-card { padding: 36px 32px; }
+          .bk-avatar { width: 96px; height: 96px; border-radius: 28px; }
         }
       `}</style>
 
-      {/* ── Hero ── */}
-      <header className="bk-hero">
-        {/* Fondo */}
-        <div className="bk-hero-bg">
-          <div
-            className="bk-hero-color"
-            style={{
-              background: `linear-gradient(145deg, ${primaryColor} 0%, ${primaryColor}CC 100%)`,
-            }}
-          />
-          <div className="bk-hero-dots" />
-          <div className="bk-hero-fade" />
+      <div className="bk-root">
+        {/* Fondo con orbs */}
+        <div className="bk-bg">
+          <div className="bk-orb-1" />
+          <div className="bk-orb-2" />
+          <div className="bk-noise" />
         </div>
 
         {/* Contenido */}
-        <div className="bk-hero-content">
-          {/* Badge superior */}
-          <div className="bk-badge">
-            <div className="bk-badge-dot" />
-            Reserva tu cita en segundos
-          </div>
+        <div className="bk-content">
+          {/* ── Cabecera del salón ── */}
+          <header className="bk-salon-header">
+            {/* Badge live */}
+            <div className="bk-live-badge">
+              <div className="bk-live-dot" />
+              Reservas abiertas
+            </div>
 
-          {/* Avatar del salón */}
-          <div className="bk-avatar">
-            {salon.logo_url ? (
-              <img src={salon.logo_url} alt={`Logo de ${salon.name}`} />
-            ) : (
-              <span className="bk-avatar-initials">{initials}</span>
+            {/* Avatar */}
+            <div className="bk-avatar-wrap">
+              <div className="bk-avatar">
+                {salon.logo_url ? (
+                  <img src={salon.logo_url} alt={`Logo de ${salon.name}`} />
+                ) : (
+                  <span className="bk-avatar-initials">{initials}</span>
+                )}
+              </div>
+              <div className="bk-avatar-ring" />
+            </div>
+
+            {/* Nombre */}
+            <h1 className="bk-salon-name">{salon.name}</h1>
+
+            {/* Dirección si existe */}
+            {salon.address && (
+              <p className="bk-salon-address">
+                <span>📍</span>
+                <span>{salon.address}</span>
+              </p>
             )}
+          </header>
+
+          {/* Divider decorativo */}
+          <div className="bk-divider">
+            <div className="bk-divider-line" />
+            <span className="bk-divider-gem">✦</span>
+            <div className="bk-divider-line" />
           </div>
 
-          {/* Nombre */}
-          <h1 className="bk-salon-name">{salon.name}</h1>
+          {/* ── Card del widget ── */}
+          <div className="bk-card">
+            <BookingWidget
+              salon={salon as SalonPublicData}
+              services={(services || []) as ServicePublicData[]}
+            />
+          </div>
 
-          {/* Tagline */}
-          <p className="bk-tagline">Agenda rápida y sencilla</p>
-
-          {/* Dirección si existe */}
-          {salon.address && (
-            <p className="bk-salon-meta">
-              <span>📍</span>
-              <span>{salon.address}</span>
-            </p>
-          )}
-        </div>
-      </header>
-
-      {/* ── Widget card flotante ── */}
-      <div className="bk-card-wrap">
-        <div className="bk-card">
-          <BookingWidget
-            salon={salon as SalonPublicData}
-            services={(services || []) as ServicePublicData[]}
-          />
+          {/* Footer */}
+          <footer className="bk-footer">
+            <span>Reservas gestionadas por</span>
+            <a
+              href="https://beautysyncsv.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              BeautySync
+            </a>
+          </footer>
         </div>
       </div>
-
-      {/* ── Footer ── */}
-      <footer className="bk-footer">
-        Reservas gestionadas por{" "}
-        <a
-          href="https://beautysyncsv.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          BeautySync
-        </a>
-      </footer>
     </>
   );
 }
@@ -373,61 +470,62 @@ function SalonInactivePage({
   reason?: string;
 }) {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "#FAF8F5",
-        padding: "24px",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-      }}
-    >
-      <div style={{ textAlign: "center", maxWidth: "320px" }}>
-        <div
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: "50%",
-            backgroundColor: "#EDE8E3",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 20px",
-            fontSize: 28,
-          }}
-        >
-          💇‍♀️
+    <>
+      <style>{`
+        .si-root {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #0D0C0B;
+          padding: 24px;
+          font-family: var(--font-jakarta), var(--font-inter), sans-serif;
+        }
+        .si-card {
+          text-align: center;
+          max-width: 320px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 24px;
+          padding: 40px 32px;
+          backdrop-filter: blur(20px);
+        }
+        .si-icon {
+          font-size: 40px;
+          margin-bottom: 20px;
+          display: block;
+        }
+        .si-title {
+          font-family: var(--font-cormorant), Georgia, serif;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #F5F2EE;
+          margin-bottom: 10px;
+          line-height: 1.2;
+        }
+        .si-desc {
+          font-size: 0.875rem;
+          color: rgba(245, 242, 238, 0.45);
+          line-height: 1.6;
+        }
+      `}</style>
+      <div className="si-root">
+        <div className="si-card">
+          <span className="si-icon">💇‍♀️</span>
+          <h1 className="si-title">
+            {reason === "subscription"
+              ? "Reservas temporalmente no disponibles"
+              : salonName
+                ? `${salonName} no está disponible`
+                : "Salón no disponible"}
+          </h1>
+          <p className="si-desc">
+            {reason === "subscription"
+              ? "Este salón tiene su plan pausado. Contacta directamente para agendar."
+              : "Este salón no está aceptando reservas en este momento."}
+          </p>
         </div>
-        <h1
-          style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            fontSize: "1.5rem",
-            fontWeight: 600,
-            color: "#2D2420",
-            marginBottom: 8,
-            lineHeight: 1.2,
-          }}
-        >
-          {reason === "subscription"
-            ? "Reservas temporalmente no disponibles"
-            : salonName
-              ? `${salonName} no está disponible`
-              : "Salón no disponible"}
-        </h1>
-        <p
-          style={{
-            fontSize: "0.875rem",
-            color: "#9C8E85",
-            lineHeight: 1.6,
-          }}
-        >
-          {reason === "subscription"
-            ? "Este salón tiene su plan pausado. Contacta directamente para agendar."
-            : "Este salón no está aceptando reservas en este momento."}
-        </p>
       </div>
-    </div>
+    </>
   );
 }

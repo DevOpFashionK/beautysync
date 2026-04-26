@@ -1,7 +1,7 @@
 "use client";
 
 // components/booking/BookingForm.tsx
-// Fase 8.1 — Ajustes visuales: consistencia con el sistema de diseño del widget
+// Fase 8.1 v2 — Formulario adaptado a la estética oscura premium
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +20,6 @@ import {
 import type { BookingFormData, SelectedService } from "@/types/booking.types";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
-// client_phone guarda solo los 8 dígitos — el prefijo +503 se agrega al enviar
 const bookingFormSchema = z.object({
   client_name: z
     .string()
@@ -57,6 +56,232 @@ interface BookingFormProps {
   apiError: string | null;
 }
 
+// ─── Estilos ──────────────────────────────────────────────────────────────────
+const styles = `
+  .bf-title {
+    font-family: var(--font-cormorant), Georgia, serif;
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: rgba(245, 242, 238, 0.95);
+    line-height: 1.15;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .bf-subtitle {
+    font-size: 13px;
+    color: rgba(245, 242, 238, 0.4);
+    font-family: var(--font-jakarta), sans-serif;
+    margin-bottom: 20px;
+  }
+
+  /* Resumen de cita */
+  .bf-summary {
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+  }
+
+  .bf-summary-service {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .bf-summary-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .bf-summary-label {
+    font-size: 11px;
+    color: rgba(245, 242, 238, 0.35);
+    margin-bottom: 2px;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .bf-summary-name {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .bf-summary-divider {
+    height: 1px;
+    margin-bottom: 10px;
+  }
+
+  .bf-summary-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .bf-summary-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: rgba(245, 242, 238, 0.45);
+    font-family: var(--font-jakarta), sans-serif;
+    text-transform: capitalize;
+  }
+
+  /* Campos del formulario */
+  .bf-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bf-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(245, 242, 238, 0.45);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .bf-required {
+    color: #EF4444;
+    margin-left: 1px;
+  }
+
+  .bf-input {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 14px;
+    color: rgba(245, 242, 238, 0.9);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    box-sizing: border-box;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .bf-input::placeholder {
+    color: rgba(245, 242, 238, 0.2);
+  }
+
+  .bf-input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Prefijo teléfono */
+  .bf-phone-wrap {
+    display: flex;
+    align-items: stretch;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .bf-phone-prefix {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 11px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+  }
+
+  .bf-phone-prefix-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(245, 242, 238, 0.45);
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .bf-phone-input {
+    flex: 1;
+    padding: 11px 14px;
+    font-size: 14px;
+    color: rgba(245, 242, 238, 0.9);
+    outline: none;
+    background: transparent;
+    border: none;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .bf-phone-input::placeholder {
+    color: rgba(245, 242, 238, 0.2);
+  }
+
+  .bf-error-msg {
+    font-size: 12px;
+    color: #F87171;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  /* Error de API */
+  .bf-api-error {
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+  }
+
+  .bf-api-error-text {
+    font-size: 13px;
+    color: #FCA5A5;
+    line-height: 1.5;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  /* Botón submit */
+  .bf-submit {
+    width: 100%;
+    padding: 14px 24px;
+    border-radius: 12px;
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+    transition: opacity 0.15s, transform 0.15s;
+    font-family: var(--font-jakarta), sans-serif;
+    letter-spacing: 0.01em;
+  }
+
+  .bf-submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  /* Nota de privacidad */
+  .bf-privacy {
+    text-align: center;
+    font-size: 11px;
+    color: rgba(245, 242, 238, 0.22);
+    padding-top: 4px;
+    font-family: var(--font-jakarta), sans-serif;
+    line-height: 1.5;
+  }
+`;
+
 // ─── FieldWrapper ─────────────────────────────────────────────────────────────
 interface FieldWrapperProps {
   label: string;
@@ -74,21 +299,11 @@ function FieldWrapper({
   children,
 }: FieldWrapperProps) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: "0.75rem",
-          fontWeight: 600,
-          color: "#9C8E85",
-          letterSpacing: "0.02em",
-        }}
-      >
+    <div className="bf-field">
+      <label className="bf-label">
         {icon}
         {label}
-        {required && <span style={{ color: "#EF4444", marginLeft: 1 }}>*</span>}
+        {required && <span className="bf-required">*</span>}
       </label>
       {children}
       <AnimatePresence>
@@ -97,11 +312,7 @@ function FieldWrapper({
             initial={{ opacity: 0, y: -4, height: 0 }}
             animate={{ opacity: 1, y: 0, height: "auto" }}
             exit={{ opacity: 0, y: -4, height: 0 }}
-            style={{
-              fontSize: "0.75rem",
-              color: "#EF4444",
-              margin: 0,
-            }}
+            className="bf-error-msg"
           >
             {error}
           </motion.p>
@@ -110,21 +321,6 @@ function FieldWrapper({
     </div>
   );
 }
-
-// ─── Estilos base de inputs ───────────────────────────────────────────────────
-const inputBase: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 14px",
-  borderRadius: 12,
-  border: "1.5px solid #EDE8E3",
-  backgroundColor: "#FDFCFB",
-  fontSize: "14px",
-  color: "#2D2420",
-  outline: "none",
-  transition: "border-color 0.15s, box-shadow 0.15s, background-color 0.15s",
-  boxSizing: "border-box",
-  fontFamily: "inherit",
-};
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function BookingForm({
@@ -150,51 +346,47 @@ export default function BookingForm({
     },
   });
 
-  // Al hacer submit concatenamos +503 antes de pasar al padre
   const handleFormSubmit = (values: FormValues) => {
-    onSubmit({
-      ...values,
-      client_phone: `+503 ${values.client_phone}`,
-    });
+    onSubmit({ ...values, client_phone: `+503 ${values.client_phone}` });
   };
 
-  // Focus/blur handlers para inputs — aplican color de marca
+  // Focus/blur handlers para inputs
   const focusHandlers = {
     onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      e.currentTarget.style.borderColor = primaryColor;
+      e.currentTarget.style.borderColor = `${primaryColor}70`;
       e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
-      e.currentTarget.style.backgroundColor = "#fff";
+      e.currentTarget.style.background = "rgba(255,255,255,0.07)";
     },
     onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      e.currentTarget.style.borderColor = "#EDE8E3";
+      e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)";
       e.currentTarget.style.boxShadow = "none";
-      e.currentTarget.style.backgroundColor = "#FDFCFB";
+      e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+    },
+  };
+
+  const phoneFocusHandlers = {
+    onFocusCapture: (e: React.FocusEvent<HTMLDivElement>) => {
+      e.currentTarget.style.borderColor = `${primaryColor}70`;
+      e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
+    },
+    onBlurCapture: (e: React.FocusEvent<HTMLDivElement>) => {
+      e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)";
+      e.currentTarget.style.boxShadow = "none";
     },
   };
 
   return (
-    <div>
+    <>
+      <style>{styles}</style>
+
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ marginBottom: 20 }}
+        transition={{ duration: 0.3 }}
       >
-        <h2
-          style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            fontSize: "1.625rem",
-            fontWeight: 600,
-            color: "#2D2420",
-            lineHeight: 1.2,
-            marginBottom: 4,
-          }}
-        >
-          Tus datos
-        </h2>
-        <p style={{ fontSize: "0.8125rem", color: "#9C8E85" }}>
-          Para confirmar tu reserva
-        </p>
+        <h2 className="bf-title">Tus datos</h2>
+        <p className="bf-subtitle">Para confirmar tu reserva</p>
       </motion.div>
 
       {/* Resumen de la cita */}
@@ -202,94 +394,38 @@ export default function BookingForm({
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
+        className="bf-summary"
         style={{
-          borderRadius: 14,
-          border: `1.5px solid ${primaryColor}30`,
-          backgroundColor: `${primaryColor}06`,
-          padding: "14px 16px",
-          marginBottom: 20,
+          background: `${primaryColor}0E`,
+          border: `1px solid ${primaryColor}28`,
         }}
       >
-        {/* Servicio */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 10,
-          }}
-        >
+        <div className="bf-summary-service">
           <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 10,
-              backgroundColor: `${primaryColor}14`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
+            className="bf-summary-icon"
+            style={{ background: `${primaryColor}18` }}
           >
-            <Scissors size={14} style={{ color: primaryColor }} />
+            <Scissors size={15} style={{ color: primaryColor }} />
           </div>
           <div>
-            <p
-              style={{
-                fontSize: "0.6875rem",
-                color: "#9C8E85",
-                marginBottom: 1,
-              }}
-            >
-              Servicio seleccionado
-            </p>
-            <p
-              style={{
-                fontSize: "0.9375rem",
-                fontWeight: 700,
-                color: primaryColor,
-                lineHeight: 1.2,
-              }}
-            >
+            <p className="bf-summary-label">Servicio seleccionado</p>
+            <p className="bf-summary-name" style={{ color: primaryColor }}>
               {service.name}
             </p>
           </div>
         </div>
 
-        {/* Separador */}
         <div
-          style={{
-            height: 1,
-            backgroundColor: `${primaryColor}20`,
-            marginBottom: 10,
-          }}
+          className="bf-summary-divider"
+          style={{ background: `${primaryColor}20` }}
         />
 
-        {/* Fecha y hora */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              fontSize: "0.75rem",
-              color: "#9C8E85",
-            }}
-          >
+        <div className="bf-summary-meta">
+          <span className="bf-summary-meta-item">
             <Calendar size={12} style={{ color: primaryColor, opacity: 0.7 }} />
-            <span style={{ textTransform: "capitalize" }}>
-              {selectedDateDisplay}
-            </span>
+            {selectedDateDisplay}
           </span>
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              fontSize: "0.75rem",
-              color: "#9C8E85",
-            }}
-          >
+          <span className="bf-summary-meta-item">
             <Clock size={12} style={{ color: primaryColor, opacity: 0.7 }} />
             {selectedTimeDisplay}
           </span>
@@ -300,26 +436,12 @@ export default function BookingForm({
       <AnimatePresence>
         {apiError && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.97, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.97 }}
-            style={{
-              borderRadius: 12,
-              backgroundColor: "#FEF2F2",
-              border: "1.5px solid #FECACA",
-              padding: "12px 16px",
-              marginBottom: 16,
-            }}
+            className="bf-api-error"
           >
-            <p
-              style={{
-                fontSize: "0.8125rem",
-                color: "#DC2626",
-                lineHeight: 1.5,
-              }}
-            >
-              {apiError}
-            </p>
+            <p className="bf-api-error-text">{apiError}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -338,7 +460,7 @@ export default function BookingForm({
         >
           <FieldWrapper
             label="Nombre completo"
-            icon={<User size={12} />}
+            icon={<User size={11} />}
             error={errors.client_name?.message}
             required
           >
@@ -348,12 +470,12 @@ export default function BookingForm({
               type="text"
               placeholder="María García"
               autoComplete="name"
-              style={inputBase}
+              className="bf-input"
             />
           </FieldWrapper>
         </motion.div>
 
-        {/* Teléfono con prefijo fijo +503 */}
+        {/* Teléfono */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -361,56 +483,15 @@ export default function BookingForm({
         >
           <FieldWrapper
             label="Teléfono"
-            icon={<Phone size={12} />}
+            icon={<Phone size={11} />}
             error={errors.client_phone?.message}
             required
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "stretch",
-                borderRadius: 12,
-                border: "1.5px solid #EDE8E3",
-                backgroundColor: "#FDFCFB",
-                overflow: "hidden",
-                transition: "border-color 0.15s, box-shadow 0.15s",
-              }}
-              onFocusCapture={(e) => {
-                const el = e.currentTarget as HTMLDivElement;
-                el.style.borderColor = primaryColor;
-                el.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
-              }}
-              onBlurCapture={(e) => {
-                const el = e.currentTarget as HTMLDivElement;
-                el.style.borderColor = "#EDE8E3";
-                el.style.boxShadow = "none";
-              }}
-            >
-              {/* Prefijo fijo */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "10px 12px",
-                  backgroundColor: "#FAF8F5",
-                  borderRight: "1.5px solid #EDE8E3",
-                  flexShrink: 0,
-                }}
-              >
-                <span style={{ fontSize: "14px" }}>🇸🇻</span>
-                <span
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    color: "#9C8E85",
-                  }}
-                >
-                  +503
-                </span>
+            <div className="bf-phone-wrap" {...phoneFocusHandlers}>
+              <div className="bf-phone-prefix">
+                <span style={{ fontSize: 14 }}>🇸🇻</span>
+                <span className="bf-phone-prefix-text">+503</span>
               </div>
-
-              {/* Input — solo 8 dígitos */}
               <input
                 {...register("client_phone")}
                 type="tel"
@@ -418,16 +499,7 @@ export default function BookingForm({
                 maxLength={8}
                 placeholder="7000 0000"
                 autoComplete="tel-national"
-                style={{
-                  flex: 1,
-                  padding: "10px 14px",
-                  fontSize: "14px",
-                  color: "#2D2420",
-                  outline: "none",
-                  backgroundColor: "transparent",
-                  border: "none",
-                  fontFamily: "inherit",
-                }}
+                className="bf-phone-input"
                 onKeyDown={(e) => {
                   const allowed = [
                     "Backspace",
@@ -436,16 +508,15 @@ export default function BookingForm({
                     "ArrowLeft",
                     "ArrowRight",
                   ];
-                  if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) {
+                  if (!allowed.includes(e.key) && !/^\d$/.test(e.key))
                     e.preventDefault();
-                  }
                 }}
               />
             </div>
           </FieldWrapper>
         </motion.div>
 
-        {/* Email — opcional */}
+        {/* Email */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -453,7 +524,7 @@ export default function BookingForm({
         >
           <FieldWrapper
             label="Email (opcional)"
-            icon={<Mail size={12} />}
+            icon={<Mail size={11} />}
             error={errors.client_email?.message}
           >
             <input
@@ -462,12 +533,12 @@ export default function BookingForm({
               type="email"
               placeholder="maria@ejemplo.com"
               autoComplete="email"
-              style={inputBase}
+              className="bf-input"
             />
           </FieldWrapper>
         </motion.div>
 
-        {/* Notas — opcional */}
+        {/* Notas */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -475,7 +546,7 @@ export default function BookingForm({
         >
           <FieldWrapper
             label="Notas adicionales (opcional)"
-            icon={<MessageSquare size={12} />}
+            icon={<MessageSquare size={11} />}
             error={errors.client_notes?.message}
           >
             <textarea
@@ -483,20 +554,17 @@ export default function BookingForm({
               rows={3}
               placeholder="Alergias, preferencias, preguntas..."
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = primaryColor;
+                e.currentTarget.style.borderColor = `${primaryColor}70`;
                 e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
-                e.currentTarget.style.backgroundColor = "#fff";
+                e.currentTarget.style.background = "rgba(255,255,255,0.07)";
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = "#EDE8E3";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)";
                 e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.backgroundColor = "#FDFCFB";
+                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
               }}
-              style={{
-                ...inputBase,
-                resize: "none",
-                height: 88,
-              }}
+              className="bf-input"
+              style={{ resize: "none", height: 88 }}
             />
           </FieldWrapper>
         </motion.div>
@@ -506,30 +574,14 @@ export default function BookingForm({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.22 }}
-          type="submit"
-          disabled={isLoading}
           whileHover={!isLoading ? { scale: 1.015 } : {}}
           whileTap={!isLoading ? { scale: 0.985 } : {}}
+          type="submit"
+          disabled={isLoading}
+          className="bf-submit"
           style={{
-            width: "100%",
-            padding: "13px 24px",
-            borderRadius: 12,
-            border: "none",
             backgroundColor: primaryColor,
-            color: "#fff",
-            fontSize: "0.9375rem",
-            fontWeight: 700,
-            cursor: isLoading ? "not-allowed" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            marginTop: 4,
-            opacity: isLoading ? 0.65 : 1,
-            boxShadow: `0 8px 24px ${primaryColor}30`,
-            transition: "opacity 0.15s",
-            fontFamily: "inherit",
-            letterSpacing: "0.01em",
+            boxShadow: `0 8px 28px ${primaryColor}35`,
           }}
         >
           {isLoading ? (
@@ -542,21 +594,16 @@ export default function BookingForm({
           )}
         </motion.button>
 
-        {/* Nota de privacidad */}
+        {/* Privacidad */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.28 }}
-          style={{
-            textAlign: "center",
-            fontSize: "0.6875rem",
-            color: "#C4B8B0",
-            lineHeight: 1.5,
-          }}
+          className="bf-privacy"
         >
           🔒 Tus datos solo se usan para gestionar tu cita
         </motion.p>
       </form>
-    </div>
+    </>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
 // components/booking/ServiceSelector.tsx
-// Fase 8.1 — Cards más ricas con precio destacado y mejor jerarquía visual
+// Fase 8.1 v2 — Cards de servicio adaptadas a la estética oscura premium
 
 import { motion } from "framer-motion";
-import { Clock, ChevronRight, Scissors, Sparkles } from "lucide-react";
+import { Clock, ChevronRight, Sparkles } from "lucide-react";
 import type { ServicePublicData, SelectedService } from "@/types/booking.types";
 
 interface ServiceSelectorProps {
@@ -30,54 +30,248 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+// ─── Estilos ──────────────────────────────────────────────────────────────────
+const styles = `
+  .ss-header {
+    margin-bottom: 20px;
+  }
 
+  .ss-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .ss-eyebrow-text {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-brand);
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .ss-title {
+    font-family: var(--font-cormorant), Georgia, serif;
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: rgba(245, 242, 238, 0.95);
+    line-height: 1.15;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .ss-subtitle {
+    font-size: 13px;
+    color: rgba(245, 242, 238, 0.4);
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  /* ── Service card ── */
+  .ss-card {
+    width: 100%;
+    text-align: left;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 16px 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ss-card:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  /* Línea de acento izquierda */
+  .ss-card-accent {
+    position: absolute;
+    left: 0;
+    top: 18%;
+    bottom: 18%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .ss-card:hover .ss-card-accent {
+    opacity: 1;
+  }
+
+  /* Ícono del servicio */
+  .ss-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 20px;
+    transition: transform 0.2s;
+  }
+
+  .ss-card:hover .ss-icon {
+    transform: scale(1.05);
+  }
+
+  /* Info del servicio */
+  .ss-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ss-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(245, 242, 238, 0.92);
+    line-height: 1.3;
+    margin-bottom: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .ss-description {
+    font-size: 12px;
+    color: rgba(245, 242, 238, 0.38);
+    margin-bottom: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .ss-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ss-duration {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: rgba(245, 242, 238, 0.38);
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .ss-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(245, 242, 238, 0.2);
+  }
+
+  .ss-price {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  /* Flecha derecha */
+  .ss-arrow {
+    flex-shrink: 0;
+    opacity: 0.25;
+    transition: opacity 0.2s, transform 0.2s;
+    color: rgba(245, 242, 238, 0.8);
+  }
+
+  .ss-card:hover .ss-arrow {
+    opacity: 0.7;
+    transform: translateX(3px);
+  }
+
+  /* Empty state */
+  .ss-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 56px 0;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .ss-empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+    font-size: 24px;
+  }
+
+  .ss-empty-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(245, 242, 238, 0.7);
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .ss-empty-sub {
+    font-size: 13px;
+    color: rgba(245, 242, 238, 0.3);
+    font-family: var(--font-jakarta), sans-serif;
+  }
+`;
+
+// ─── Íconos por servicio (emoji semántico según nombre) ───────────────────────
+function getServiceEmoji(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes("cejas") || lower.includes("brow")) return "🪄";
+  if (
+    lower.includes("cabello") ||
+    lower.includes("pelo") ||
+    lower.includes("corte")
+  )
+    return "✂️";
+  if (
+    lower.includes("manicure") ||
+    lower.includes("uñas") ||
+    lower.includes("nail")
+  )
+    return "💅";
+  if (lower.includes("facial") || lower.includes("limpieza")) return "✨";
+  if (lower.includes("pedicure")) return "🦶";
+  if (lower.includes("tinte") || lower.includes("color")) return "🎨";
+  if (lower.includes("depilación") || lower.includes("depilacion")) return "🌿";
+  if (lower.includes("maquillaje") || lower.includes("makeup")) return "💄";
+  if (lower.includes("masaje") || lower.includes("spa")) return "🧖‍♀️";
+  if (lower.includes("laminado")) return "⭐";
+  return "💇‍♀️";
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
 function EmptyServices({ primaryColor }: { primaryColor: string }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingTop: 56,
-        paddingBottom: 56,
-        textAlign: "center",
-        gap: 12,
-      }}
-    >
+    <div className="ss-empty">
       <div
-        style={{
-          width: 64,
-          height: 64,
-          borderRadius: "50%",
-          backgroundColor: `${primaryColor}14`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 4,
-        }}
+        className="ss-empty-icon"
+        style={{ background: `${primaryColor}14` }}
       >
-        <Scissors size={28} style={{ color: primaryColor }} />
+        💇‍♀️
       </div>
-      <p
-        style={{
-          fontSize: "0.9375rem",
-          fontWeight: 600,
-          color: "#2D2420",
-        }}
-      >
-        No hay servicios disponibles
-      </p>
-      <p style={{ fontSize: "0.8125rem", color: "#9C8E85" }}>
-        Contacta al salón directamente
-      </p>
+      <p className="ss-empty-title">Sin servicios disponibles</p>
+      <p className="ss-empty-sub">Contacta al salón directamente</p>
     </div>
   );
 }
 
 // ─── Service Card ─────────────────────────────────────────────────────────────
-
 interface ServiceCardProps {
   service: ServicePublicData;
   primaryColor: string;
@@ -91,158 +285,55 @@ function ServiceCard({
   index,
   onSelect,
 }: ServiceCardProps) {
+  const emoji = getServiceEmoji(service.name);
+
   return (
     <motion.button
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.07 + 0.1 }}
-      onClick={() => onSelect(service as SelectedService)}
-      whileHover={{ scale: 1.015, y: -2 }}
+      transition={{ duration: 0.32, delay: index * 0.07 + 0.08 }}
       whileTap={{ scale: 0.985 }}
-      style={{
-        width: "100%",
-        textAlign: "left",
-        background: "#fff",
-        border: "1.5px solid #EDE8E3",
-        borderRadius: 18,
-        padding: "16px 18px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        transition: "border-color 0.2s, box-shadow 0.2s",
-        fontFamily: "inherit",
-        position: "relative",
-        overflow: "hidden",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = `${primaryColor}60`;
-        e.currentTarget.style.boxShadow = `0 4px 20px ${primaryColor}14`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#EDE8E3";
-        e.currentTarget.style.boxShadow = "none";
-      }}
+      onClick={() => onSelect(service as SelectedService)}
+      className="ss-card"
     >
-      {/* Acento de color en el borde izquierdo */}
+      {/* Acento izquierdo */}
       <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: "20%",
-          bottom: "20%",
-          width: 3,
-          borderRadius: "0 3px 3px 0",
-          backgroundColor: primaryColor,
-          opacity: 0.7,
-        }}
+        className="ss-card-accent"
+        style={{ backgroundColor: primaryColor }}
       />
 
-      {/* Ícono */}
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 14,
-          backgroundColor: `${primaryColor}12`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        <Scissors size={20} style={{ color: primaryColor }} />
+      {/* Ícono emoji */}
+      <div className="ss-icon" style={{ background: `${primaryColor}16` }}>
+        {emoji}
       </div>
 
-      {/* Info central */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Nombre */}
-        <p
-          style={{
-            fontSize: "0.9375rem",
-            fontWeight: 600,
-            color: "#2D2420",
-            lineHeight: 1.3,
-            marginBottom: service.description ? 3 : 6,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {service.name}
-        </p>
+      {/* Info */}
+      <div className="ss-info">
+        <p className="ss-name">{service.name}</p>
 
-        {/* Descripción — máx 1 línea */}
         {service.description && (
-          <p
-            style={{
-              fontSize: "0.75rem",
-              color: "#9C8E85",
-              marginBottom: 8,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {service.description}
-          </p>
+          <p className="ss-description">{service.description}</p>
         )}
 
-        {/* Meta: duración + precio */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Duración */}
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: "0.75rem",
-              color: "#9C8E85",
-            }}
-          >
+        <div className="ss-meta">
+          <span className="ss-duration">
             <Clock size={11} />
             {formatDuration(service.duration_minutes)}
           </span>
-
-          {/* Separador */}
-          <span
-            style={{
-              width: 3,
-              height: 3,
-              borderRadius: "50%",
-              backgroundColor: "#C4B8B0",
-            }}
-          />
-
-          {/* Precio — destacado con color de marca */}
-          <span
-            style={{
-              fontSize: "0.875rem",
-              fontWeight: 700,
-              color: primaryColor,
-            }}
-          >
+          <span className="ss-dot" />
+          <span className="ss-price" style={{ color: primaryColor }}>
             {formatPrice(service.price)}
           </span>
         </div>
       </div>
 
-      {/* Flecha derecha */}
-      <ChevronRight
-        size={18}
-        style={{
-          color: primaryColor,
-          opacity: 0.5,
-          flexShrink: 0,
-          transition: "opacity 0.15s, transform 0.15s",
-        }}
-      />
+      {/* Flecha */}
+      <ChevronRight size={18} className="ss-arrow" />
     </motion.button>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function ServiceSelector({
   services,
   primaryColor,
@@ -251,61 +342,39 @@ export default function ServiceSelector({
   const activeServices = services.filter((s) => s !== null);
 
   if (activeServices.length === 0) {
-    return <EmptyServices primaryColor={primaryColor} />;
+    return (
+      <>
+        <style>{styles}</style>
+        <EmptyServices primaryColor={primaryColor} />
+      </>
+    );
   }
 
   return (
-    <div>
+    <>
+      <style>{styles}</style>
+
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        style={{ marginBottom: 20 }}
+        transition={{ duration: 0.3 }}
+        className="ss-header"
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 4,
-          }}
-        >
-          <Sparkles size={14} style={{ color: primaryColor }} />
-          <p
-            style={{
-              fontSize: "0.6875rem",
-              fontWeight: 600,
-              color: primaryColor,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
-          >
+        <div className="ss-eyebrow">
+          <Sparkles size={11} color={primaryColor} />
+          <span className="ss-eyebrow-text">
             {activeServices.length}{" "}
             {activeServices.length === 1
               ? "servicio disponible"
               : "servicios disponibles"}
-          </p>
+          </span>
         </div>
-
-        <h2
-          style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            fontSize: "1.625rem",
-            fontWeight: 600,
-            color: "#2D2420",
-            lineHeight: 1.2,
-            marginBottom: 4,
-          }}
-        >
-          ¿Qué servicio deseas?
-        </h2>
-        <p style={{ fontSize: "0.8125rem", color: "#9C8E85" }}>
-          Selecciona uno para elegir fecha y hora
-        </p>
+        <h2 className="ss-title">¿Qué servicio deseas?</h2>
+        <p className="ss-subtitle">Selecciona uno para continuar</p>
       </motion.div>
 
-      {/* Lista de servicios */}
+      {/* Lista */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {activeServices.map((service, index) => (
           <ServiceCard
@@ -317,6 +386,6 @@ export default function ServiceSelector({
           />
         ))}
       </div>
-    </div>
+    </>
   );
 }

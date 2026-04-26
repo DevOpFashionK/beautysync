@@ -1,26 +1,41 @@
 "use client";
 
 // components/booking/BookingWidget.tsx
-// Fase 8.1 — Stepper numerado, layout mejorado, footer removido (vive en page.tsx)
+// Fase 8.1 v2 — Stepper y layout adaptados a la estética oscura premium
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Check } from "lucide-react";
 import dynamic from "next/dynamic";
 
 import ServiceSelector from "@/components/booking/ServiceSelector";
 import BookingForm from "@/components/booking/BookingForm";
 import BookingConfirmation from "@/components/booking/BookingConfirmation";
 
-// TimeSlotPicker usa new Date() en el render — cargarlo solo en cliente
-// elimina el hydration mismatch de raíz.
 const TimeSlotPicker = dynamic(
   () => import("@/components/booking/TimeSlotPicker"),
   {
     ssr: false,
     loading: () => (
-      <div className="flex items-center justify-center h-48">
-        <div className="w-6 h-6 rounded-full border-2 border-[#EDE8E3] border-t-[#C4B8B0] animate-spin" />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: 192,
+        }}
+      >
+        <div
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: "50%",
+            border: "2px solid rgba(255,255,255,0.08)",
+            borderTopColor: "rgba(255,255,255,0.3)",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     ),
   },
@@ -39,7 +54,6 @@ interface BookingWidgetProps {
   services: ServicePublicData[];
 }
 
-// Pasos del flujo — "confirmation" se excluye del stepper visual
 const STEPS_ORDER: BookingStep[] = ["service", "date", "form", "confirmation"];
 
 const STEP_LABELS: Record<Exclude<BookingStep, "confirmation">, string> = {
@@ -50,16 +64,127 @@ const STEP_LABELS: Record<Exclude<BookingStep, "confirmation">, string> = {
 
 const slideVariants = {
   enter: (direction: number) => ({
-    x: direction > 0 ? 40 : -40,
+    x: direction > 0 ? 48 : -48,
     opacity: 0,
   }),
   center: { x: 0, opacity: 1 },
   exit: (direction: number) => ({
-    x: direction > 0 ? -40 : 40,
+    x: direction > 0 ? -48 : 48,
     opacity: 0,
   }),
 };
 
+// ─── Estilos del stepper ──────────────────────────────────────────────────────
+const stepperStyles = `
+  .bw-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    gap: 8px;
+  }
+
+  .bw-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .bw-step {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .bw-step-circle {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .bw-step-circle.done {
+    background: var(--color-brand);
+    border: none;
+  }
+
+  .bw-step-circle.active {
+    background: var(--color-brand);
+    border: none;
+    box-shadow: 0 0 16px color-mix(in srgb, var(--color-brand) 50%, transparent);
+  }
+
+  .bw-step-circle.pending {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .bw-step-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    transition: color 0.2s;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .bw-step-label.active  { color: rgba(245,242,238,0.95); }
+  .bw-step-label.done    { color: rgba(245,242,238,0.45); }
+  .bw-step-label.pending { color: rgba(245,242,238,0.25); }
+
+  .bw-connector {
+    flex: 1;
+    height: 1.5px;
+    min-width: 12px;
+    max-width: 32px;
+    border-radius: 2px;
+    transition: background-color 0.4s ease;
+    margin: 0 4px;
+  }
+
+  .bw-connector.done    { background: var(--color-brand); }
+  .bw-connector.pending { background: rgba(255,255,255,0.08); }
+
+  .bw-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.07);
+    margin-bottom: 24px;
+  }
+
+  .bw-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(245,242,238,0.4);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+    font-family: var(--font-jakarta), sans-serif;
+  }
+
+  .bw-back-btn:hover {
+    background: rgba(255,255,255,0.06);
+    color: rgba(245,242,238,0.8);
+  }
+`;
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function BookingWidget({ salon, services }: BookingWidgetProps) {
   const primaryColor = salon.primary_color || "#D4375F";
 
@@ -90,7 +215,7 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
     if (idx > 0) goTo(STEPS_ORDER[idx - 1]);
   }, [step, goTo]);
 
-  // ── Handlers de cada paso ───────────────────────────────────────────────────
+  // ── Handlers ────────────────────────────────────────────────────────────────
   const handleServiceSelect = useCallback(
     (service: SelectedService) => {
       setSelectedService(service);
@@ -169,169 +294,104 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
   const currentStepIndex = STEPS_ORDER.indexOf(step);
   const showBack = step !== "service" && step !== "confirmation";
   const showStepper = step !== "confirmation";
-
-  // Pasos visibles en el stepper (excluye confirmation)
   const visibleSteps = STEPS_ORDER.filter(
     (s) => s !== "confirmation",
   ) as Exclude<BookingStep, "confirmation">[];
 
   return (
-    <div>
-      {/* ── Stepper numerado ── */}
+    <>
+      <style>{stepperStyles}</style>
+
+      {/* ── Stepper ── */}
       {showStepper && (
-        <div className="mb-7">
-          {/* Fila: stepper + botón volver */}
-          <div className="flex items-center justify-between gap-3">
-            {/* Steps */}
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              {visibleSteps.map((s, idx) => {
-                const stepNumber = idx + 1;
-                const isActive = s === step;
-                const isDone = STEPS_ORDER.indexOf(s) < currentStepIndex;
+        <div className="bw-stepper">
+          {/* Steps con conectores */}
+          <div className="bw-steps">
+            {visibleSteps.map((s, idx) => {
+              const isActive = s === step;
+              const isDone = STEPS_ORDER.indexOf(s) < currentStepIndex;
+              const isPending = !isActive && !isDone;
+              const stateClass = isActive
+                ? "active"
+                : isDone
+                  ? "done"
+                  : "pending";
+              const isLast = idx === visibleSteps.length - 1;
 
-                return (
-                  <div key={s} className="flex items-center gap-2 min-w-0">
-                    {/* Número + label */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Círculo numerado */}
-                      <motion.div
-                        animate={{
-                          backgroundColor:
-                            isDone || isActive ? primaryColor : "#EDE8E3",
-                          scale: isActive ? 1.1 : 1,
-                        }}
-                        transition={{ duration: 0.25 }}
-                        style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {isDone ? (
-                          // Checkmark cuando el paso está completo
-                          <svg
-                            width="11"
-                            height="11"
-                            viewBox="0 0 11 11"
-                            fill="none"
-                          >
-                            <path
-                              d="M2 5.5L4.5 8L9 3"
-                              stroke="#fff"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        ) : (
-                          <span
-                            style={{
-                              fontSize: "10px",
-                              fontWeight: 700,
-                              color: isActive ? "#fff" : "#C4B8B0",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {stepNumber}
-                          </span>
-                        )}
-                      </motion.div>
-
-                      {/* Label — solo visible en el paso activo en mobile */}
-                      <span
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: isActive ? 600 : 400,
-                          color: isActive
-                            ? "#2D2420"
-                            : isDone
-                              ? "#9C8E85"
-                              : "#C4B8B0",
-                          transition: "color 0.2s",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {STEP_LABELS[s]}
-                      </span>
-                    </div>
-
-                    {/* Línea conectora — no después del último */}
-                    {idx < visibleSteps.length - 1 && (
-                      <motion.div
-                        animate={{
-                          backgroundColor: isDone ? primaryColor : "#EDE8E3",
-                        }}
-                        transition={{ duration: 0.3 }}
-                        style={{
-                          flex: 1,
-                          height: 2,
-                          borderRadius: 2,
-                          minWidth: 12,
-                        }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Botón volver — alineado a la derecha */}
-            <AnimatePresence>
-              {showBack && (
-                <motion.button
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 8 }}
-                  onClick={goBack}
+              return (
+                <div
+                  key={s}
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 4,
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    color: "#9C8E85",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "6px 10px",
-                    borderRadius: 8,
-                    flexShrink: 0,
-                    transition: "background 0.15s, color 0.15s",
-                    fontFamily: "inherit",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#FAF8F5";
-                    e.currentTarget.style.color = "#2D2420";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "none";
-                    e.currentTarget.style.color = "#9C8E85";
+                    flex: isLast ? 0 : 1,
+                    minWidth: 0,
                   }}
                 >
-                  <ChevronLeft size={14} />
-                  Volver
-                </motion.button>
-              )}
-            </AnimatePresence>
+                  {/* Círculo + label */}
+                  <div className="bw-step">
+                    <motion.div
+                      className={`bw-step-circle ${stateClass}`}
+                      animate={{
+                        scale: isActive ? 1.08 : 1,
+                      }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      {isDone ? (
+                        <Check size={12} color="#fff" strokeWidth={3} />
+                      ) : (
+                        <span
+                          style={{
+                            color: isActive ? "#fff" : "rgba(245,242,238,0.25)",
+                          }}
+                        >
+                          {idx + 1}
+                        </span>
+                      )}
+                    </motion.div>
+
+                    <span className={`bw-step-label ${stateClass}`}>
+                      {STEP_LABELS[s]}
+                    </span>
+                  </div>
+
+                  {/* Conector — no después del último */}
+                  {!isLast && (
+                    <div
+                      className={`bw-connector ${isDone ? "done" : "pending"}`}
+                      style={{ flex: 1 }}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Divider bajo el stepper */}
-          <div
-            style={{
-              height: 1,
-              backgroundColor: "#EDE8E3",
-              marginTop: 16,
-            }}
-          />
+          {/* Botón volver */}
+          <AnimatePresence>
+            {showBack && (
+              <motion.button
+                key="back"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.2 }}
+                onClick={goBack}
+                className="bw-back-btn"
+              >
+                <ChevronLeft size={14} />
+                Volver
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
+      {/* Divider bajo el stepper */}
+      {showStepper && <div className="bw-divider" />}
+
       {/* ── Contenido del paso activo ── */}
-      <div style={{ position: "relative", overflow: "hidden", minHeight: 380 }}>
+      <div style={{ position: "relative", overflow: "hidden", minHeight: 360 }}>
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={step}
@@ -340,7 +400,7 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
           >
             {step === "service" && (
               <ServiceSelector
@@ -386,6 +446,6 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
           </motion.div>
         </AnimatePresence>
       </div>
-    </div>
+    </>
   );
 }
