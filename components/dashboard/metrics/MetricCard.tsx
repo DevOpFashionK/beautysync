@@ -2,24 +2,33 @@
 
 // components/dashboard/metrics/MetricCard.tsx
 //
-// Card KPI reutilizable para el dashboard de métricas.
-// Muestra: ícono, label, valor principal, y delta opcional (% vs periodo anterior).
+// FIX: Los íconos se pasan como string identifier, no como componente función.
+// Next.js 16 no permite pasar funciones (LucideIcon) desde Server Components
+// a Client Components a través del boundary servidor→cliente.
 //
-// Props:
-//   - icon: componente lucide-react
-//   - label: texto descriptivo del KPI
-//   - value: valor principal (string — ya formateado por el padre)
-//   - delta: número opcional — positivo = verde ▲, negativo = rojo ▼, null = sin delta
-//   - deltaLabel: texto junto al delta (ej: "vs mes anterior")
-//   - primaryColor: color de acento del salón
-//   - index: posición — controla el delay de la animación de entrada
-//   - loading: muestra skeleton si true
+// El Server Component pasa: icon="calendar"
+// MetricCard resuelve internamente: "calendar" → <CalendarDays />
 
 import { motion } from "framer-motion";
+import { CalendarDays, DollarSign, UserPlus, TrendingDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+// ─── Map de íconos disponibles ────────────────────────────────────────────────
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  calendar: CalendarDays,
+  dollar: DollarSign,
+  "user-plus": UserPlus,
+  "trending-down": TrendingDown,
+};
+
+export type MetricIconKey = keyof typeof ICON_MAP;
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface MetricCardProps {
-  icon: LucideIcon;
+  /** String identifier del ícono — ver ICON_MAP */
+  icon: MetricIconKey;
   label: string;
   value: string;
   delta?: number | null;
@@ -27,7 +36,6 @@ interface MetricCardProps {
   primaryColor: string;
   index?: number;
   loading?: boolean;
-  /** Ancho del skeleton del valor — default "w-16" */
   skeletonWidth?: string;
 }
 
@@ -48,22 +56,18 @@ function MetricCardSkeleton({
       className="rounded-2xl p-5 animate-pulse"
       style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
     >
-      {/* Ícono placeholder */}
       <div
         className="w-9 h-9 rounded-xl mb-4"
         style={{ background: "#F3EDE8" }}
       />
-      {/* Label placeholder */}
       <div
         className="h-3 rounded-lg w-24 mb-3"
         style={{ background: "#F3EDE8" }}
       />
-      {/* Valor placeholder */}
       <div
         className={`h-8 rounded-lg ${skeletonWidth} mb-2`}
         style={{ background: "#F3EDE8" }}
       />
-      {/* Delta placeholder */}
       <div className="h-3 rounded-lg w-20" style={{ background: "#F3EDE8" }} />
     </motion.div>
   );
@@ -78,14 +82,13 @@ function DeltaBadge({
   delta: number;
   deltaLabel?: string;
 }) {
-  const isPositive = delta >= 0;
   const isZero = delta === 0;
+  const isPositive = delta > 0;
 
   const color = isZero ? "#9C8E85" : isPositive ? "#065F46" : "#B91C1C";
   const bg = isZero ? "#F3EDE8" : isPositive ? "#D1FAE5" : "#FEE2E2";
   const arrow = isZero ? "→" : isPositive ? "▲" : "▼";
-  const sign = isPositive && !isZero ? "+" : "";
-  const label = Math.abs(delta).toFixed(0);
+  const sign = isPositive ? "+" : "";
 
   return (
     <div className="flex items-center gap-1.5 mt-2 flex-wrap">
@@ -95,7 +98,7 @@ function DeltaBadge({
       >
         <span style={{ fontSize: "0.6rem" }}>{arrow}</span>
         {sign}
-        {label}%
+        {Math.abs(delta).toFixed(0)}%
       </span>
       {deltaLabel && (
         <span className="text-xs" style={{ color: "#C4B8B0" }}>
@@ -109,7 +112,7 @@ function DeltaBadge({
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function MetricCard({
-  icon: Icon,
+  icon,
   label,
   value,
   delta,
@@ -123,6 +126,9 @@ export default function MetricCard({
     return <MetricCardSkeleton index={index} skeletonWidth={skeletonWidth} />;
   }
 
+  // Resolver ícono desde el string — fallback a CalendarDays si no existe
+  const Icon = ICON_MAP[icon] ?? CalendarDays;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -131,7 +137,7 @@ export default function MetricCard({
       className="rounded-2xl p-5"
       style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
     >
-      {/* Ícono con acento del salón */}
+      {/* Ícono */}
       <div
         className="w-9 h-9 rounded-xl flex items-center justify-center mb-4"
         style={{ background: `${primaryColor}14` }}

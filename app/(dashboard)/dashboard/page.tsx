@@ -2,19 +2,12 @@
 //
 // Fase 8.2 — Dashboard con métricas y estadísticas
 //
+// FIX: MetricCard recibe icon como string identifier ("calendar", "dollar", etc.)
+// en vez de componente función (CalendarDays, DollarSign).
+// Next.js 16 no permite pasar funciones desde Server → Client Components.
+//
 // Server Component puro — todas las queries corren en servidor.
 // Client Components solo para interactividad (gráficas, animaciones).
-//
-// Queries ejecutadas en paralelo con Promise.all():
-//   1. Datos del salón + suscripción + perfil
-//   2. Citas del mes actual (con servicio)
-//   3. Citas del mes anterior (solo conteo)
-//   4. Citas de los últimos 90 días (para heatmap)
-//   5. Citas de las últimas 8 semanas (para gráfica)
-//
-// TIMEZONE: America/El_Salvador (UTC-6) — siempre usando nowSV
-// IDOR: todas las queries filtran por salon_id del usuario autenticado
-// NUNCA exponer SUPABASE_SERVICE_ROLE_KEY al cliente
 
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
@@ -37,55 +30,32 @@ import type { WeeklyDataPoint } from "@/components/dashboard/metrics/Appointment
 import type { WeekdayDataPoint } from "@/components/dashboard/metrics/WeekdayHeatmap";
 import type { TopServiceDataPoint } from "@/components/dashboard/metrics/TopServices";
 
-import { CalendarDays, DollarSign, UserPlus, TrendingDown } from "lucide-react";
-
 export const metadata: Metadata = { title: "Dashboard — BeautySync" };
 export const dynamic = "force-dynamic";
 
 // ─── Helpers de timezone ──────────────────────────────────────────────────────
 
-/**
- * Retorna un Date en timezone America/El_Salvador.
- * NUNCA usar new Date() directamente — regla crítica del proyecto.
- */
 function getNowSV(): Date {
   return new Date(
     new Date().toLocaleString("en-US", { timeZone: "America/El_Salvador" }),
   );
 }
 
-/**
- * Retorna el inicio del mes actual en UTC como ISO string.
- * Ej: si es 26 abril 2026 en SV → "2026-04-01T06:00:00.000Z" (UTC-6)
- */
 function getMonthRange(offsetMonths = 0): { start: string; end: string } {
   const now = getNowSV();
   const year = now.getFullYear();
   const month = now.getMonth() + offsetMonths;
-
-  // Inicio: día 1 del mes a las 00:00 SV = 06:00 UTC
   const start = new Date(Date.UTC(year, month, 1, 6, 0, 0));
-  // Fin: día 1 del mes siguiente a las 00:00 SV
   const end = new Date(Date.UTC(year, month + 1, 1, 6, 0, 0));
-
-  return {
-    start: start.toISOString(),
-    end: end.toISOString(),
-  };
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
-/**
- * Retorna ISO string de hace N días desde ahora (SV).
- */
 function daysAgoISO(days: number): string {
   const now = getNowSV();
   now.setDate(now.getDate() - days);
   return now.toISOString();
 }
 
-/**
- * Retorna el número de semana ISO (1–53) de una fecha.
- */
 function getISOWeek(date: Date): number {
   const d = new Date(date.getTime());
   d.setHours(0, 0, 0, 0);
@@ -102,9 +72,6 @@ function getISOWeek(date: Date): number {
   );
 }
 
-/**
- * Retorna "YYYY-Www" como clave única de semana.
- */
 function getWeekKey(date: Date): string {
   const d = new Date(date.getTime());
   d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
@@ -129,19 +96,12 @@ interface AppointmentWithService {
 
 // ─── Cálculo de métricas ──────────────────────────────────────────────────────
 
-/**
- * Ingresos estimados: suma de price de citas confirmed + completed.
- */
 function calcRevenue(appointments: AppointmentWithService[]): number {
   return appointments
     .filter((a) => a.status === "confirmed" || a.status === "completed")
     .reduce((sum, a) => sum + (a.services?.price ?? 0), 0);
 }
 
-/**
- * Clientas nuevas del mes: emails que NO aparecen en el mes anterior.
- * Compara client_email del mes actual vs mes anterior.
- */
 function calcNewClients(
   currentAppts: AppointmentWithService[],
   previousAppts: AppointmentWithService[],
@@ -157,34 +117,21 @@ function calcNewClients(
   return newEmails.size;
 }
 
-/**
- * Tasa de cancelación del mes (%).
- */
 function calcCancellationRate(appointments: AppointmentWithService[]): number {
   if (!appointments.length) return 0;
   const cancelled = appointments.filter((a) => a.status === "cancelled").length;
   return Math.round((cancelled / appointments.length) * 100);
 }
 
-/**
- * Delta porcentual entre dos números (mes actual vs mes anterior).
- * Retorna null si no hay datos previos suficientes.
- */
 function calcDelta(current: number, previous: number): number | null {
   if (previous === 0) return null;
   return Math.round(((current - previous) / previous) * 100);
 }
 
-/**
- * Top 5 servicios del mes por cantidad de citas.
- */
 function calcTopServices(
   appointments: AppointmentWithService[],
 ): TopServiceDataPoint[] {
-  // Solo citas no canceladas
   const active = appointments.filter((a) => a.status !== "cancelled");
-
-  // Agrupar por servicio
   const map = new Map<
     string,
     { id: string; name: string; count: number; revenue: number }
@@ -209,7 +156,6 @@ function calcTopServices(
   const sorted = Array.from(map.values())
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
-
   const maxCount = sorted[0]?.count ?? 1;
 
   return sorted.map((s, i) => ({
@@ -222,14 +168,10 @@ function calcTopServices(
   }));
 }
 
-/**
- * Datos del heatmap: citas por día de semana (últimos 90 días).
- * day_of_week: 0 = Domingo en JS, pero mostramos Lun→Dom.
- */
 function calcWeekdayHeatmap(
   appointments: AppointmentWithService[],
 ): WeekdayDataPoint[] {
-  const DAYS: Array<{ day: string; dayFull: string; jsDay: number }> = [
+  const DAYS = [
     { day: "Lun", dayFull: "Lunes", jsDay: 1 },
     { day: "Mar", dayFull: "Martes", jsDay: 2 },
     { day: "Mié", dayFull: "Miércoles", jsDay: 3 },
@@ -239,13 +181,10 @@ function calcWeekdayHeatmap(
     { day: "Dom", dayFull: "Domingo", jsDay: 0 },
   ];
 
-  // Contar por día de semana — solo citas no canceladas
   const counts = new Array(7).fill(0);
   for (const appt of appointments) {
     if (appt.status === "cancelled" || !appt.scheduled_at) continue;
-    const date = new Date(appt.scheduled_at);
-    const jsDay = date.getDay(); // 0 = Dom
-    // Mapear jsDay a índice en DAYS (Lun=0 ... Dom=6)
+    const jsDay = new Date(appt.scheduled_at).getDay();
     const idx = DAYS.findIndex((d) => d.jsDay === jsDay);
     if (idx !== -1) counts[idx]++;
   }
@@ -261,16 +200,12 @@ function calcWeekdayHeatmap(
   }));
 }
 
-/**
- * Datos de la gráfica de barras: citas por semana (últimas 8 semanas).
- */
 function calcWeeklyChart(
   appointments: AppointmentWithService[],
 ): WeeklyDataPoint[] {
   const now = getNowSV();
   const currentKey = getWeekKey(now);
 
-  // Construir mapa de las últimas 8 semanas
   const weeksMap = new Map<
     string,
     {
@@ -288,7 +223,6 @@ function calcWeeklyChart(
     const key = getWeekKey(d);
     const week = getISOWeek(d);
     const label = key === currentKey ? "Esta" : `S${week}`;
-
     if (!weeksMap.has(key)) {
       weeksMap.set(key, {
         weekLabel: label,
@@ -300,11 +234,9 @@ function calcWeeklyChart(
     }
   }
 
-  // Rellenar con citas reales — solo no canceladas
   for (const appt of appointments) {
     if (appt.status === "cancelled" || !appt.scheduled_at) continue;
-    const date = new Date(appt.scheduled_at);
-    const key = getWeekKey(date);
+    const key = getWeekKey(new Date(appt.scheduled_at));
     const week = weeksMap.get(key);
     if (!week) continue;
     week.citas += 1;
@@ -313,14 +245,9 @@ function calcWeeklyChart(
     }
   }
 
-  // Retornar en orden cronológico (más antigua → más reciente)
   return Array.from(weeksMap.values());
 }
 
-/**
- * Formatea un número como moneda SV.
- * Ej: 1234.5 → "$1,234.50"
- */
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -342,13 +269,13 @@ export default async function DashboardPage({
   const supabase = await createServerSupabaseClient();
   const params = await searchParams;
 
-  // ── Auth ────────────────────────────────────────────────────────────────────
+  // Auth
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // ── Datos básicos del salón ─────────────────────────────────────────────────
+  // Datos básicos
   const [{ data: salon }, { data: profile }] = await Promise.all([
     supabase
       .from("salons")
@@ -370,21 +297,19 @@ export default async function DashboardPage({
     .eq("salon_id", salon.id)
     .single();
 
-  // ── Rangos de fecha ─────────────────────────────────────────────────────────
-  const currentMonth = getMonthRange(0); // mes actual
-  const previousMonth = getMonthRange(-1); // mes anterior
+  // Rangos de fecha
+  const currentMonth = getMonthRange(0);
+  const previousMonth = getMonthRange(-1);
   const ninetyDaysAgo = daysAgoISO(90);
-  const fiftyDaysAgo = daysAgoISO(56); // ~8 semanas
+  const fiftyDaysAgo = daysAgoISO(56);
 
-  // ── Queries en paralelo ─────────────────────────────────────────────────────
-  // IDOR: todas filtran por salon.id — nunca por user.id directamente
+  // Queries en paralelo — todas filtradas por salon.id (IDOR prevention)
   const [
     { data: currentAppts },
     { data: previousAppts },
     { data: ninetyDayAppts },
     { data: weeklyAppts },
   ] = await Promise.all([
-    // Citas del mes actual con datos del servicio
     supabase
       .from("appointments")
       .select(
@@ -394,7 +319,6 @@ export default async function DashboardPage({
       .gte("scheduled_at", currentMonth.start)
       .lt("scheduled_at", currentMonth.end),
 
-    // Citas del mes anterior — solo lo necesario para comparar
     supabase
       .from("appointments")
       .select(
@@ -404,14 +328,12 @@ export default async function DashboardPage({
       .gte("scheduled_at", previousMonth.start)
       .lt("scheduled_at", previousMonth.end),
 
-    // Últimos 90 días para el heatmap
     supabase
       .from("appointments")
       .select("id, salon_id, scheduled_at, status")
       .eq("salon_id", salon.id)
       .gte("scheduled_at", ninetyDaysAgo),
 
-    // Últimas ~8 semanas para la gráfica
     supabase
       .from("appointments")
       .select("id, salon_id, scheduled_at, status, services(id, name, price)")
@@ -419,17 +341,14 @@ export default async function DashboardPage({
       .gte("scheduled_at", fiftyDaysAgo),
   ]);
 
-  // ── markPastAppointmentsAsNoShow ────────────────────────────────────────────
-  // Corre después de las queries para no bloquear la carga principal
   await markPastAppointmentsAsNoShow(salon.id);
 
-  // ── Calcular métricas ───────────────────────────────────────────────────────
+  // Calcular métricas
   const safeCurrentAppts = (currentAppts ?? []) as AppointmentWithService[];
   const safePreviousAppts = (previousAppts ?? []) as AppointmentWithService[];
   const safeNinetyAppts = (ninetyDayAppts ?? []) as AppointmentWithService[];
   const safeWeeklyAppts = (weeklyAppts ?? []) as AppointmentWithService[];
 
-  // KPIs del mes
   const citasCurrentMonth = safeCurrentAppts.filter(
     (a) => a.status !== "cancelled",
   ).length;
@@ -440,22 +359,17 @@ export default async function DashboardPage({
   const revenuePreviousMonth = calcRevenue(safePreviousAppts);
   const newClients = calcNewClients(safeCurrentAppts, safePreviousAppts);
   const cancellationRate = calcCancellationRate(safeCurrentAppts);
-
-  // Deltas (% vs mes anterior)
   const citasDelta = calcDelta(citasCurrentMonth, citasPreviousMonth);
   const revenueDelta = calcDelta(revenueCurrentMonth, revenuePreviousMonth);
 
-  // Componentes de visualización
   const topServices = calcTopServices(safeCurrentAppts);
   const weekdayData = calcWeekdayHeatmap(safeNinetyAppts);
   const weeklyData = calcWeeklyChart(safeWeeklyAppts);
 
-  // Datos de UI
   const isWelcome = params.welcome === "true";
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
   const primaryColor = salon.primary_color ?? "#D4375F";
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#FAF8F5]">
       <div className="max-w-5xl mx-auto px-6 pt-8 pb-16 md:px-10 flex flex-col gap-8">
@@ -476,7 +390,7 @@ export default async function DashboardPage({
           primaryColor={primaryColor}
         />
 
-        {/* ── Sección: KPIs del mes ────────────────────────────────────────── */}
+        {/* ── KPIs del mes ─────────────────────────────────────────────────── */}
         <section>
           <p
             className="text-xs font-semibold uppercase tracking-widest mb-4"
@@ -486,8 +400,9 @@ export default async function DashboardPage({
           </p>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* FIX: icon como string — no función */}
             <MetricCard
-              icon={CalendarDays}
+              icon="calendar"
               label="Citas"
               value={String(citasCurrentMonth)}
               delta={citasDelta}
@@ -496,7 +411,7 @@ export default async function DashboardPage({
               index={0}
             />
             <MetricCard
-              icon={DollarSign}
+              icon="dollar"
               label="Ingresos estimados"
               value={formatCurrency(revenueCurrentMonth)}
               delta={revenueDelta}
@@ -506,14 +421,14 @@ export default async function DashboardPage({
               skeletonWidth="w-24"
             />
             <MetricCard
-              icon={UserPlus}
+              icon="user-plus"
               label="Clientas nuevas"
               value={String(newClients)}
               primaryColor={primaryColor}
               index={2}
             />
             <MetricCard
-              icon={TrendingDown}
+              icon="trending-down"
               label="Cancelaciones"
               value={`${cancellationRate}%`}
               primaryColor={primaryColor}
@@ -522,12 +437,12 @@ export default async function DashboardPage({
           </div>
         </section>
 
-        {/* ── Sección: Agenda de hoy ──────────────────────────────────────── */}
+        {/* ── Agenda de hoy ─────────────────────────────────────────────────── */}
         <section>
           <TodayAppointments salonId={salon.id} />
         </section>
 
-        {/* ── Sección: Gráfica + Heatmap ──────────────────────────────────── */}
+        {/* ── Gráfica + Heatmap ────────────────────────────────────────────── */}
         <section>
           <p
             className="text-xs font-semibold uppercase tracking-widest mb-4"
@@ -548,7 +463,7 @@ export default async function DashboardPage({
           </div>
         </section>
 
-        {/* ── Sección: Servicios más populares ────────────────────────────── */}
+        {/* ── Servicios más populares ──────────────────────────────────────── */}
         <section>
           <p
             className="text-xs font-semibold uppercase tracking-widest mb-4"
