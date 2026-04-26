@@ -76,13 +76,12 @@ const slideVariants = {
 
 // ─── Estilos del stepper ──────────────────────────────────────────────────────
 const stepperStyles = `
-  .bw-stepper {
+.bw-stepper {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   margin-bottom: 28px;
   gap: 4px;
-  overflow: hidden;
+  width: 100%;
 }
 
   .bw-steps {
@@ -313,15 +312,32 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
     <>
       <style>{stepperStyles}</style>
 
-      {/* ── Stepper ── */}
+      {/* ── Botón volver — fila propia encima del stepper ── */}
+      <AnimatePresence>
+        {showBack && (
+          <motion.button
+            key="back"
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.2 }}
+            onClick={goBack}
+            className="bw-back-btn"
+            style={{ marginBottom: 12, padding: "4px 0" }}
+          >
+            <ChevronLeft size={14} />
+            Volver
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* ── Stepper — solo números y conectores ── */}
       {showStepper && (
         <div className="bw-stepper">
-          {/* Steps con conectores */}
           <div className="bw-steps">
             {visibleSteps.map((s, idx) => {
               const isActive = s === step;
               const isDone = STEPS_ORDER.indexOf(s) < currentStepIndex;
-              const isPending = !isActive && !isDone;
               const stateClass = isActive
                 ? "active"
                 : isDone
@@ -339,13 +355,10 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
                     minWidth: 0,
                   }}
                 >
-                  {/* Círculo + label */}
                   <div className="bw-step">
                     <motion.div
                       className={`bw-step-circle ${stateClass}`}
-                      animate={{
-                        scale: isActive ? 1.08 : 1,
-                      }}
+                      animate={{ scale: isActive ? 1.08 : 1 }}
                       transition={{ duration: 0.25 }}
                     >
                       {isDone ? (
@@ -366,7 +379,6 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
                     </span>
                   </div>
 
-                  {/* Conector — no después del último */}
                   {!isLast && (
                     <div
                       className={`bw-connector ${isDone ? "done" : "pending"}`}
@@ -377,28 +389,9 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
               );
             })}
           </div>
-
-          {/* Botón volver */}
-          <AnimatePresence>
-            {showBack && (
-              <motion.button
-                key="back"
-                initial={{ opacity: 0, x: 8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 8 }}
-                transition={{ duration: 0.2 }}
-                onClick={goBack}
-                className="bw-back-btn"
-              >
-                <ChevronLeft size={14} />
-                Volver
-              </motion.button>
-            )}
-          </AnimatePresence>
         </div>
       )}
 
-      {/* Divider bajo el stepper */}
       {showStepper && <div className="bw-divider" />}
 
       {/* ── Contenido del paso activo ── */}
