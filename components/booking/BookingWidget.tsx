@@ -1,7 +1,7 @@
 "use client";
 
 // components/booking/BookingWidget.tsx
-// Fase 8.1 v2 — Stepper y layout adaptados a la estética oscura premium
+// Fase 8.1 v2 — Stepper definitivamente corregido
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -63,34 +63,31 @@ const STEP_LABELS: Record<Exclude<BookingStep, "confirmation">, string> = {
 };
 
 const slideVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 48 : -48,
-    opacity: 0,
-  }),
+  enter: (direction: number) => ({ x: direction > 0 ? 48 : -48, opacity: 0 }),
   center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({
-    x: direction > 0 ? -48 : 48,
-    opacity: 0,
-  }),
+  exit: (direction: number) => ({ x: direction > 0 ? -48 : 48, opacity: 0 }),
 };
 
 // ─── Estilos del stepper ──────────────────────────────────────────────────────
 const stepperStyles = `
-.bw-stepper {
-  display: flex;
-  align-items: center;
-  margin-bottom: 28px;
-  gap: 4px;
-  width: 100%;
-  padding-right: 2px;
-}
-
-  .bw-steps {
+  .bw-stepper {
     display: flex;
     align-items: center;
-    gap: 0;
+    width: 100%;
+    margin-bottom: 28px;
+  }
+
+  /* Cada paso ocupa el mismo espacio — flex: 1 en todos */
+  .bw-step-item {
+    display: flex;
+    align-items: center;
     flex: 1;
     min-width: 0;
+  }
+
+  /* El último no necesita conector pero sí ocupa su espacio */
+  .bw-step-item:last-child {
+    flex: 0 0 auto;
   }
 
   .bw-step {
@@ -130,36 +127,28 @@ const stepperStyles = `
     border: 1px solid rgba(255,255,255,0.12);
   }
 
-.bw-step-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  transition: color 0.2s;
-  font-family: var(--font-jakarta), sans-serif;
-  display: block;
-}
+  /* Labels — siempre visibles, color según estado */
+  .bw-step-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    transition: color 0.2s;
+    font-family: var(--font-jakarta), sans-serif;
+  }
 
-.bw-step-label.active {
-  color: rgba(245,242,238,0.95);
-}
+  .bw-step-label.active  { color: rgba(245,242,238,0.95); }
+  .bw-step-label.pending { color: rgba(245,242,238,0.28); }
+  .bw-step-label.done    { display: none; }
 
-.bw-step-label.done {
-  display: none;
-}
-
-.bw-step-label.pending {
-  color: rgba(245,242,238,0.28);
-}
-
+  /* Conector entre pasos */
   .bw-connector {
     flex: 1;
     height: 1.5px;
-    min-width: 12px;
-    max-width: 32px;
+    min-width: 8px;
     border-radius: 2px;
     transition: background-color 0.4s ease;
-    margin: 0 4px;
+    margin: 0 6px;
   }
 
   .bw-connector.done    { background: var(--color-brand); }
@@ -181,15 +170,15 @@ const stepperStyles = `
     background: none;
     border: none;
     cursor: pointer;
-    padding: 6px 10px;
+    padding: 4px 0;
     border-radius: 8px;
     flex-shrink: 0;
-    transition: background 0.15s, color 0.15s;
+    transition: color 0.15s;
     font-family: var(--font-jakarta), sans-serif;
+    margin-bottom: 12px;
   }
 
   .bw-back-btn:hover {
-    background: rgba(255,255,255,0.06);
     color: rgba(245,242,238,0.8);
   }
 `;
@@ -312,7 +301,7 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
     <>
       <style>{stepperStyles}</style>
 
-      {/* ── Botón volver — fila propia encima del stepper ── */}
+      {/* ── Botón volver — fila propia ── */}
       <AnimatePresence>
         {showBack && (
           <motion.button
@@ -323,7 +312,6 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
             transition={{ duration: 0.2 }}
             onClick={goBack}
             className="bw-back-btn"
-            style={{ marginBottom: 12, padding: "4px 0" }}
           >
             <ChevronLeft size={14} />
             Volver
@@ -331,64 +319,55 @@ export default function BookingWidget({ salon, services }: BookingWidgetProps) {
         )}
       </AnimatePresence>
 
-      {/* ── Stepper — solo números y conectores ── */}
+      {/* ── Stepper ── */}
       {showStepper && (
         <div className="bw-stepper">
-          <div className="bw-steps">
-            {visibleSteps.map((s, idx) => {
-              const isActive = s === step;
-              const isDone = STEPS_ORDER.indexOf(s) < currentStepIndex;
-              const stateClass = isActive
-                ? "active"
-                : isDone
-                  ? "done"
-                  : "pending";
-              const isLast = idx === visibleSteps.length - 1;
+          {visibleSteps.map((s, idx) => {
+            const isActive = s === step;
+            const isDone = STEPS_ORDER.indexOf(s) < currentStepIndex;
+            const stateClass = isActive
+              ? "active"
+              : isDone
+                ? "done"
+                : "pending";
+            const isLast = idx === visibleSteps.length - 1;
 
-              return (
-                <div
-                  key={s}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    flex: isLast ? 0 : 1,
-                    minWidth: 0,
-                  }}
-                >
-                  <div className="bw-step">
-                    <motion.div
-                      className={`bw-step-circle ${stateClass}`}
-                      animate={{ scale: isActive ? 1.08 : 1 }}
-                      transition={{ duration: 0.25 }}
-                    >
-                      {isDone ? (
-                        <Check size={12} color="#fff" strokeWidth={3} />
-                      ) : (
-                        <span
-                          style={{
-                            color: isActive ? "#fff" : "rgba(245,242,238,0.25)",
-                          }}
-                        >
-                          {idx + 1}
-                        </span>
-                      )}
-                    </motion.div>
+            return (
+              <div key={s} className="bw-step-item">
+                {/* Círculo + label */}
+                <div className="bw-step">
+                  <motion.div
+                    className={`bw-step-circle ${stateClass}`}
+                    animate={{ scale: isActive ? 1.08 : 1 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    {isDone ? (
+                      <Check size={12} color="#fff" strokeWidth={3} />
+                    ) : (
+                      <span
+                        style={{
+                          color: isActive ? "#fff" : "rgba(245,242,238,0.25)",
+                        }}
+                      >
+                        {idx + 1}
+                      </span>
+                    )}
+                  </motion.div>
 
-                    <span className={`bw-step-label ${stateClass}`}>
-                      {STEP_LABELS[s]}
-                    </span>
-                  </div>
-
-                  {!isLast && (
-                    <div
-                      className={`bw-connector ${isDone ? "done" : "pending"}`}
-                      style={{ flex: 1 }}
-                    />
-                  )}
+                  <span className={`bw-step-label ${stateClass}`}>
+                    {STEP_LABELS[s]}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Conector — no después del último */}
+                {!isLast && (
+                  <div
+                    className={`bw-connector ${isDone ? "done" : "pending"}`}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
