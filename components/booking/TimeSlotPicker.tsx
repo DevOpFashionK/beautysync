@@ -697,11 +697,25 @@ export default function TimeSlotPicker({
                     className={`tsp-slot-btn ${slot.available ? "available" : "unavailable"}`}
                     style={{
                       borderColor: slot.available
-                        ? `${primaryColor}40`
-                        : "rgba(255,255,255,0.06)",
+                        ? "rgba(255,255,255,0.12)"
+                        : "rgba(255,255,255,0.04)",
                       color: slot.available
-                        ? primaryColor
-                        : "rgba(245,242,238,0.25)",
+                        ? "rgba(245,242,238,0.82)"
+                        : "rgba(245,242,238,0.18)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!slot.available) return;
+                      e.currentTarget.style.borderColor = `${primaryColor}60`;
+                      e.currentTarget.style.color = primaryColor;
+                      e.currentTarget.style.background = `${primaryColor}12`;
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!slot.available) return;
+                      e.currentTarget.style.borderColor =
+                        "rgba(255,255,255,0.12)";
+                      e.currentTarget.style.color = "rgba(245,242,238,0.82)";
+                      e.currentTarget.style.background =
+                        "rgba(255,255,255,0.04)";
                     }}
                   >
                     {formatTimeDisplay(slot.time)}
