@@ -1,15 +1,26 @@
 "use client";
 
 // components/booking/BookingForm.tsx
+// Fase 8.1 — Ajustes visuales: consistencia con el sistema de diseño del widget
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { motion } from "framer-motion";
-import { User, Mail, Phone, MessageSquare, Loader2, Calendar, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  User,
+  Mail,
+  Phone,
+  MessageSquare,
+  Loader2,
+  Calendar,
+  Clock,
+  Scissors,
+} from "lucide-react";
 import type { BookingFormData, SelectedService } from "@/types/booking.types";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
-// client_phone aquí guarda solo los 8 dígitos — el prefijo +503 se agrega al enviar
+// client_phone guarda solo los 8 dígitos — el prefijo +503 se agrega al enviar
 const bookingFormSchema = z.object({
   client_name: z
     .string()
@@ -33,9 +44,9 @@ const bookingFormSchema = z.object({
     .or(z.literal("")),
 });
 
-// Tipo interno del form (8 dígitos)
 type FormValues = z.infer<typeof bookingFormSchema>;
 
+// ─── Props ────────────────────────────────────────────────────────────────────
 interface BookingFormProps {
   service: SelectedService;
   selectedDateDisplay: string;
@@ -46,6 +57,7 @@ interface BookingFormProps {
   apiError: string | null;
 }
 
+// ─── FieldWrapper ─────────────────────────────────────────────────────────────
 interface FieldWrapperProps {
   label: string;
   icon: React.ReactNode;
@@ -54,28 +66,67 @@ interface FieldWrapperProps {
   children: React.ReactNode;
 }
 
-function FieldWrapper({ label, icon, error, required, children }: FieldWrapperProps) {
+function FieldWrapper({
+  label,
+  icon,
+  error,
+  required,
+  children,
+}: FieldWrapperProps) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="flex items-center gap-1.5 text-xs font-medium text-[#9C8E85]">
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: "0.75rem",
+          fontWeight: 600,
+          color: "#9C8E85",
+          letterSpacing: "0.02em",
+        }}
+      >
         {icon}
         {label}
-        {required && <span className="text-red-400">*</span>}
+        {required && <span style={{ color: "#EF4444", marginLeft: 1 }}>*</span>}
       </label>
       {children}
-      {error && (
-        <motion.p
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-xs text-red-500"
-        >
-          {error}
-        </motion.p>
-      )}
+      <AnimatePresence>
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, y: -4, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -4, height: 0 }}
+            style={{
+              fontSize: "0.75rem",
+              color: "#EF4444",
+              margin: 0,
+            }}
+          >
+            {error}
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
+// ─── Estilos base de inputs ───────────────────────────────────────────────────
+const inputBase: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 14px",
+  borderRadius: 12,
+  border: "1.5px solid #EDE8E3",
+  backgroundColor: "#FDFCFB",
+  fontSize: "14px",
+  color: "#2D2420",
+  outline: "none",
+  transition: "border-color 0.15s, box-shadow 0.15s, background-color 0.15s",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
+};
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function BookingForm({
   service,
   selectedDateDisplay,
@@ -99,7 +150,7 @@ export default function BookingForm({
     },
   });
 
-  // Al hacer submit, concatenamos +503 antes de pasar al padre
+  // Al hacer submit concatenamos +503 antes de pasar al padre
   const handleFormSubmit = (values: FormValues) => {
     onSubmit({
       ...values,
@@ -107,28 +158,17 @@ export default function BookingForm({
     });
   };
 
-  // Estilos base para inputs — sin outline nativo, ring controlado por inline style
-  const inputBase: React.CSSProperties = {
-    width: "100%",
-    padding: "10px 14px",
-    borderRadius: "12px",
-    border: `1.5px solid #EDE8E3`,
-    backgroundColor: "#fff",
-    fontSize: "14px",
-    color: "#2D2420",
-    outline: "none",
-    transition: "border-color 0.15s, box-shadow 0.15s",
-    boxSizing: "border-box",
-  };
-
+  // Focus/blur handlers para inputs — aplican color de marca
   const focusHandlers = {
     onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       e.currentTarget.style.borderColor = primaryColor;
-      e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}20`;
+      e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
+      e.currentTarget.style.backgroundColor = "#fff";
     },
     onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       e.currentTarget.style.borderColor = "#EDE8E3";
       e.currentTarget.style.boxShadow = "none";
+      e.currentTarget.style.backgroundColor = "#FDFCFB";
     },
   };
 
@@ -138,12 +178,23 @@ export default function BookingForm({
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-5"
+        style={{ marginBottom: 20 }}
       >
-        <h2 className="font-['Cormorant_Garamond'] text-2xl font-semibold text-[#2D2420]">
+        <h2
+          style={{
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontSize: "1.625rem",
+            fontWeight: 600,
+            color: "#2D2420",
+            lineHeight: 1.2,
+            marginBottom: 4,
+          }}
+        >
           Tus datos
         </h2>
-        <p className="text-[#9C8E85] text-sm mt-1">Para confirmar tu reserva</p>
+        <p style={{ fontSize: "0.8125rem", color: "#9C8E85" }}>
+          Para confirmar tu reserva
+        </p>
       </motion.div>
 
       {/* Resumen de la cita */}
@@ -151,38 +202,132 @@ export default function BookingForm({
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="rounded-xl border border-[#EDE8E3] bg-[#FAF8F5] p-3.5 mb-5"
+        style={{
+          borderRadius: 14,
+          border: `1.5px solid ${primaryColor}30`,
+          backgroundColor: `${primaryColor}06`,
+          padding: "14px 16px",
+          marginBottom: 20,
+        }}
       >
-        <p className="text-xs font-medium text-[#9C8E85] mb-2">Tu reserva</p>
-        <p className="font-semibold text-sm" style={{ color: primaryColor }}>
-          {service.name}
-        </p>
-        <div className="flex items-center gap-3 mt-1.5">
-          <span className="flex items-center gap-1 text-xs text-[#9C8E85]">
-            <Calendar size={11} />
-            {selectedDateDisplay}
+        {/* Servicio */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 10,
+          }}
+        >
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              backgroundColor: `${primaryColor}14`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Scissors size={14} style={{ color: primaryColor }} />
+          </div>
+          <div>
+            <p
+              style={{
+                fontSize: "0.6875rem",
+                color: "#9C8E85",
+                marginBottom: 1,
+              }}
+            >
+              Servicio seleccionado
+            </p>
+            <p
+              style={{
+                fontSize: "0.9375rem",
+                fontWeight: 700,
+                color: primaryColor,
+                lineHeight: 1.2,
+              }}
+            >
+              {service.name}
+            </p>
+          </div>
+        </div>
+
+        {/* Separador */}
+        <div
+          style={{
+            height: 1,
+            backgroundColor: `${primaryColor}20`,
+            marginBottom: 10,
+          }}
+        />
+
+        {/* Fecha y hora */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              fontSize: "0.75rem",
+              color: "#9C8E85",
+            }}
+          >
+            <Calendar size={12} style={{ color: primaryColor, opacity: 0.7 }} />
+            <span style={{ textTransform: "capitalize" }}>
+              {selectedDateDisplay}
+            </span>
           </span>
-          <span className="flex items-center gap-1 text-xs text-[#9C8E85]">
-            <Clock size={11} />
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              fontSize: "0.75rem",
+              color: "#9C8E85",
+            }}
+          >
+            <Clock size={12} style={{ color: primaryColor, opacity: 0.7 }} />
             {selectedTimeDisplay}
           </span>
         </div>
       </motion.div>
 
-      {/* API Error */}
-      {apiError && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 mb-4"
-        >
-          <p className="text-sm text-red-600">{apiError}</p>
-        </motion.div>
-      )}
+      {/* Error de API */}
+      <AnimatePresence>
+        {apiError && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            style={{
+              borderRadius: 12,
+              backgroundColor: "#FEF2F2",
+              border: "1.5px solid #FECACA",
+              padding: "12px 16px",
+              marginBottom: 16,
+            }}
+          >
+            <p
+              style={{
+                fontSize: "0.8125rem",
+                color: "#DC2626",
+                lineHeight: 1.5,
+              }}
+            >
+              {apiError}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* Formulario */}
       <form
         onSubmit={handleSubmit(handleFormSubmit)}
-        className="flex flex-col gap-4"
+        style={{ display: "flex", flexDirection: "column", gap: 16 }}
         noValidate
       >
         {/* Nombre */}
@@ -208,7 +353,7 @@ export default function BookingForm({
           </FieldWrapper>
         </motion.div>
 
-        {/* Teléfono con prefijo fijo */}
+        {/* Teléfono con prefijo fijo +503 */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -221,13 +366,19 @@ export default function BookingForm({
             required
           >
             <div
-              className="flex items-center rounded-xl border border-[#EDE8E3] bg-white
-                         overflow-hidden transition-all duration-150"
-              style={{ boxSizing: "border-box" }}
+              style={{
+                display: "flex",
+                alignItems: "stretch",
+                borderRadius: 12,
+                border: "1.5px solid #EDE8E3",
+                backgroundColor: "#FDFCFB",
+                overflow: "hidden",
+                transition: "border-color 0.15s, box-shadow 0.15s",
+              }}
               onFocusCapture={(e) => {
                 const el = e.currentTarget as HTMLDivElement;
                 el.style.borderColor = primaryColor;
-                el.style.boxShadow = `0 0 0 3px ${primaryColor}20`;
+                el.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
               }}
               onBlurCapture={(e) => {
                 const el = e.currentTarget as HTMLDivElement;
@@ -236,13 +387,30 @@ export default function BookingForm({
               }}
             >
               {/* Prefijo fijo */}
-              <div className="flex items-center gap-1.5 px-3 py-2.5 bg-[#FAF8F5]
-                              border-r border-[#EDE8E3] shrink-0">
-                <span className="text-sm">🇸🇻</span>
-                <span className="text-sm font-medium text-[#9C8E85]">+503</span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "10px 12px",
+                  backgroundColor: "#FAF8F5",
+                  borderRight: "1.5px solid #EDE8E3",
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ fontSize: "14px" }}>🇸🇻</span>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#9C8E85",
+                  }}
+                >
+                  +503
+                </span>
               </div>
 
-              {/* Input solo 8 dígitos */}
+              {/* Input — solo 8 dígitos */}
               <input
                 {...register("client_phone")}
                 type="tel"
@@ -250,11 +418,24 @@ export default function BookingForm({
                 maxLength={8}
                 placeholder="7000 0000"
                 autoComplete="tel-national"
-                className="flex-1 px-3 py-2.5 text-sm text-[#2D2420]
-                           placeholder:text-[#C4B8B0] outline-none bg-transparent"
-                // Permitir solo dígitos mientras escribe
+                style={{
+                  flex: 1,
+                  padding: "10px 14px",
+                  fontSize: "14px",
+                  color: "#2D2420",
+                  outline: "none",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  fontFamily: "inherit",
+                }}
                 onKeyDown={(e) => {
-                  const allowed = ["Backspace", "Delete", "Tab", "ArrowLeft", "ArrowRight"];
+                  const allowed = [
+                    "Backspace",
+                    "Delete",
+                    "Tab",
+                    "ArrowLeft",
+                    "ArrowRight",
+                  ];
                   if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) {
                     e.preventDefault();
                   }
@@ -264,7 +445,7 @@ export default function BookingForm({
           </FieldWrapper>
         </motion.div>
 
-        {/* Email */}
+        {/* Email — opcional */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -286,7 +467,7 @@ export default function BookingForm({
           </FieldWrapper>
         </motion.div>
 
-        {/* Notas */}
+        {/* Notas — opcional */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -303,16 +484,18 @@ export default function BookingForm({
               placeholder="Alergias, preferencias, preguntas..."
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = primaryColor;
-                e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}20`;
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
+                e.currentTarget.style.backgroundColor = "#fff";
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = "#EDE8E3";
                 e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.backgroundColor = "#FDFCFB";
               }}
               style={{
                 ...inputBase,
                 resize: "none",
-                height: "88px",
+                height: 88,
               }}
             />
           </FieldWrapper>
@@ -325,15 +508,29 @@ export default function BookingForm({
           transition={{ delay: 0.22 }}
           type="submit"
           disabled={isLoading}
-          className="w-full py-3 rounded-xl font-semibold text-sm text-white
-                     flex items-center justify-center gap-2 mt-1
-                     disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+          whileHover={!isLoading ? { scale: 1.015 } : {}}
+          whileTap={!isLoading ? { scale: 0.985 } : {}}
           style={{
+            width: "100%",
+            padding: "13px 24px",
+            borderRadius: 12,
+            border: "none",
             backgroundColor: primaryColor,
+            color: "#fff",
+            fontSize: "0.9375rem",
+            fontWeight: 700,
+            cursor: isLoading ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginTop: 4,
+            opacity: isLoading ? 0.65 : 1,
             boxShadow: `0 8px 24px ${primaryColor}30`,
+            transition: "opacity 0.15s",
+            fontFamily: "inherit",
+            letterSpacing: "0.01em",
           }}
-          whileHover={!isLoading ? { scale: 1.01 } : {}}
-          whileTap={!isLoading ? { scale: 0.99 } : {}}
         >
           {isLoading ? (
             <>
@@ -341,9 +538,24 @@ export default function BookingForm({
               Confirmando reserva...
             </>
           ) : (
-            "Confirmar reserva"
+            "Confirmar reserva →"
           )}
         </motion.button>
+
+        {/* Nota de privacidad */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.28 }}
+          style={{
+            textAlign: "center",
+            fontSize: "0.6875rem",
+            color: "#C4B8B0",
+            lineHeight: 1.5,
+          }}
+        >
+          🔒 Tus datos solo se usan para gestionar tu cita
+        </motion.p>
       </form>
     </div>
   );

@@ -1,6 +1,6 @@
 // types/booking.types.ts
 
-export type BookingStep = "service" | "date" | "time" | "form" | "confirmation";
+export type BookingStep = "service" | "date" | "form" | "confirmation";
 
 export interface SlotData {
   time: string;
@@ -23,9 +23,9 @@ export interface SelectedService {
 
 export interface BookingFormData {
   client_name: string;
-  client_email?: string;       // opcional — puede no tener email
+  client_email?: string; // opcional — puede no tener email
   client_phone: string;
-  client_notes?: string;       // opcional — puede no tener notas
+  client_notes?: string; // opcional — puede no tener notas
 }
 
 export interface BookingPayload {

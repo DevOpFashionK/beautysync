@@ -1,8 +1,10 @@
 "use client";
 
 // components/booking/ServiceSelector.tsx
+// Fase 8.1 — Cards más ricas con precio destacado y mejor jerarquía visual
+
 import { motion } from "framer-motion";
-import { Clock, DollarSign, ChevronRight, Scissors } from "lucide-react";
+import { Clock, ChevronRight, Scissors, Sparkles } from "lucide-react";
 import type { ServicePublicData, SelectedService } from "@/types/booking.types";
 
 interface ServiceSelectorProps {
@@ -10,6 +12,8 @@ interface ServiceSelectorProps {
   primaryColor: string;
   onSelect: (service: SelectedService) => void;
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat("es-SV", {
@@ -26,6 +30,219 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyServices({ primaryColor }: { primaryColor: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingTop: 56,
+        paddingBottom: 56,
+        textAlign: "center",
+        gap: 12,
+      }}
+    >
+      <div
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: "50%",
+          backgroundColor: `${primaryColor}14`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 4,
+        }}
+      >
+        <Scissors size={28} style={{ color: primaryColor }} />
+      </div>
+      <p
+        style={{
+          fontSize: "0.9375rem",
+          fontWeight: 600,
+          color: "#2D2420",
+        }}
+      >
+        No hay servicios disponibles
+      </p>
+      <p style={{ fontSize: "0.8125rem", color: "#9C8E85" }}>
+        Contacta al salón directamente
+      </p>
+    </div>
+  );
+}
+
+// ─── Service Card ─────────────────────────────────────────────────────────────
+
+interface ServiceCardProps {
+  service: ServicePublicData;
+  primaryColor: string;
+  index: number;
+  onSelect: (service: SelectedService) => void;
+}
+
+function ServiceCard({
+  service,
+  primaryColor,
+  index,
+  onSelect,
+}: ServiceCardProps) {
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: index * 0.07 + 0.1 }}
+      onClick={() => onSelect(service as SelectedService)}
+      whileHover={{ scale: 1.015, y: -2 }}
+      whileTap={{ scale: 0.985 }}
+      style={{
+        width: "100%",
+        textAlign: "left",
+        background: "#fff",
+        border: "1.5px solid #EDE8E3",
+        borderRadius: 18,
+        padding: "16px 18px",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        transition: "border-color 0.2s, box-shadow 0.2s",
+        fontFamily: "inherit",
+        position: "relative",
+        overflow: "hidden",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = `${primaryColor}60`;
+        e.currentTarget.style.boxShadow = `0 4px 20px ${primaryColor}14`;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "#EDE8E3";
+        e.currentTarget.style.boxShadow = "none";
+      }}
+    >
+      {/* Acento de color en el borde izquierdo */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: "20%",
+          bottom: "20%",
+          width: 3,
+          borderRadius: "0 3px 3px 0",
+          backgroundColor: primaryColor,
+          opacity: 0.7,
+        }}
+      />
+
+      {/* Ícono */}
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 14,
+          backgroundColor: `${primaryColor}12`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <Scissors size={20} style={{ color: primaryColor }} />
+      </div>
+
+      {/* Info central */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Nombre */}
+        <p
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "#2D2420",
+            lineHeight: 1.3,
+            marginBottom: service.description ? 3 : 6,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {service.name}
+        </p>
+
+        {/* Descripción — máx 1 línea */}
+        {service.description && (
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: "#9C8E85",
+              marginBottom: 8,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {service.description}
+          </p>
+        )}
+
+        {/* Meta: duración + precio */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Duración */}
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: "0.75rem",
+              color: "#9C8E85",
+            }}
+          >
+            <Clock size={11} />
+            {formatDuration(service.duration_minutes)}
+          </span>
+
+          {/* Separador */}
+          <span
+            style={{
+              width: 3,
+              height: 3,
+              borderRadius: "50%",
+              backgroundColor: "#C4B8B0",
+            }}
+          />
+
+          {/* Precio — destacado con color de marca */}
+          <span
+            style={{
+              fontSize: "0.875rem",
+              fontWeight: 700,
+              color: primaryColor,
+            }}
+          >
+            {formatPrice(service.price)}
+          </span>
+        </div>
+      </div>
+
+      {/* Flecha derecha */}
+      <ChevronRight
+        size={18}
+        style={{
+          color: primaryColor,
+          opacity: 0.5,
+          flexShrink: 0,
+          transition: "opacity 0.15s, transform 0.15s",
+        }}
+      />
+    </motion.button>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function ServiceSelector({
   services,
   primaryColor,
@@ -34,92 +251,70 @@ export default function ServiceSelector({
   const activeServices = services.filter((s) => s !== null);
 
   if (activeServices.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-          style={{ backgroundColor: `${primaryColor}14` }}
-        >
-          <Scissors size={28} style={{ color: primaryColor }} />
-        </div>
-        <p className="text-[#2D2420] font-medium">No hay servicios disponibles</p>
-        <p className="text-[#9C8E85] text-sm mt-1">Contacta al salón directamente</p>
-      </div>
-    );
+    return <EmptyServices primaryColor={primaryColor} />;
   }
 
   return (
     <div>
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="mb-6"
+        transition={{ duration: 0.35 }}
+        style={{ marginBottom: 20 }}
       >
-        <h2 className="font-['Cormorant_Garamond'] text-2xl font-semibold text-[#2D2420] leading-tight">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 4,
+          }}
+        >
+          <Sparkles size={14} style={{ color: primaryColor }} />
+          <p
+            style={{
+              fontSize: "0.6875rem",
+              fontWeight: 600,
+              color: primaryColor,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
+          >
+            {activeServices.length}{" "}
+            {activeServices.length === 1
+              ? "servicio disponible"
+              : "servicios disponibles"}
+          </p>
+        </div>
+
+        <h2
+          style={{
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontSize: "1.625rem",
+            fontWeight: 600,
+            color: "#2D2420",
+            lineHeight: 1.2,
+            marginBottom: 4,
+          }}
+        >
           ¿Qué servicio deseas?
         </h2>
-        <p className="text-[#9C8E85] text-sm mt-1">
-          Selecciona uno para continuar
+        <p style={{ fontSize: "0.8125rem", color: "#9C8E85" }}>
+          Selecciona uno para elegir fecha y hora
         </p>
       </motion.div>
 
-      <div className="flex flex-col gap-3">
+      {/* Lista de servicios */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {activeServices.map((service, index) => (
-          <motion.button
+          <ServiceCard
             key={service.id}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: index * 0.07 + 0.1 }}
-            onClick={() => onSelect(service as SelectedService)}
-            className="group w-full text-left rounded-2xl border border-[#EDE8E3] bg-white p-4
-                       transition-all duration-200 hover:shadow-md hover:border-transparent
-                       focus:outline-none focus-visible:ring-2"
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-          >
-            <div className="flex items-center justify-between gap-3">
-              {/* Icon */}
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: `${primaryColor}14` }}
-              >
-                <Scissors size={18} style={{ color: primaryColor }} />
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-[#2D2420] text-sm leading-snug truncate">
-                  {service.name}
-                </p>
-                {service.description && (
-                  <p className="text-[#9C8E85] text-xs mt-0.5 line-clamp-1">
-                    {service.description}
-                  </p>
-                )}
-                <div className="flex items-center gap-3 mt-1.5">
-                  <span className="flex items-center gap-1 text-xs text-[#9C8E85]">
-                    <Clock size={11} />
-                    {formatDuration(service.duration_minutes)}
-                  </span>
-                  <span
-                    className="flex items-center gap-1 text-xs font-semibold"
-                    style={{ color: primaryColor }}
-                  >
-                    <DollarSign size={11} />
-                    {formatPrice(service.price)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Arrow */}
-              <ChevronRight
-                size={18}
-                className="text-[#C4B8B0] group-hover:translate-x-0.5 transition-transform duration-200 shrink-0"
-                style={{ color: primaryColor }}
-              />
-            </div>
-          </motion.button>
+            service={service}
+            primaryColor={primaryColor}
+            index={index}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     </div>
