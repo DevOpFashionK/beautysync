@@ -1,34 +1,45 @@
 // app/(dashboard)/dashboard/page.tsx
 //
-// Fase 8.2 — Dashboard con métricas y estadísticas
+// Fase 8.3 — Dashboard completo con métricas por categorías + exportación PDF
 //
-// FIX: MetricCard recibe icon como string identifier ("calendar", "dollar", etc.)
-// en vez de componente función (CalendarDays, DollarSign).
-// Next.js 16 no permite pasar funciones desde Server → Client Components.
+// Secciones:
+//   - Actividad   : Citas, No-Shows, Cancelaciones
+//   - Finanzas    : Ingresos, Ticket Promedio, Rebooking (card)
+//   - Tendencias  : Gráfica barras + Gráfica líneas ingresos acumulados
+//   - Retención   : Anillos de Rebooking + Frecuencia de visita
+//   - Servicios   : Top 5 servicios del mes
 //
-// Server Component puro — todas las queries corren en servidor.
-// Client Components solo para interactividad (gráficas, animaciones).
+// Cada sección tiene data-export-id para captura selectiva con html2canvas.
+// Todas las queries filtran por salon.id (IDOR prevention).
+// Timezone: America/El_Salvador via getNowSV().
 
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { markPastAppointmentsAsNoShow } from "@/lib/autoNoShow";
 
-// Componentes existentes — NO tocar
+// Componentes existentes
 import TodayAppointments from "@/components/dashboard/TodayAppointments";
 import WelcomeBanner from "@/components/dashboard/WelcomeBanner";
 import SubscriptionStatus from "@/components/dashboard/SubscriptionStatus";
 import DashboardHeaderWrapper from "@/components/dashboard/DashboardHeaderWrapper";
 
-// Componentes nuevos Fase 8.2
+// Componentes Fase 8.2
 import MetricCard from "@/components/dashboard/metrics/MetricCard";
 import AppointmentsChart from "@/components/dashboard/metrics/AppointmentsChart";
 import TopServices from "@/components/dashboard/metrics/TopServices";
 import WeekdayHeatmap from "@/components/dashboard/metrics/WeekdayHeatmap";
 
+// Componentes Fase 8.3
+import RevenueLineChart from "@/components/dashboard/metrics/RevenueLineChart";
+import RetentionMetrics from "@/components/dashboard/metrics/RetentionMetrics";
+import ExportReportButton from "@/components/dashboard/metrics/ExportReportButton";
+
 import type { WeeklyDataPoint } from "@/components/dashboard/metrics/AppointmentsChart";
 import type { WeekdayDataPoint } from "@/components/dashboard/metrics/WeekdayHeatmap";
 import type { TopServiceDataPoint } from "@/components/dashboard/metrics/TopServices";
+import type { DailyRevenuePoint } from "@/components/dashboard/metrics/RevenueLineChart";
+import type { RetentionData } from "@/components/dashboard/metrics/RetentionMetrics";
 
 export const metadata: Metadata = { title: "Dashboard — BeautySync" };
 export const dynamic = "force-dynamic";
@@ -48,6 +59,16 @@ function getMonthRange(offsetMonths = 0): { start: string; end: string } {
   const start = new Date(Date.UTC(year, month, 1, 6, 0, 0));
   const end = new Date(Date.UTC(year, month + 1, 1, 6, 0, 0));
   return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function getMonthLabel(offsetMonths = 0): string {
+  const now = getNowSV();
+  const date = new Date(now.getFullYear(), now.getMonth() + offsetMonths, 1);
+  return date.toLocaleDateString("es-SV", {
+    month: "long",
+    year: "numeric",
+    timeZone: "America/El_Salvador",
+  });
 }
 
 function daysAgoISO(days: number): string {
@@ -80,7 +101,7 @@ function getWeekKey(date: Date): string {
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 
-interface AppointmentWithService {
+interface AppointmentRow {
   id: string;
   salon_id: string;
   service_id: string | null;
@@ -91,36 +112,19 @@ interface AppointmentWithService {
     id: string;
     name: string;
     price: number;
+    duration_minutes: number;
   } | null;
 }
 
-// ─── Cálculo de métricas ──────────────────────────────────────────────────────
+// ─── Helpers de formato ───────────────────────────────────────────────────────
 
-function calcRevenue(appointments: AppointmentWithService[]): number {
-  return appointments
-    .filter((a) => a.status === "confirmed" || a.status === "completed")
-    .reduce((sum, a) => sum + (a.services?.price ?? 0), 0);
-}
-
-function calcNewClients(
-  currentAppts: AppointmentWithService[],
-  previousAppts: AppointmentWithService[],
-): number {
-  const prevEmails = new Set(
-    previousAppts.map((a) => a.client_email).filter(Boolean) as string[],
-  );
-  const newEmails = new Set(
-    currentAppts
-      .map((a) => a.client_email)
-      .filter((e): e is string => Boolean(e) && !prevEmails.has(e!)),
-  );
-  return newEmails.size;
-}
-
-function calcCancellationRate(appointments: AppointmentWithService[]): number {
-  if (!appointments.length) return 0;
-  const cancelled = appointments.filter((a) => a.status === "cancelled").length;
-  return Math.round((cancelled / appointments.length) * 100);
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function calcDelta(current: number, previous: number): number | null {
@@ -128,10 +132,49 @@ function calcDelta(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 100);
 }
 
-function calcTopServices(
-  appointments: AppointmentWithService[],
-): TopServiceDataPoint[] {
-  const active = appointments.filter((a) => a.status !== "cancelled");
+// ─── Cálculo de métricas ──────────────────────────────────────────────────────
+
+function calcRevenue(appts: AppointmentRow[]): number {
+  return appts
+    .filter((a) => a.status === "confirmed" || a.status === "completed")
+    .reduce((sum, a) => sum + (a.services?.price ?? 0), 0);
+}
+
+function calcTicketPromedio(appts: AppointmentRow[]): number {
+  const completed = appts.filter((a) => a.status === "completed");
+  if (!completed.length) return 0;
+  const total = completed.reduce((sum, a) => sum + (a.services?.price ?? 0), 0);
+  return total / completed.length;
+}
+
+function calcNewClients(
+  current: AppointmentRow[],
+  previous: AppointmentRow[],
+): number {
+  const prevEmails = new Set(
+    previous.map((a) => a.client_email).filter(Boolean) as string[],
+  );
+  return new Set(
+    current
+      .map((a) => a.client_email)
+      .filter((e): e is string => Boolean(e) && !prevEmails.has(e!)),
+  ).size;
+}
+
+function calcNoShowRate(appts: AppointmentRow[]): number {
+  if (!appts.length) return 0;
+  const noShows = appts.filter((a) => a.status === "no_show").length;
+  return Math.round((noShows / appts.length) * 100);
+}
+
+function calcCancellationRate(appts: AppointmentRow[]): number {
+  if (!appts.length) return 0;
+  const cancelled = appts.filter((a) => a.status === "cancelled").length;
+  return Math.round((cancelled / appts.length) * 100);
+}
+
+function calcTopServices(appts: AppointmentRow[]): TopServiceDataPoint[] {
+  const active = appts.filter((a) => a.status !== "cancelled");
   const map = new Map<
     string,
     { id: string; name: string; count: number; revenue: number }
@@ -168,9 +211,7 @@ function calcTopServices(
   }));
 }
 
-function calcWeekdayHeatmap(
-  appointments: AppointmentWithService[],
-): WeekdayDataPoint[] {
+function calcWeekdayHeatmap(appts: AppointmentRow[]): WeekdayDataPoint[] {
   const DAYS = [
     { day: "Lun", dayFull: "Lunes", jsDay: 1 },
     { day: "Mar", dayFull: "Martes", jsDay: 2 },
@@ -180,17 +221,14 @@ function calcWeekdayHeatmap(
     { day: "Sáb", dayFull: "Sábado", jsDay: 6 },
     { day: "Dom", dayFull: "Domingo", jsDay: 0 },
   ];
-
   const counts = new Array(7).fill(0);
-  for (const appt of appointments) {
+  for (const appt of appts) {
     if (appt.status === "cancelled" || !appt.scheduled_at) continue;
     const jsDay = new Date(appt.scheduled_at).getDay();
     const idx = DAYS.findIndex((d) => d.jsDay === jsDay);
     if (idx !== -1) counts[idx]++;
   }
-
   const maxCount = Math.max(...counts, 1);
-
   return DAYS.map((d, i) => ({
     day: d.day,
     dayFull: d.dayFull,
@@ -200,22 +238,10 @@ function calcWeekdayHeatmap(
   }));
 }
 
-function calcWeeklyChart(
-  appointments: AppointmentWithService[],
-): WeeklyDataPoint[] {
+function calcWeeklyChart(appts: AppointmentRow[]): WeeklyDataPoint[] {
   const now = getNowSV();
   const currentKey = getWeekKey(now);
-
-  const weeksMap = new Map<
-    string,
-    {
-      weekLabel: string;
-      weekKey: string;
-      citas: number;
-      ingresos: number;
-      isCurrent: boolean;
-    }
-  >();
+  const weeksMap = new Map<string, WeeklyDataPoint>();
 
   for (let i = 7; i >= 0; i--) {
     const d = new Date(now.getTime());
@@ -234,7 +260,7 @@ function calcWeeklyChart(
     }
   }
 
-  for (const appt of appointments) {
+  for (const appt of appts) {
     if (appt.status === "cancelled" || !appt.scheduled_at) continue;
     const key = getWeekKey(new Date(appt.scheduled_at));
     const week = weeksMap.get(key);
@@ -248,13 +274,132 @@ function calcWeeklyChart(
   return Array.from(weeksMap.values());
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+function calcDailyRevenue(
+  currentAppts: AppointmentRow[],
+  previousAppts: AppointmentRow[],
+): DailyRevenuePoint[] {
+  const now = getNowSV();
+  const daysInMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+  ).getDate();
+  const todayDay = now.getDate();
+
+  // Acumular ingresos por día — mes actual
+  const currentByDay = new Array(daysInMonth + 1).fill(0);
+  for (const appt of currentAppts) {
+    if (
+      (appt.status !== "confirmed" && appt.status !== "completed") ||
+      !appt.scheduled_at
+    )
+      continue;
+    const day = new Date(appt.scheduled_at).getDate();
+    if (day >= 1 && day <= daysInMonth) {
+      currentByDay[day] += appt.services?.price ?? 0;
+    }
+  }
+
+  // Acumular ingresos por día — mes anterior
+  const prevDays = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+  const previousByDay = new Array(prevDays + 1).fill(0);
+  for (const appt of previousAppts) {
+    if (
+      (appt.status !== "confirmed" && appt.status !== "completed") ||
+      !appt.scheduled_at
+    )
+      continue;
+    const day = new Date(appt.scheduled_at).getDate();
+    if (day >= 1 && day <= prevDays) {
+      previousByDay[day] += appt.services?.price ?? 0;
+    }
+  }
+
+  // Construir array acumulado día a día
+  const points: DailyRevenuePoint[] = [];
+  let cumulCurrent = 0;
+  let cumulPrevious = 0;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    cumulCurrent += currentByDay[day] ?? 0;
+    cumulPrevious += previousByDay[day] ?? 0;
+
+    points.push({
+      day,
+      dayLabel: String(day),
+      // Días futuros del mes actual no tienen datos reales → 0
+      cumulativeCurrent: day <= todayDay ? cumulCurrent : 0,
+      cumulativePrevious: day <= prevDays ? cumulPrevious : 0,
+    });
+  }
+
+  return points;
+}
+
+function calcRetention(appts90Days: AppointmentRow[]): RetentionData {
+  // Solo citas no canceladas con email
+  const valid = appts90Days.filter(
+    (a) => a.status !== "cancelled" && a.client_email,
+  );
+
+  // Clientas únicas
+  const clientMap = new Map<string, Date[]>();
+  for (const appt of valid) {
+    if (!appt.client_email || !appt.scheduled_at) continue;
+    const dates = clientMap.get(appt.client_email) ?? [];
+    dates.push(new Date(appt.scheduled_at));
+    clientMap.set(appt.client_email, dates);
+  }
+
+  const totalClients = clientMap.size;
+
+  // Rebooking: clientas con ≥2 citas en los últimos 60 días
+  const sixtyDaysAgo = new Date(
+    getNowSV().getTime() - 60 * 24 * 60 * 60 * 1000,
+  );
+  let rebookingCount = 0;
+  const freqDiffs: number[] = [];
+
+  for (const [, dates] of clientMap) {
+    const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime());
+
+    // Rebooking
+    const recentDates = sorted.filter((d) => d >= sixtyDaysAgo);
+    if (recentDates.length >= 2) rebookingCount++;
+
+    // Frecuencia: diferencia en días entre visitas consecutivas
+    for (let i = 1; i < sorted.length; i++) {
+      const diffDays =
+        (sorted[i].getTime() - sorted[i - 1].getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDays > 0 && diffDays <= 180) {
+        // ignorar gaps > 6 meses (outliers)
+        freqDiffs.push(diffDays);
+      }
+    }
+  }
+
+  const rebookingRate =
+    totalClients > 0 ? Math.round((rebookingCount / totalClients) * 100) : 0;
+  const visitFrequency =
+    freqDiffs.length > 0
+      ? Math.round(freqDiffs.reduce((a, b) => a + b, 0) / freqDiffs.length)
+      : 0;
+
+  return { rebookingRate, rebookingCount, visitFrequency, totalClients };
+}
+
+// ─── Subcomponente: Section Header ───────────────────────────────────────────
+// Separado para no repetir el mismo bloque de JSX 5 veces
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      className="text-xs font-semibold uppercase tracking-widest mb-4"
+      style={{ color: "#C4B8B0", letterSpacing: "0.12em" }}
+    >
+      {children}
+    </p>
+  );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -269,13 +414,13 @@ export default async function DashboardPage({
   const supabase = await createServerSupabaseClient();
   const params = await searchParams;
 
-  // Auth
+  // ── Auth ────────────────────────────────────────────────────────────────────
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Datos básicos
+  // ── Datos básicos ───────────────────────────────────────────────────────────
   const [{ data: salon }, { data: profile }] = await Promise.all([
     supabase
       .from("salons")
@@ -297,43 +442,59 @@ export default async function DashboardPage({
     .eq("salon_id", salon.id)
     .single();
 
-  // Rangos de fecha
+  // ── Rangos de fecha ─────────────────────────────────────────────────────────
   const currentMonth = getMonthRange(0);
   const previousMonth = getMonthRange(-1);
+  const yearAgoMonth = getMonthRange(-12);
   const ninetyDaysAgo = daysAgoISO(90);
   const fiftyDaysAgo = daysAgoISO(56);
 
-  // Queries en paralelo — todas filtradas por salon.id (IDOR prevention)
+  // ── Queries en paralelo — todas con salon.id (IDOR prevention) ──────────────
   const [
     { data: currentAppts },
     { data: previousAppts },
+    { data: yearAgoAppts },
     { data: ninetyDayAppts },
     { data: weeklyAppts },
   ] = await Promise.all([
+    // Mes actual — con servicio completo (precio + duración)
     supabase
       .from("appointments")
       .select(
-        "id, salon_id, service_id, client_email, scheduled_at, status, services(id, name, price)",
+        "id, salon_id, service_id, client_email, scheduled_at, status, services(id, name, price, duration_minutes)",
       )
       .eq("salon_id", salon.id)
       .gte("scheduled_at", currentMonth.start)
       .lt("scheduled_at", currentMonth.end),
 
+    // Mes anterior — para deltas y línea de referencia
     supabase
       .from("appointments")
       .select(
-        "id, salon_id, service_id, client_email, scheduled_at, status, services(id, name, price)",
+        "id, salon_id, service_id, client_email, scheduled_at, status, services(id, name, price, duration_minutes)",
       )
       .eq("salon_id", salon.id)
       .gte("scheduled_at", previousMonth.start)
       .lt("scheduled_at", previousMonth.end),
 
+    // Mismo mes hace 1 año — para comparación anual
     supabase
       .from("appointments")
-      .select("id, salon_id, scheduled_at, status")
+      .select("id, salon_id, scheduled_at, status, services(id, name, price)")
+      .eq("salon_id", salon.id)
+      .gte("scheduled_at", yearAgoMonth.start)
+      .lt("scheduled_at", yearAgoMonth.end),
+
+    // Últimos 90 días — heatmap + retención
+    supabase
+      .from("appointments")
+      .select(
+        "id, salon_id, client_email, scheduled_at, status, services(id, name, price)",
+      )
       .eq("salon_id", salon.id)
       .gte("scheduled_at", ninetyDaysAgo),
 
+    // Últimas ~8 semanas — gráfica de barras
     supabase
       .from("appointments")
       .select("id, salon_id, scheduled_at, status, services(id, name, price)")
@@ -343,39 +504,61 @@ export default async function DashboardPage({
 
   await markPastAppointmentsAsNoShow(salon.id);
 
-  // Calcular métricas
-  const safeCurrentAppts = (currentAppts ?? []) as AppointmentWithService[];
-  const safePreviousAppts = (previousAppts ?? []) as AppointmentWithService[];
-  const safeNinetyAppts = (ninetyDayAppts ?? []) as AppointmentWithService[];
-  const safeWeeklyAppts = (weeklyAppts ?? []) as AppointmentWithService[];
+  // ── Normalizar ──────────────────────────────────────────────────────────────
+  const safeCurrentAppts = (currentAppts ?? []) as AppointmentRow[];
+  const safePreviousAppts = (previousAppts ?? []) as AppointmentRow[];
+  const safeYearAgoAppts = (yearAgoAppts ?? []) as AppointmentRow[];
+  const safeNinetyAppts = (ninetyDayAppts ?? []) as AppointmentRow[];
+  const safeWeeklyAppts = (weeklyAppts ?? []) as AppointmentRow[];
 
+  // ── Métricas de Actividad ───────────────────────────────────────────────────
   const citasCurrentMonth = safeCurrentAppts.filter(
     (a) => a.status !== "cancelled",
   ).length;
   const citasPreviousMonth = safePreviousAppts.filter(
     (a) => a.status !== "cancelled",
   ).length;
+  const noShowRate = calcNoShowRate(safeCurrentAppts);
+  const noShowRatePrev = calcNoShowRate(safePreviousAppts);
+  const cancellationRate = calcCancellationRate(safeCurrentAppts);
+  const cancellationRatePrev = calcCancellationRate(safePreviousAppts);
+  const citasDelta = calcDelta(citasCurrentMonth, citasPreviousMonth);
+  const noShowDelta = calcDelta(noShowRate, noShowRatePrev);
+  const cancellationDelta = calcDelta(cancellationRate, cancellationRatePrev);
+
+  // ── Métricas de Finanzas ────────────────────────────────────────────────────
   const revenueCurrentMonth = calcRevenue(safeCurrentAppts);
   const revenuePreviousMonth = calcRevenue(safePreviousAppts);
+  const revenueYearAgo = calcRevenue(safeYearAgoAppts);
+  const ticketPromedio = calcTicketPromedio(safeCurrentAppts);
+  const ticketPrevio = calcTicketPromedio(safePreviousAppts);
   const newClients = calcNewClients(safeCurrentAppts, safePreviousAppts);
-  const cancellationRate = calcCancellationRate(safeCurrentAppts);
-  const citasDelta = calcDelta(citasCurrentMonth, citasPreviousMonth);
   const revenueDelta = calcDelta(revenueCurrentMonth, revenuePreviousMonth);
+  const revenueYearDelta = calcDelta(revenueCurrentMonth, revenueYearAgo);
+  const ticketDelta = calcDelta(ticketPromedio, ticketPrevio);
 
+  // ── Visualizaciones ─────────────────────────────────────────────────────────
   const topServices = calcTopServices(safeCurrentAppts);
   const weekdayData = calcWeekdayHeatmap(safeNinetyAppts);
   const weeklyData = calcWeeklyChart(safeWeeklyAppts);
+  const dailyData = calcDailyRevenue(safeCurrentAppts, safePreviousAppts);
+  const retentionData = calcRetention(safeNinetyAppts);
 
+  // ── Labels de mes ───────────────────────────────────────────────────────────
+  const currentMonthLabel = getMonthLabel(0);
+  const previousMonthLabel = getMonthLabel(-1);
+
+  // ── Datos de UI ─────────────────────────────────────────────────────────────
   const isWelcome = params.welcome === "true";
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
   const primaryColor = salon.primary_color ?? "#D4375F";
 
+  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#FAF8F5]">
-      <div className="max-w-5xl mx-auto px-6 pt-8 pb-16 md:px-10 flex flex-col gap-8">
-        {/* Banners y header — sin cambios */}
+      <div className="max-w-5xl mx-auto px-6 pt-8 pb-16 md:px-10 flex flex-col gap-10">
+        {/* Banners */}
         {isWelcome && <WelcomeBanner salonName={salon.name} />}
-
         {subscription && (
           <SubscriptionStatus
             status={subscription.status ?? "trialing"}
@@ -384,26 +567,34 @@ export default async function DashboardPage({
           />
         )}
 
-        <DashboardHeaderWrapper
-          salonName={salon.name}
-          firstName={firstName}
-          primaryColor={primaryColor}
-        />
+        {/* Header + botón exportar */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <DashboardHeaderWrapper
+            salonName={salon.name}
+            firstName={firstName}
+            primaryColor={primaryColor}
+          />
+          <ExportReportButton
+            salonName={salon.name}
+            primaryColor={primaryColor}
+            currentMonth={currentMonthLabel}
+          />
+        </div>
 
-        {/* ── KPIs del mes ─────────────────────────────────────────────────── */}
+        {/* ── AGENDA DEL DÍA (sin data-export-id — es realtime, no capturable) */}
         <section>
-          <p
-            className="text-xs font-semibold uppercase tracking-widest mb-4"
-            style={{ color: "#C4B8B0", letterSpacing: "0.12em" }}
-          >
-            Este mes
-          </p>
+          <TodayAppointments salonId={salon.id} />
+        </section>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* FIX: icon como string — no función */}
+        {/* ══════════════════════════════════════════════════════════════════
+            SECCIÓN: ACTIVIDAD
+        ══════════════════════════════════════════════════════════════════ */}
+        <section data-export-id="export-actividad">
+          <SectionLabel>Actividad · {currentMonthLabel}</SectionLabel>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <MetricCard
               icon="calendar"
-              label="Citas"
+              label="Citas del mes"
               value={String(citasCurrentMonth)}
               delta={citasDelta}
               deltaLabel="vs mes anterior"
@@ -411,47 +602,95 @@ export default async function DashboardPage({
               index={0}
             />
             <MetricCard
+              icon="no-show"
+              label="Tasa de No-Show"
+              value={`${noShowRate}%`}
+              sublabel="de citas no atendidas"
+              delta={noShowDelta != null ? -noShowDelta : null}
+              deltaLabel="vs mes anterior"
+              primaryColor={primaryColor}
+              index={1}
+            />
+            <MetricCard
+              icon="trending-down"
+              label="Cancelaciones"
+              value={`${cancellationRate}%`}
+              sublabel="del total de citas"
+              delta={cancellationDelta != null ? -cancellationDelta : null}
+              deltaLabel="vs mes anterior"
+              primaryColor={primaryColor}
+              index={2}
+            />
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            SECCIÓN: FINANZAS
+        ══════════════════════════════════════════════════════════════════ */}
+        <section data-export-id="export-finanzas">
+          <SectionLabel>Finanzas · {currentMonthLabel}</SectionLabel>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <MetricCard
               icon="dollar"
               label="Ingresos estimados"
               value={formatCurrency(revenueCurrentMonth)}
               delta={revenueDelta}
               deltaLabel="vs mes anterior"
               primaryColor={primaryColor}
-              index={1}
+              index={0}
               skeletonWidth="w-24"
             />
+            <MetricCard
+              icon="ticket"
+              label="Ticket promedio"
+              value={formatCurrency(ticketPromedio)}
+              sublabel="por cita completada"
+              delta={ticketDelta}
+              deltaLabel="vs mes anterior"
+              primaryColor={primaryColor}
+              index={1}
+              skeletonWidth="w-20"
+            />
+            <MetricCard
+              icon="trending-up"
+              label="Vs año anterior"
+              value={formatCurrency(revenueYearAgo)}
+              sublabel={getMonthLabel(-12)}
+              delta={revenueYearDelta}
+              deltaLabel="vs mismo mes año ant."
+              primaryColor={primaryColor}
+              index={2}
+              skeletonWidth="w-24"
+            />
+          </div>
+
+          {/* Fila secundaria de finanzas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <MetricCard
               icon="user-plus"
               label="Clientas nuevas"
               value={String(newClients)}
-              primaryColor={primaryColor}
-              index={2}
-            />
-            <MetricCard
-              icon="trending-down"
-              label="Cancelaciones"
-              value={`${cancellationRate}%`}
+              sublabel="que no visitaron el mes anterior"
               primaryColor={primaryColor}
               index={3}
+            />
+            <MetricCard
+              icon="rebooking"
+              label="Clientas que volvieron"
+              value={String(retentionData.rebookingCount)}
+              sublabel={`de ${retentionData.totalClients} clientas en 60 días`}
+              primaryColor={primaryColor}
+              index={4}
             />
           </div>
         </section>
 
-        {/* ── Agenda de hoy ─────────────────────────────────────────────────── */}
-        <section>
-          <TodayAppointments salonId={salon.id} />
-        </section>
-
-        {/* ── Gráfica + Heatmap ────────────────────────────────────────────── */}
-        <section>
-          <p
-            className="text-xs font-semibold uppercase tracking-widest mb-4"
-            style={{ color: "#C4B8B0", letterSpacing: "0.12em" }}
-          >
-            Tendencias
-          </p>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* ══════════════════════════════════════════════════════════════════
+            SECCIÓN: TENDENCIAS
+        ══════════════════════════════════════════════════════════════════ */}
+        <section data-export-id="export-tendencias">
+          <SectionLabel>Tendencias</SectionLabel>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <AppointmentsChart
               weeklyData={weeklyData}
               primaryColor={primaryColor}
@@ -461,17 +700,28 @@ export default async function DashboardPage({
               primaryColor={primaryColor}
             />
           </div>
+          {/* Gráfico de líneas — ancho completo */}
+          <RevenueLineChart
+            dailyData={dailyData}
+            primaryColor={primaryColor}
+            currentMonth={currentMonthLabel}
+            previousMonth={previousMonthLabel}
+          />
         </section>
 
-        {/* ── Servicios más populares ──────────────────────────────────────── */}
-        <section>
-          <p
-            className="text-xs font-semibold uppercase tracking-widest mb-4"
-            style={{ color: "#C4B8B0", letterSpacing: "0.12em" }}
-          >
-            Servicios
-          </p>
+        {/* ══════════════════════════════════════════════════════════════════
+            SECCIÓN: RETENCIÓN
+        ══════════════════════════════════════════════════════════════════ */}
+        <section data-export-id="export-retencion">
+          <SectionLabel>Retención de clientas</SectionLabel>
+          <RetentionMetrics data={retentionData} primaryColor={primaryColor} />
+        </section>
 
+        {/* ══════════════════════════════════════════════════════════════════
+            SECCIÓN: SERVICIOS
+        ══════════════════════════════════════════════════════════════════ */}
+        <section data-export-id="export-servicios">
+          <SectionLabel>Servicios · {currentMonthLabel}</SectionLabel>
           <TopServices services={topServices} primaryColor={primaryColor} />
         </section>
       </div>

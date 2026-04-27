@@ -2,24 +2,42 @@
 
 // components/dashboard/metrics/MetricCard.tsx
 //
-// FIX: Los íconos se pasan como string identifier, no como componente función.
-// Next.js 16 no permite pasar funciones (LucideIcon) desde Server Components
-// a Client Components a través del boundary servidor→cliente.
+// Fase 8.3 — Agregados íconos nuevos al ICON_MAP:
+//   no-show, ticket, rebooking, clock, trending-up, calendar-check
 //
-// El Server Component pasa: icon="calendar"
-// MetricCard resuelve internamente: "calendar" → <CalendarDays />
+// FIX original: íconos como string identifier (no función) para evitar
+// el error de serialización Server → Client Component en Next.js 16.
 
 import { motion } from "framer-motion";
-import { CalendarDays, DollarSign, UserPlus, TrendingDown } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarCheck,
+  DollarSign,
+  UserPlus,
+  TrendingDown,
+  TrendingUp,
+  UserX,
+  Receipt,
+  RefreshCw,
+  Clock,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 // ─── Map de íconos disponibles ────────────────────────────────────────────────
 
 const ICON_MAP: Record<string, LucideIcon> = {
+  // Fase 8.2
   calendar: CalendarDays,
   dollar: DollarSign,
   "user-plus": UserPlus,
   "trending-down": TrendingDown,
+  // Fase 8.3 — nuevos
+  "no-show": UserX,
+  ticket: Receipt,
+  rebooking: RefreshCw,
+  clock: Clock,
+  "trending-up": TrendingUp,
+  "calendar-check": CalendarCheck,
 };
 
 export type MetricIconKey = keyof typeof ICON_MAP;
@@ -27,10 +45,11 @@ export type MetricIconKey = keyof typeof ICON_MAP;
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface MetricCardProps {
-  /** String identifier del ícono — ver ICON_MAP */
   icon: MetricIconKey;
   label: string;
   value: string;
+  /** Subtexto debajo del valor — ej: "por cita completada" */
+  sublabel?: string;
   delta?: number | null;
   deltaLabel?: string;
   primaryColor: string;
@@ -115,6 +134,7 @@ export default function MetricCard({
   icon,
   label,
   value,
+  sublabel,
   delta,
   deltaLabel,
   primaryColor,
@@ -126,7 +146,6 @@ export default function MetricCard({
     return <MetricCardSkeleton index={index} skeletonWidth={skeletonWidth} />;
   }
 
-  // Resolver ícono desde el string — fallback a CalendarDays si no existe
   const Icon = ICON_MAP[icon] ?? CalendarDays;
 
   return (
@@ -166,6 +185,13 @@ export default function MetricCard({
       >
         {value}
       </p>
+
+      {/* Sublabel opcional */}
+      {sublabel && (
+        <p className="text-xs mt-1" style={{ color: "#B5A99F" }}>
+          {sublabel}
+        </p>
+      )}
 
       {/* Delta opcional */}
       {delta != null && <DeltaBadge delta={delta} deltaLabel={deltaLabel} />}
