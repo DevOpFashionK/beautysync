@@ -2,22 +2,12 @@
 
 // components/dashboard/metrics/ExportReportButton.tsx
 //
-// Botón de exportación de reporte PDF con selección por categorías.
+// Exportación de reporte PDF construido con jsPDF puro.
+// SIN html2canvas — cada elemento se dibuja programáticamente.
+// Resultado: reporte profesional, nítido, con tipografía correcta.
 //
-// Flujo:
-//   1. Dueña hace clic en "Exportar reporte"
-//   2. Modal muestra 5 categorías con checkboxes
-//   3. Selecciona las que quiere (o "Exportar todo")
-//   4. html2canvas captura cada sección del DOM por su data-export-id
-//   5. jsPDF ensambla el PDF con encabezado, secciones capturadas y pie
-//
-// Cada sección del dashboard tiene data-export-id="nombre-seccion"
-// Este componente busca esos elementos y los captura como imágenes.
-//
-// Props:
-//   salonName    — nombre del salón (aparece en el header del PDF)
-//   primaryColor — color de acento del salón
-//   currentMonth — mes del reporte ("Abril 2026")
+// Recibe los datos del reporte como props desde page.tsx.
+// El modal permite selección por categoría o exportar todo.
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,53 +20,95 @@ import {
   FileText,
 } from "lucide-react";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// ─── Tipos de datos del reporte ───────────────────────────────────────────────
 
-interface ExportCategory {
-  id: string; // coincide con data-export-id del DOM
+export interface ReportData {
+  // Actividad
+  citasDelMes: number;
+  citasDelta: number | null;
+  noShowRate: number;
+  noShowDelta: number | null;
+  cancellationRate: number;
+  cancellationDelta: number | null;
+
+  // Finanzas
+  ingresos: number;
+  ingresosDelta: number | null;
+  ticketPromedio: number;
+  ticketDelta: number | null;
+  ingresosYearAgo: number;
+  revenueYearDelta: number | null;
+  clientasNuevas: number;
+  clientasVolvieron: number;
+  totalClients: number;
+
+  // Retención
+  rebookingRate: number;
+  rebookingCount: number;
+  visitFrequency: number;
+
+  // Servicios
+  topServices: Array<{
+    name: string;
+    count: number;
+    revenue: number;
+    isTop: boolean;
+  }>;
+
+  // Meta
+  salonName: string;
+  primaryColor: string;
+  currentMonth: string;
+  previousMonth: string;
+}
+
+interface ExportReportButtonProps {
+  data: ReportData;
+}
+
+// ─── Categorías ───────────────────────────────────────────────────────────────
+
+interface Category {
+  id: string;
   label: string;
   description: string;
 }
 
-interface ExportReportButtonProps {
-  salonName: string;
-  primaryColor: string;
-  currentMonth: string;
-}
-
-type ExportStatus = "idle" | "capturing" | "generating" | "done" | "error";
-
-// ─── Categorías disponibles ───────────────────────────────────────────────────
-
-const CATEGORIES: ExportCategory[] = [
+const CATEGORIES: Category[] = [
   {
-    id: "export-actividad",
+    id: "actividad",
     label: "Actividad",
     description: "Citas, No-Shows y Cancelaciones del mes",
   },
   {
-    id: "export-finanzas",
+    id: "finanzas",
     label: "Finanzas",
     description: "Ingresos, Ticket Promedio y comparativo mensual",
   },
   {
-    id: "export-tendencias",
-    label: "Tendencias",
-    description: "Gráfica de barras e ingresos acumulados",
-  },
-  {
-    id: "export-retencion",
+    id: "retencion",
     label: "Retención",
     description: "Rebooking y Frecuencia de visita",
   },
   {
-    id: "export-servicios",
+    id: "servicios",
     label: "Servicios populares",
     description: "Top 5 servicios más solicitados del mes",
   },
 ];
 
-// ─── Helper: formato de fecha ────────────────────────────────────────────────
+type ExportStatus = "idle" | "generating" | "done" | "error";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
 
 function getReportDate(): string {
   return new Date().toLocaleDateString("es-SV", {
@@ -87,156 +119,77 @@ function getReportDate(): string {
   });
 }
 
-// ─── Helper: captura de sección DOM ──────────────────────────────────────────
-
-async function captureSection(sectionId: string): Promise<string | null> {
-  const element = document.querySelector(
-    `[data-export-id="${sectionId}"]`,
-  ) as HTMLElement | null;
-
-  if (!element) return null;
-
-  try {
-    const { default: html2canvas } = await import("html2canvas");
-    const canvas = await html2canvas(element, {
-      scale: 2, // resolución 2x para PDF nítido
-      useCORS: true,
-      backgroundColor: "#FAF8F5",
-      logging: false,
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
-    });
-    return canvas.toDataURL("image/png");
-  } catch {
-    return null;
-  }
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = hex.replace("#", "");
+  return {
+    r: parseInt(h.substring(0, 2), 16),
+    g: parseInt(h.substring(2, 4), 16),
+    b: parseInt(h.substring(4, 6), 16),
+  };
 }
 
-// ─── Helper: generación del PDF ───────────────────────────────────────────────
+function deltaText(delta: number | null): string {
+  if (delta === null) return "Sin datos previos";
+  if (delta === 0) return "Sin cambio vs mes anterior";
+  return `${delta > 0 ? "+" : ""}${delta}% vs mes anterior`;
+}
 
-async function generatePDF(
-  salonName: string,
-  primaryColor: string,
-  currentMonth: string,
+// ─── Motor de PDF ─────────────────────────────────────────────────────────────
+
+async function buildPDF(
+  data: ReportData,
   selectedIds: string[],
-  onStatus: (s: ExportStatus) => void,
 ): Promise<void> {
   const { default: jsPDF } = await import("jspdf");
 
+  // ── Configuración base ────────────────────────────────────────────────────
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = 210;
   const pageH = 297;
-  const margin = 14;
-  const contentW = pageW - margin * 2;
+  const margin = 16;
+  const colW = pageW - margin * 2;
+  const primary = hexToRgb(data.primaryColor);
 
-  // ── Paleta ────────────────────────────────────────────────────────────────
-  // Convertir hex primaryColor a RGB para jsPDF
-  const hexToRgb = (hex: string) => {
-    const h = hex.replace("#", "");
-    return {
-      r: parseInt(h.substring(0, 2), 16),
-      g: parseInt(h.substring(2, 4), 16),
-      b: parseInt(h.substring(4, 6), 16),
-    };
-  };
-  const primary = hexToRgb(primaryColor);
+  // Colores auxiliares
+  const TEXT_DARK = { r: 45, g: 36, b: 32 }; // #2D2420
+  const TEXT_MID = { r: 92, g: 79, b: 72 }; // #5C4F48
+  const TEXT_LIGHT = { r: 156, g: 142, b: 133 }; // #9C8E85
+  const TEXT_XLIGHT = { r: 196, g: 184, b: 176 }; // #C4B8B0
+  const BORDER = { r: 237, g: 232, b: 227 }; // #EDE8E3
+  const BG_CARD = { r: 255, g: 255, b: 255 }; // #FFFFFF
+  const BG_PAGE = { r: 250, g: 248, b: 245 }; // #FAF8F5
 
-  // ── Header del PDF ────────────────────────────────────────────────────────
-  // Franja de color superior
-  pdf.setFillColor(primary.r, primary.g, primary.b);
-  pdf.rect(0, 0, pageW, 28, "F");
+  let y = 0; // cursor Y actual
 
-  // Nombre del salón
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(18);
-  pdf.setFont("helvetica", "bold");
-  pdf.text(salonName, margin, 13);
+  // ── Helpers de dibujo ────────────────────────────────────────────────────
 
-  // Subtítulo
-  pdf.setFontSize(9);
-  pdf.setFont("helvetica", "normal");
-  pdf.text(`Reporte de métricas · ${currentMonth}`, margin, 20);
+  const setColor = (c: { r: number; g: number; b: number }) =>
+    pdf.setTextColor(c.r, c.g, c.b);
 
-  // Fecha de generación (derecha)
-  const dateStr = getReportDate();
-  pdf.setFontSize(8);
-  pdf.text(dateStr, pageW - margin, 20, { align: "right" });
+  const setFill = (c: { r: number; g: number; b: number }) =>
+    pdf.setFillColor(c.r, c.g, c.b);
 
-  // ── Separador ─────────────────────────────────────────────────────────────
-  pdf.setDrawColor(primary.r, primary.g, primary.b);
-  pdf.setLineWidth(0.3);
-  pdf.line(margin, 32, pageW - margin, 32);
+  const setDraw = (c: { r: number; g: number; b: number }) =>
+    pdf.setDrawColor(c.r, c.g, c.b);
 
-  let cursorY = 38; // posición Y actual en mm
-
-  // ── Capturar y añadir secciones seleccionadas ─────────────────────────────
-  onStatus("capturing");
-
-  for (const catId of selectedIds) {
-    const category = CATEGORIES.find((c) => c.id === catId);
-    if (!category) continue;
-
-    // Label de sección en el PDF
-    pdf.setTextColor(primary.r, primary.g, primary.b);
-    pdf.setFontSize(9);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(category.label.toUpperCase(), margin, cursorY);
-    cursorY += 5;
-
-    // Línea bajo el label
-    pdf.setDrawColor(237, 232, 227); // #EDE8E3
-    pdf.setLineWidth(0.2);
-    pdf.line(margin, cursorY, pageW - margin, cursorY);
-    cursorY += 4;
-
-    // Capturar la sección del DOM
-    const imgData = await captureSection(catId);
-
-    if (imgData) {
-      // Calcular altura proporcional de la imagen en el PDF
-      const element = document.querySelector(
-        `[data-export-id="${catId}"]`,
-      ) as HTMLElement;
-      const elemW = element?.scrollWidth ?? 800;
-      const elemH = element?.scrollHeight ?? 300;
-      const imgH = (elemH / elemW) * contentW;
-      const safeImgH = Math.min(imgH, pageH - cursorY - 20); // no exceder la página
-
-      // Nueva página si no cabe
-      if (cursorY + safeImgH > pageH - 20) {
-        pdf.addPage();
-        cursorY = 20;
-      }
-
-      pdf.addImage(imgData, "PNG", margin, cursorY, contentW, safeImgH);
-      cursorY += safeImgH + 8;
-    } else {
-      // Fallback si la captura falla
-      pdf.setTextColor(180, 180, 180);
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "italic");
-      pdf.text("(Sección no disponible)", margin, cursorY);
-      cursorY += 8;
-    }
-
-    // Espaciado entre secciones
-    cursorY += 4;
-
-    // Nueva página si el cursor está muy abajo
-    if (cursorY > pageH - 30) {
+  const newPageIfNeeded = (neededH: number) => {
+    if (y + neededH > pageH - 20) {
       pdf.addPage();
-      cursorY = 20;
+      // Fondo de página
+      setFill(BG_PAGE);
+      pdf.rect(0, 0, pageW, pageH, "F");
+      y = 20;
+      drawFooter();
     }
-  }
+  };
 
-  // ── Pie de página en cada página ──────────────────────────────────────────
-  const totalPages = pdf.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    pdf.setPage(i);
-    pdf.setDrawColor(237, 232, 227);
+  // Dibuja el pie de página en la página actual
+  const drawFooter = () => {
+    const pg = pdf.getNumberOfPages();
+    setDraw(BORDER);
     pdf.setLineWidth(0.2);
     pdf.line(margin, pageH - 12, pageW - margin, pageH - 12);
-    pdf.setTextColor(180, 170, 165);
+    setColor(TEXT_XLIGHT);
     pdf.setFontSize(7);
     pdf.setFont("helvetica", "normal");
     pdf.text(
@@ -244,14 +197,470 @@ async function generatePDF(
       margin,
       pageH - 7,
     );
-    pdf.text(`Página ${i} de ${totalPages}`, pageW - margin, pageH - 7, {
+    pdf.text(`Página ${pg}`, pageW - margin, pageH - 7, { align: "right" });
+  };
+
+  // Label de sección (título de categoría)
+  const drawSectionTitle = (title: string) => {
+    newPageIfNeeded(14);
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "bold");
+    setColor({ r: primary.r, g: primary.g, b: primary.b });
+    pdf.text(title.toUpperCase(), margin, y);
+    y += 3;
+    setDraw(BORDER);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, y, pageW - margin, y);
+    y += 6;
+  };
+
+  // Card de KPI individual
+  // x, y absolutos, w = ancho de la card
+  const drawKPICard = (
+    label: string,
+    value: string,
+    sublabel: string,
+    x: number,
+    cardY: number,
+    w: number,
+    h: number = 28,
+  ) => {
+    // Fondo y borde
+    setFill(BG_CARD);
+    setDraw(BORDER);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(x, cardY, w, h, 2, 2, "FD");
+
+    // Acento de color arriba (línea de 2px)
+    setFill({ r: primary.r, g: primary.g, b: primary.b });
+    pdf.roundedRect(x, cardY, w, 1.5, 0.5, 0.5, "F");
+
+    // Label
+    pdf.setFontSize(6.5);
+    pdf.setFont("helvetica", "bold");
+    setColor(TEXT_LIGHT);
+    pdf.text(label.toUpperCase(), x + 4, cardY + 7);
+
+    // Valor principal
+    pdf.setFontSize(16);
+    pdf.setFont("helvetica", "bold");
+    setColor(TEXT_DARK);
+    pdf.text(value, x + 4, cardY + 17);
+
+    // Sublabel
+    if (sublabel) {
+      pdf.setFontSize(6);
+      pdf.setFont("helvetica", "normal");
+      setColor(TEXT_XLIGHT);
+      pdf.text(sublabel, x + 4, cardY + 23);
+    }
+  };
+
+  // Fila de 3 KPI cards del mismo ancho
+  const drawKPIRow3 = (
+    cards: Array<{ label: string; value: string; sublabel: string }>,
+  ) => {
+    newPageIfNeeded(34);
+    const gap = 3;
+    const w = (colW - gap * 2) / 3;
+    cards.forEach((card, i) => {
+      drawKPICard(
+        card.label,
+        card.value,
+        card.sublabel,
+        margin + i * (w + gap),
+        y,
+        w,
+      );
+    });
+    y += 33;
+  };
+
+  // Fila de 2 KPI cards
+  const drawKPIRow2 = (
+    cards: Array<{ label: string; value: string; sublabel: string }>,
+  ) => {
+    newPageIfNeeded(34);
+    const gap = 3;
+    const w = (colW - gap) / 2;
+    cards.forEach((card, i) => {
+      drawKPICard(
+        card.label,
+        card.value,
+        card.sublabel,
+        margin + i * (w + gap),
+        y,
+        w,
+      );
+    });
+    y += 33;
+  };
+
+  // Barra de progreso horizontal (para heatmap de servicios)
+  const drawBar = (
+    label: string,
+    value: string,
+    pct: number, // 0–100
+    barY: number,
+    isTop: boolean,
+  ) => {
+    const barX = margin + 32;
+    const barW = colW - 32 - 20;
+    const barH = 5;
+    const filledW = (pct / 100) * barW;
+
+    // Label izquierdo
+    pdf.setFontSize(7.5);
+    pdf.setFont("helvetica", isTop ? "bold" : "normal");
+    setColor(isTop ? TEXT_DARK : TEXT_MID);
+    pdf.text(label, margin, barY + 4);
+
+    // Track
+    setFill(BG_PAGE);
+    setDraw(BORDER);
+    pdf.setLineWidth(0.1);
+    pdf.roundedRect(barX, barY, barW, barH, 1, 1, "FD");
+
+    // Fill
+    setFill(
+      isTop
+        ? { r: primary.r, g: primary.g, b: primary.b }
+        : {
+            r: Math.min(255, primary.r + 60),
+            g: Math.min(255, primary.g + 60),
+            b: Math.min(255, primary.b + 60),
+          },
+    );
+    if (filledW > 0) {
+      pdf.roundedRect(barX, barY, filledW, barH, 1, 1, "F");
+    }
+
+    // Valor derecho
+    pdf.setFontSize(7.5);
+    pdf.setFont("helvetica", "bold");
+    setColor(isTop ? { r: primary.r, g: primary.g, b: primary.b } : TEXT_LIGHT);
+    pdf.text(value, pageW - margin, barY + 4, { align: "right" });
+  };
+
+  // Separador visual entre secciones
+  const drawSpacer = (h = 6) => {
+    y += h;
+  };
+
+  // ── Fondo de página 1 ─────────────────────────────────────────────────────
+  setFill(BG_PAGE);
+  pdf.rect(0, 0, pageW, pageH, "F");
+
+  // ── HEADER ────────────────────────────────────────────────────────────────
+  // Franja superior con primaryColor
+  setFill({ r: primary.r, g: primary.g, b: primary.b });
+  pdf.rect(0, 0, pageW, 32, "F");
+
+  // Nombre del salón
+  pdf.setFontSize(20);
+  pdf.setFont("helvetica", "bold");
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(data.salonName, margin, 14);
+
+  // Subtítulo
+  pdf.setFontSize(9);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(`Reporte de métricas · ${data.currentMonth}`, margin, 22);
+
+  // Fecha (derecha)
+  pdf.setFontSize(8);
+  pdf.text(getReportDate(), pageW - margin, 22, { align: "right" });
+
+  // Línea divisora bajo el header
+  setDraw({ r: primary.r, g: primary.g, b: primary.b });
+  pdf.setLineWidth(0.4);
+  pdf.line(margin, 36, pageW - margin, 36);
+
+  y = 42;
+
+  // Pie de página de la página 1
+  drawFooter();
+
+  // ── SECCIONES SELECCIONADAS ───────────────────────────────────────────────
+
+  // ── ACTIVIDAD ─────────────────────────────────────────────────────────────
+  if (selectedIds.includes("actividad")) {
+    drawSectionTitle(`Actividad · ${data.currentMonth}`);
+
+    drawKPIRow3([
+      {
+        label: "Citas del mes",
+        value: String(data.citasDelMes),
+        sublabel: deltaText(data.citasDelta),
+      },
+      {
+        label: "Tasa de No-Show",
+        value: `${data.noShowRate}%`,
+        sublabel: deltaText(
+          data.noShowDelta != null ? -data.noShowDelta : null,
+        ),
+      },
+      {
+        label: "Cancelaciones",
+        value: `${data.cancellationRate}%`,
+        sublabel: deltaText(
+          data.cancellationDelta != null ? -data.cancellationDelta : null,
+        ),
+      },
+    ]);
+
+    drawSpacer(4);
+  }
+
+  // ── FINANZAS ──────────────────────────────────────────────────────────────
+  if (selectedIds.includes("finanzas")) {
+    drawSectionTitle(`Finanzas · ${data.currentMonth}`);
+
+    drawKPIRow3([
+      {
+        label: "Ingresos estimados",
+        value: formatCurrency(data.ingresos),
+        sublabel: deltaText(data.ingresosDelta),
+      },
+      {
+        label: "Ticket promedio",
+        value: formatCurrency(data.ticketPromedio),
+        sublabel: "por cita completada",
+      },
+      {
+        label: "Vs año anterior",
+        value: formatCurrency(data.ingresosYearAgo),
+        sublabel: deltaText(data.revenueYearDelta),
+      },
+    ]);
+
+    drawSpacer(3);
+
+    drawKPIRow2([
+      {
+        label: "Clientas nuevas",
+        value: String(data.clientasNuevas),
+        sublabel: "no visitaron el mes anterior",
+      },
+      {
+        label: "Clientas que volvieron",
+        value: String(data.clientasVolvieron),
+        sublabel: `de ${data.totalClients} clientas en 60 días`,
+      },
+    ]);
+
+    drawSpacer(4);
+  }
+
+  // ── RETENCIÓN ─────────────────────────────────────────────────────────────
+  if (selectedIds.includes("retencion")) {
+    drawSectionTitle("Retención de clientas");
+
+    // Card de Rebooking
+    const retLabel =
+      data.rebookingRate >= 60
+        ? "Excelente"
+        : data.rebookingRate >= 40
+          ? "Buena"
+          : data.rebookingRate >= 20
+            ? "Regular"
+            : "Por mejorar";
+
+    const freqLabel =
+      data.visitFrequency <= 14
+        ? "Muy frecuente"
+        : data.visitFrequency <= 30
+          ? "Frecuente"
+          : data.visitFrequency <= 45
+            ? "Ocasional"
+            : "Esporádica";
+
+    newPageIfNeeded(50);
+    const halfW = (colW - 3) / 2;
+
+    // Card rebooking
+    setFill(BG_CARD);
+    setDraw(BORDER);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(margin, y, halfW, 44, 2, 2, "FD");
+    setFill({ r: primary.r, g: primary.g, b: primary.b });
+    pdf.roundedRect(margin, y, halfW, 1.5, 0.5, 0.5, "F");
+
+    pdf.setFontSize(6.5);
+    pdf.setFont("helvetica", "bold");
+    setColor(TEXT_LIGHT);
+    pdf.text("TASA DE REBOOKING", margin + 4, y + 8);
+
+    pdf.setFontSize(22);
+    pdf.setFont("helvetica", "bold");
+    setColor({ r: primary.r, g: primary.g, b: primary.b });
+    pdf.text(`${data.rebookingRate}%`, margin + 4, y + 21);
+
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "bold");
+    setColor(TEXT_DARK);
+    pdf.text(retLabel, margin + 4, y + 29);
+
+    pdf.setFontSize(6.5);
+    pdf.setFont("helvetica", "normal");
+    setColor(TEXT_LIGHT);
+    pdf.text(
+      `${data.rebookingCount} de ${data.totalClients} clientas volvieron en 60 días`,
+      margin + 4,
+      y + 36,
+    );
+
+    // Card frecuencia de visita
+    const cx = margin + halfW + 3;
+    setFill(BG_CARD);
+    pdf.roundedRect(cx, y, halfW, 44, 2, 2, "FD");
+    setFill({ r: primary.r, g: primary.g, b: primary.b });
+    pdf.roundedRect(cx, y, halfW, 1.5, 0.5, 0.5, "F");
+
+    pdf.setFontSize(6.5);
+    pdf.setFont("helvetica", "bold");
+    setColor(TEXT_LIGHT);
+    pdf.text("FRECUENCIA DE VISITA", cx + 4, y + 8);
+
+    pdf.setFontSize(22);
+    pdf.setFont("helvetica", "bold");
+    setColor({ r: primary.r, g: primary.g, b: primary.b });
+    pdf.text(
+      data.visitFrequency > 0 ? `${data.visitFrequency} días` : "—",
+      cx + 4,
+      y + 21,
+    );
+
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "bold");
+    setColor(TEXT_DARK);
+    pdf.text(freqLabel, cx + 4, y + 29);
+
+    pdf.setFontSize(6.5);
+    pdf.setFont("helvetica", "normal");
+    setColor(TEXT_LIGHT);
+    pdf.text("promedio entre visitas · últimos 90 días", cx + 4, y + 36);
+
+    y += 49;
+    drawSpacer(4);
+  }
+
+  // ── SERVICIOS POPULARES ───────────────────────────────────────────────────
+  if (selectedIds.includes("servicios")) {
+    drawSectionTitle(`Servicios populares · ${data.currentMonth}`);
+
+    if (!data.topServices.length) {
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "italic");
+      setColor(TEXT_XLIGHT);
+      pdf.text("Sin servicios registrados este mes.", margin, y);
+      y += 10;
+    } else {
+      const maxCount = data.topServices[0]?.count ?? 1;
+
+      // Encabezado de tabla
+      newPageIfNeeded(10);
+      pdf.setFontSize(6.5);
+      pdf.setFont("helvetica", "bold");
+      setColor(TEXT_XLIGHT);
+      pdf.text("#", margin, y);
+      pdf.text("SERVICIO", margin + 10, y);
+      pdf.text("CITAS", pageW - margin - 20, y, { align: "right" });
+      pdf.text("INGRESOS", pageW - margin, y, { align: "right" });
+      y += 3;
+      setDraw(BORDER);
+      pdf.setLineWidth(0.2);
+      pdf.line(margin, y, pageW - margin, y);
+      y += 5;
+
+      data.topServices.forEach((svc, i) => {
+        newPageIfNeeded(18);
+        const pct = Math.round((svc.count / maxCount) * 100);
+
+        // Número de posición
+        pdf.setFontSize(7);
+        pdf.setFont("helvetica", svc.isTop ? "bold" : "normal");
+        setColor(
+          svc.isTop ? { r: primary.r, g: primary.g, b: primary.b } : TEXT_LIGHT,
+        );
+        pdf.text(svc.isTop ? "✦" : String(i + 1), margin + 2, y + 4, {
+          align: "center",
+        });
+
+        // Nombre
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", svc.isTop ? "bold" : "normal");
+        setColor(svc.isTop ? TEXT_DARK : TEXT_MID);
+        pdf.text(svc.name, margin + 10, y + 4);
+
+        // Citas (derecha)
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "bold");
+        setColor(
+          svc.isTop ? { r: primary.r, g: primary.g, b: primary.b } : TEXT_LIGHT,
+        );
+        pdf.text(String(svc.count), pageW - margin - 20, y + 4, {
+          align: "right",
+        });
+
+        // Ingresos (derecha)
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "normal");
+        setColor(TEXT_MID);
+        pdf.text(formatCurrency(svc.revenue), pageW - margin, y + 4, {
+          align: "right",
+        });
+
+        // Barra de proporción
+        const barX = margin + 10;
+        const barW = colW - 10 - 45;
+        const fillW = (pct / 100) * barW;
+        setFill({ r: 243, g: 237, b: 232 }); // #F3EDE8
+        pdf.roundedRect(barX, y + 7, barW, 2.5, 0.5, 0.5, "F");
+        if (fillW > 0) {
+          setFill(
+            svc.isTop
+              ? { r: primary.r, g: primary.g, b: primary.b }
+              : {
+                  r: Math.min(255, primary.r + 80),
+                  g: Math.min(255, primary.g + 80),
+                  b: Math.min(255, primary.b + 80),
+                },
+          );
+          pdf.roundedRect(barX, y + 7, fillW, 2.5, 0.5, 0.5, "F");
+        }
+
+        y += 14;
+
+        // Separador ligero entre servicios
+        if (i < data.topServices.length - 1) {
+          setDraw({ r: 243, g: 237, b: 232 });
+          pdf.setLineWidth(0.15);
+          pdf.line(margin + 10, y - 1, pageW - margin, y - 1);
+        }
+      });
+    }
+
+    drawSpacer(4);
+  }
+
+  // ── Actualizar pie de todas las páginas con total de páginas ─────────────
+  const totalPages = pdf.getNumberOfPages();
+  for (let pg = 1; pg <= totalPages; pg++) {
+    pdf.setPage(pg);
+    // Sobreescribir el número de página con el total correcto
+    setFill(BG_PAGE);
+    pdf.rect(pageW - margin - 30, pageH - 11, 35, 8, "F");
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "normal");
+    setColor(TEXT_XLIGHT);
+    pdf.text(`Página ${pg} de ${totalPages}`, pageW - margin, pageH - 7, {
       align: "right",
     });
   }
 
   // ── Descargar ─────────────────────────────────────────────────────────────
-  onStatus("generating");
-  const fileName = `BeautySync_${salonName.replace(/\s+/g, "_")}_${currentMonth.replace(/\s+/g, "_")}.pdf`;
+  const fileName = `BeautySync_${data.salonName.replace(/\s+/g, "_")}_${data.currentMonth.replace(/\s+/g, "_")}.pdf`;
   pdf.save(fileName);
 }
 
@@ -263,7 +672,7 @@ function CategoryCheckbox({
   onChange,
   primaryColor,
 }: {
-  category: ExportCategory;
+  category: Category;
   checked: boolean;
   onChange: (id: string) => void;
   primaryColor: string;
@@ -273,24 +682,20 @@ function CategoryCheckbox({
       whileHover={{ x: 2 }}
       whileTap={{ scale: 0.99 }}
       onClick={() => onChange(category.id)}
-      className="w-full flex items-start gap-3 py-3 px-1 text-left rounded-xl
-                 transition-colors"
+      className="w-full flex items-start gap-3 py-3 px-1 text-left"
       style={{ borderBottom: "1px solid #F3EDE8" }}
     >
-      {/* Checkbox ícono */}
       <div className="mt-0.5 shrink-0">
         {checked ? (
           <CheckSquare
-            size={18}
+            size={17}
             strokeWidth={2}
             style={{ color: primaryColor }}
           />
         ) : (
-          <Square size={18} strokeWidth={1.5} style={{ color: "#C4B8B0" }} />
+          <Square size={17} strokeWidth={1.5} style={{ color: "#C4B8B0" }} />
         )}
       </div>
-
-      {/* Label + descripción */}
       <div>
         <p
           className="text-sm font-semibold leading-tight"
@@ -306,56 +711,25 @@ function CategoryCheckbox({
   );
 }
 
-// ─── Status label ─────────────────────────────────────────────────────────────
-
-function StatusLabel({ status }: { status: ExportStatus }) {
-  if (status === "idle" || status === "done") return null;
-
-  const messages: Record<ExportStatus, string> = {
-    idle: "",
-    capturing: "Capturando secciones...",
-    generating: "Generando PDF...",
-    done: "",
-    error: "Ocurrió un error. Intenta de nuevo.",
-  };
-
-  const isError = status === "error";
-
-  return (
-    <motion.p
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="text-xs text-center mt-2"
-      style={{ color: isError ? "#B91C1C" : "#9C8E85" }}
-    >
-      {messages[status]}
-    </motion.p>
-  );
-}
-
-// ─── Modal ───────────────────────────────────────────────────────────────────
+// ─── Modal ────────────────────────────────────────────────────────────────────
 
 function ExportModal({
-  salonName,
-  primaryColor,
-  currentMonth,
+  data,
   onClose,
 }: {
-  salonName: string;
-  primaryColor: string;
-  currentMonth: string;
+  data: ReportData;
   onClose: () => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(
-    new Set(CATEGORIES.map((c) => c.id)), // todas seleccionadas por defecto
+    new Set(CATEGORIES.map((c) => c.id)),
   );
   const [status, setStatus] = useState<ExportStatus>("idle");
 
   const allSelected = selected.size === CATEGORIES.length;
   const noneSelected = selected.size === 0;
-  const isExporting = status === "capturing" || status === "generating";
+  const isGenerating = status === "generating";
 
-  const toggleCategory = useCallback((id: string) => {
+  const toggle = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -368,35 +742,20 @@ function ExportModal({
   }, [allSelected]);
 
   const handleExport = useCallback(async () => {
-    if (noneSelected || isExporting) return;
-
-    // Orden fijo de exportación (mismo orden visual del dashboard)
-    const orderedIds = CATEGORIES.map((c) => c.id).filter((id) =>
-      selected.has(id),
-    );
-
+    if (noneSelected || isGenerating) return;
+    setStatus("generating");
     try {
-      await generatePDF(
-        salonName,
-        primaryColor,
-        currentMonth,
-        orderedIds,
-        setStatus,
+      const orderedIds = CATEGORIES.map((c) => c.id).filter((id) =>
+        selected.has(id),
       );
+      await buildPDF(data, orderedIds);
       setStatus("done");
-      setTimeout(onClose, 800);
-    } catch {
+      setTimeout(onClose, 900);
+    } catch (err) {
+      console.error("PDF error:", err);
       setStatus("error");
     }
-  }, [
-    noneSelected,
-    isExporting,
-    selected,
-    salonName,
-    primaryColor,
-    currentMonth,
-    onClose,
-  ]);
+  }, [noneSelected, isGenerating, selected, data, onClose]);
 
   return (
     <>
@@ -424,7 +783,7 @@ function ExportModal({
                    sm:w-[420px] rounded-2xl shadow-2xl overflow-hidden"
         style={{ background: "#FDFBF8" }}
       >
-        {/* Header del modal */}
+        {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-5"
           style={{ borderBottom: "1px solid #EDE8E3" }}
@@ -432,12 +791,12 @@ function ExportModal({
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ background: `${primaryColor}14` }}
+              style={{ background: `${data.primaryColor}14` }}
             >
               <FileText
                 size={15}
                 strokeWidth={1.75}
-                style={{ color: primaryColor }}
+                style={{ color: data.primaryColor }}
               />
             </div>
             <div>
@@ -445,14 +804,13 @@ function ExportModal({
                 Exportar reporte
               </p>
               <p className="text-xs" style={{ color: "#B5A99F" }}>
-                {currentMonth}
+                {data.currentMonth}
               </p>
             </div>
           </div>
-
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg transition-colors"
+            className="p-1.5 rounded-lg"
             style={{ color: "#C4B8B0" }}
             onMouseEnter={(e) =>
               ((e.currentTarget as HTMLElement).style.color = "#9C8E85")
@@ -473,80 +831,82 @@ function ExportModal({
             onClick={toggleAll}
             className="w-full flex items-center gap-2 mb-2 pb-3 text-xs font-semibold"
             style={{
-              color: primaryColor,
-              borderBottom: `1px solid ${primaryColor}20`,
+              color: data.primaryColor,
+              borderBottom: `1px solid ${data.primaryColor}20`,
             }}
           >
             {allSelected ? (
-              <CheckSquare size={15} strokeWidth={2} />
+              <CheckSquare size={14} strokeWidth={2} />
             ) : (
-              <Square size={15} strokeWidth={1.5} />
+              <Square size={14} strokeWidth={1.5} />
             )}
             {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
           </motion.button>
 
-          {/* Lista de categorías */}
           <div className="flex flex-col">
             {CATEGORIES.map((cat) => (
               <CategoryCheckbox
                 key={cat.id}
                 category={cat}
                 checked={selected.has(cat.id)}
-                onChange={toggleCategory}
-                primaryColor={primaryColor}
+                onChange={toggle}
+                primaryColor={data.primaryColor}
               />
             ))}
           </div>
         </div>
 
-        {/* Footer con botón de acción */}
+        {/* Footer */}
         <div className="px-6 py-4" style={{ borderTop: "1px solid #EDE8E3" }}>
           <motion.button
-            whileHover={!isExporting && !noneSelected ? { y: -1 } : {}}
-            whileTap={!isExporting && !noneSelected ? { scale: 0.98 } : {}}
+            whileHover={!isGenerating && !noneSelected ? { y: -1 } : {}}
+            whileTap={!isGenerating && !noneSelected ? { scale: 0.98 } : {}}
             onClick={handleExport}
-            disabled={noneSelected || isExporting}
-            className="w-full flex items-center justify-center gap-2.5
-                       py-3 rounded-xl text-sm font-semibold
-                       transition-all duration-200"
+            disabled={noneSelected || isGenerating}
+            className="w-full flex items-center justify-center gap-2.5 py-3
+                       rounded-xl text-sm font-semibold transition-all duration-200"
             style={{
               background: noneSelected
                 ? "#EDE8E3"
-                : `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}CC 100%)`,
+                : `linear-gradient(135deg, ${data.primaryColor} 0%, ${data.primaryColor}CC 100%)`,
               color: noneSelected ? "#B5A99F" : "#FFFFFF",
-              cursor: noneSelected || isExporting ? "not-allowed" : "pointer",
-              opacity: isExporting ? 0.85 : 1,
+              opacity: isGenerating ? 0.85 : 1,
+              cursor: noneSelected || isGenerating ? "not-allowed" : "pointer",
             }}
           >
-            {isExporting ? (
+            {isGenerating ? (
               <>
-                <Loader2 size={15} strokeWidth={2} className="animate-spin" />
-                {status === "capturing" ? "Capturando..." : "Generando PDF..."}
+                <Loader2 size={15} strokeWidth={2} className="animate-spin" />{" "}
+                Generando PDF...
               </>
             ) : status === "done" ? (
               <>
-                <Download size={15} strokeWidth={2} />
-                ¡Listo! Descargando...
+                <Download size={15} strokeWidth={2} /> ¡Listo! Descargando...
               </>
             ) : (
               <>
                 <Download size={15} strokeWidth={2} />
-                Exportar{" "}
                 {selected.size === CATEGORIES.length
-                  ? "reporte completo"
-                  : `${selected.size} ${selected.size === 1 ? "sección" : "secciones"}`}
+                  ? "Exportar reporte completo"
+                  : `Exportar ${selected.size} ${selected.size === 1 ? "sección" : "secciones"}`}
               </>
             )}
           </motion.button>
 
-          <StatusLabel status={status} />
-
+          {status === "error" && (
+            <p
+              className="text-xs text-center mt-2"
+              style={{ color: "#B91C1C" }}
+            >
+              Ocurrió un error. Intenta de nuevo.
+            </p>
+          )}
           {noneSelected && (
             <p
               className="text-xs text-center mt-2"
               style={{ color: "#C4B8B0" }}
             >
-              Selecciona al menos una sección
+              Selecciona al menos una sección.
             </p>
           )}
         </div>
@@ -557,16 +917,11 @@ function ExportModal({
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export default function ExportReportButton({
-  salonName,
-  primaryColor,
-  currentMonth,
-}: ExportReportButtonProps) {
+export default function ExportReportButton({ data }: ExportReportButtonProps) {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
     <>
-      {/* Botón trigger */}
       <motion.button
         whileHover={{ y: -1 }}
         whileTap={{ scale: 0.97 }}
@@ -579,8 +934,9 @@ export default function ExportReportButton({
           color: "#5C4F48",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.borderColor = primaryColor;
-          (e.currentTarget as HTMLElement).style.color = primaryColor;
+          (e.currentTarget as HTMLElement).style.borderColor =
+            data.primaryColor;
+          (e.currentTarget as HTMLElement).style.color = data.primaryColor;
         }}
         onMouseLeave={(e) => {
           (e.currentTarget as HTMLElement).style.borderColor = "#EDE8E3";
@@ -591,15 +947,9 @@ export default function ExportReportButton({
         Exportar reporte
       </motion.button>
 
-      {/* Modal */}
       <AnimatePresence>
         {modalOpen && (
-          <ExportModal
-            salonName={salonName}
-            primaryColor={primaryColor}
-            currentMonth={currentMonth}
-            onClose={() => setModalOpen(false)}
-          />
+          <ExportModal data={data} onClose={() => setModalOpen(false)} />
         )}
       </AnimatePresence>
     </>
