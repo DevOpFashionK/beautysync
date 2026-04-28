@@ -4,10 +4,11 @@
 //
 // Exportación de reporte PDF construido con jsPDF puro.
 // SIN html2canvas — cada elemento se dibuja programáticamente.
-// Resultado: reporte profesional, nítido, con tipografía correcta.
 //
-// Recibe los datos del reporte como props desde page.tsx.
-// El modal permite selección por categoría o exportar todo.
+// FIXES:
+//   - Eliminada función drawBar (declarada pero nunca usada)
+//   - toggle usa if/else en vez de expresión ternaria (ESLint no-unused-expressions)
+//   - Símbolo ✦ reemplazado por "N°1" en el PDF (helvetica no soporta unicode especial)
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,7 +31,6 @@ export interface ReportData {
   noShowDelta: number | null;
   cancellationRate: number;
   cancellationDelta: number | null;
-
   // Finanzas
   ingresos: number;
   ingresosDelta: number | null;
@@ -41,12 +41,10 @@ export interface ReportData {
   clientasNuevas: number;
   clientasVolvieron: number;
   totalClients: number;
-
   // Retención
   rebookingRate: number;
   rebookingCount: number;
   visitFrequency: number;
-
   // Servicios
   topServices: Array<{
     name: string;
@@ -54,7 +52,6 @@ export interface ReportData {
     revenue: number;
     isTop: boolean;
   }>;
-
   // Meta
   salonName: string;
   primaryColor: string;
@@ -142,7 +139,6 @@ async function buildPDF(
 ): Promise<void> {
   const { default: jsPDF } = await import("jspdf");
 
-  // ── Configuración base ────────────────────────────────────────────────────
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageW = 210;
   const pageH = 297;
@@ -150,40 +146,23 @@ async function buildPDF(
   const colW = pageW - margin * 2;
   const primary = hexToRgb(data.primaryColor);
 
-  // Colores auxiliares
-  const TEXT_DARK = { r: 45, g: 36, b: 32 }; // #2D2420
-  const TEXT_MID = { r: 92, g: 79, b: 72 }; // #5C4F48
-  const TEXT_LIGHT = { r: 156, g: 142, b: 133 }; // #9C8E85
-  const TEXT_XLIGHT = { r: 196, g: 184, b: 176 }; // #C4B8B0
-  const BORDER = { r: 237, g: 232, b: 227 }; // #EDE8E3
-  const BG_CARD = { r: 255, g: 255, b: 255 }; // #FFFFFF
-  const BG_PAGE = { r: 250, g: 248, b: 245 }; // #FAF8F5
+  const TEXT_DARK = { r: 45, g: 36, b: 32 };
+  const TEXT_MID = { r: 92, g: 79, b: 72 };
+  const TEXT_LIGHT = { r: 156, g: 142, b: 133 };
+  const TEXT_XLIGHT = { r: 196, g: 184, b: 176 };
+  const BORDER = { r: 237, g: 232, b: 227 };
+  const BG_CARD = { r: 255, g: 255, b: 255 };
+  const BG_PAGE = { r: 250, g: 248, b: 245 };
 
-  let y = 0; // cursor Y actual
-
-  // ── Helpers de dibujo ────────────────────────────────────────────────────
+  let y = 0;
 
   const setColor = (c: { r: number; g: number; b: number }) =>
     pdf.setTextColor(c.r, c.g, c.b);
-
   const setFill = (c: { r: number; g: number; b: number }) =>
     pdf.setFillColor(c.r, c.g, c.b);
-
   const setDraw = (c: { r: number; g: number; b: number }) =>
     pdf.setDrawColor(c.r, c.g, c.b);
 
-  const newPageIfNeeded = (neededH: number) => {
-    if (y + neededH > pageH - 20) {
-      pdf.addPage();
-      // Fondo de página
-      setFill(BG_PAGE);
-      pdf.rect(0, 0, pageW, pageH, "F");
-      y = 20;
-      drawFooter();
-    }
-  };
-
-  // Dibuja el pie de página en la página actual
   const drawFooter = () => {
     const pg = pdf.getNumberOfPages();
     setDraw(BORDER);
@@ -197,15 +176,24 @@ async function buildPDF(
       margin,
       pageH - 7,
     );
-    pdf.text(`Página ${pg}`, pageW - margin, pageH - 7, { align: "right" });
+    pdf.text(`Pagina ${pg}`, pageW - margin, pageH - 7, { align: "right" });
   };
 
-  // Label de sección (título de categoría)
+  const newPageIfNeeded = (neededH: number) => {
+    if (y + neededH > pageH - 20) {
+      pdf.addPage();
+      setFill(BG_PAGE);
+      pdf.rect(0, 0, pageW, pageH, "F");
+      y = 20;
+      drawFooter();
+    }
+  };
+
   const drawSectionTitle = (title: string) => {
     newPageIfNeeded(14);
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "bold");
-    setColor({ r: primary.r, g: primary.g, b: primary.b });
+    setColor(primary);
     pdf.text(title.toUpperCase(), margin, y);
     y += 3;
     setDraw(BORDER);
@@ -214,8 +202,6 @@ async function buildPDF(
     y += 6;
   };
 
-  // Card de KPI individual
-  // x, y absolutos, w = ancho de la card
   const drawKPICard = (
     label: string,
     value: string,
@@ -225,29 +211,20 @@ async function buildPDF(
     w: number,
     h: number = 28,
   ) => {
-    // Fondo y borde
     setFill(BG_CARD);
     setDraw(BORDER);
     pdf.setLineWidth(0.3);
     pdf.roundedRect(x, cardY, w, h, 2, 2, "FD");
-
-    // Acento de color arriba (línea de 2px)
-    setFill({ r: primary.r, g: primary.g, b: primary.b });
+    setFill(primary);
     pdf.roundedRect(x, cardY, w, 1.5, 0.5, 0.5, "F");
-
-    // Label
     pdf.setFontSize(6.5);
     pdf.setFont("helvetica", "bold");
     setColor(TEXT_LIGHT);
     pdf.text(label.toUpperCase(), x + 4, cardY + 7);
-
-    // Valor principal
     pdf.setFontSize(16);
     pdf.setFont("helvetica", "bold");
     setColor(TEXT_DARK);
     pdf.text(value, x + 4, cardY + 17);
-
-    // Sublabel
     if (sublabel) {
       pdf.setFontSize(6);
       pdf.setFont("helvetica", "normal");
@@ -256,7 +233,6 @@ async function buildPDF(
     }
   };
 
-  // Fila de 3 KPI cards del mismo ancho
   const drawKPIRow3 = (
     cards: Array<{ label: string; value: string; sublabel: string }>,
   ) => {
@@ -276,7 +252,6 @@ async function buildPDF(
     y += 33;
   };
 
-  // Fila de 2 KPI cards
   const drawKPIRow2 = (
     cards: Array<{ label: string; value: string; sublabel: string }>,
   ) => {
@@ -296,97 +271,36 @@ async function buildPDF(
     y += 33;
   };
 
-  // Barra de progreso horizontal (para heatmap de servicios)
-  const drawBar = (
-    label: string,
-    value: string,
-    pct: number, // 0–100
-    barY: number,
-    isTop: boolean,
-  ) => {
-    const barX = margin + 32;
-    const barW = colW - 32 - 20;
-    const barH = 5;
-    const filledW = (pct / 100) * barW;
-
-    // Label izquierdo
-    pdf.setFontSize(7.5);
-    pdf.setFont("helvetica", isTop ? "bold" : "normal");
-    setColor(isTop ? TEXT_DARK : TEXT_MID);
-    pdf.text(label, margin, barY + 4);
-
-    // Track
-    setFill(BG_PAGE);
-    setDraw(BORDER);
-    pdf.setLineWidth(0.1);
-    pdf.roundedRect(barX, barY, barW, barH, 1, 1, "FD");
-
-    // Fill
-    setFill(
-      isTop
-        ? { r: primary.r, g: primary.g, b: primary.b }
-        : {
-            r: Math.min(255, primary.r + 60),
-            g: Math.min(255, primary.g + 60),
-            b: Math.min(255, primary.b + 60),
-          },
-    );
-    if (filledW > 0) {
-      pdf.roundedRect(barX, barY, filledW, barH, 1, 1, "F");
-    }
-
-    // Valor derecho
-    pdf.setFontSize(7.5);
-    pdf.setFont("helvetica", "bold");
-    setColor(isTop ? { r: primary.r, g: primary.g, b: primary.b } : TEXT_LIGHT);
-    pdf.text(value, pageW - margin, barY + 4, { align: "right" });
-  };
-
-  // Separador visual entre secciones
   const drawSpacer = (h = 6) => {
     y += h;
   };
 
-  // ── Fondo de página 1 ─────────────────────────────────────────────────────
+  // ── Fondo página 1 ────────────────────────────────────────────────────────
   setFill(BG_PAGE);
   pdf.rect(0, 0, pageW, pageH, "F");
 
-  // ── HEADER ────────────────────────────────────────────────────────────────
-  // Franja superior con primaryColor
-  setFill({ r: primary.r, g: primary.g, b: primary.b });
+  // ── Header ────────────────────────────────────────────────────────────────
+  setFill(primary);
   pdf.rect(0, 0, pageW, 32, "F");
-
-  // Nombre del salón
   pdf.setFontSize(20);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(255, 255, 255);
   pdf.text(data.salonName, margin, 14);
-
-  // Subtítulo
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "normal");
-  pdf.text(`Reporte de métricas · ${data.currentMonth}`, margin, 22);
-
-  // Fecha (derecha)
+  pdf.text(`Reporte de metricas · ${data.currentMonth}`, margin, 22);
   pdf.setFontSize(8);
   pdf.text(getReportDate(), pageW - margin, 22, { align: "right" });
 
-  // Línea divisora bajo el header
-  setDraw({ r: primary.r, g: primary.g, b: primary.b });
+  setDraw(primary);
   pdf.setLineWidth(0.4);
   pdf.line(margin, 36, pageW - margin, 36);
-
   y = 42;
-
-  // Pie de página de la página 1
   drawFooter();
-
-  // ── SECCIONES SELECCIONADAS ───────────────────────────────────────────────
 
   // ── ACTIVIDAD ─────────────────────────────────────────────────────────────
   if (selectedIds.includes("actividad")) {
     drawSectionTitle(`Actividad · ${data.currentMonth}`);
-
     drawKPIRow3([
       {
         label: "Citas del mes",
@@ -408,14 +322,12 @@ async function buildPDF(
         ),
       },
     ]);
-
     drawSpacer(4);
   }
 
   // ── FINANZAS ──────────────────────────────────────────────────────────────
   if (selectedIds.includes("finanzas")) {
     drawSectionTitle(`Finanzas · ${data.currentMonth}`);
-
     drawKPIRow3([
       {
         label: "Ingresos estimados",
@@ -433,9 +345,7 @@ async function buildPDF(
         sublabel: deltaText(data.revenueYearDelta),
       },
     ]);
-
     drawSpacer(3);
-
     drawKPIRow2([
       {
         label: "Clientas nuevas",
@@ -445,18 +355,16 @@ async function buildPDF(
       {
         label: "Clientas que volvieron",
         value: String(data.clientasVolvieron),
-        sublabel: `de ${data.totalClients} clientas en 60 días`,
+        sublabel: `de ${data.totalClients} clientas en 60 dias`,
       },
     ]);
-
     drawSpacer(4);
   }
 
   // ── RETENCIÓN ─────────────────────────────────────────────────────────────
   if (selectedIds.includes("retencion")) {
-    drawSectionTitle("Retención de clientas");
+    drawSectionTitle("Retencion de clientas");
 
-    // Card de Rebooking
     const retLabel =
       data.rebookingRate >= 60
         ? "Excelente"
@@ -473,7 +381,7 @@ async function buildPDF(
           ? "Frecuente"
           : data.visitFrequency <= 45
             ? "Ocasional"
-            : "Esporádica";
+            : "Esporadica";
 
     newPageIfNeeded(50);
     const halfW = (colW - 3) / 2;
@@ -483,69 +391,61 @@ async function buildPDF(
     setDraw(BORDER);
     pdf.setLineWidth(0.3);
     pdf.roundedRect(margin, y, halfW, 44, 2, 2, "FD");
-    setFill({ r: primary.r, g: primary.g, b: primary.b });
+    setFill(primary);
     pdf.roundedRect(margin, y, halfW, 1.5, 0.5, 0.5, "F");
-
     pdf.setFontSize(6.5);
     pdf.setFont("helvetica", "bold");
     setColor(TEXT_LIGHT);
     pdf.text("TASA DE REBOOKING", margin + 4, y + 8);
-
     pdf.setFontSize(22);
     pdf.setFont("helvetica", "bold");
-    setColor({ r: primary.r, g: primary.g, b: primary.b });
+    setColor(primary);
     pdf.text(`${data.rebookingRate}%`, margin + 4, y + 21);
-
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "bold");
     setColor(TEXT_DARK);
     pdf.text(retLabel, margin + 4, y + 29);
-
     pdf.setFontSize(6.5);
     pdf.setFont("helvetica", "normal");
     setColor(TEXT_LIGHT);
     pdf.text(
-      `${data.rebookingCount} de ${data.totalClients} clientas volvieron en 60 días`,
+      `${data.rebookingCount} de ${data.totalClients} clientas volvieron en 60 dias`,
       margin + 4,
       y + 36,
     );
 
-    // Card frecuencia de visita
+    // Card frecuencia
     const cx = margin + halfW + 3;
     setFill(BG_CARD);
     pdf.roundedRect(cx, y, halfW, 44, 2, 2, "FD");
-    setFill({ r: primary.r, g: primary.g, b: primary.b });
+    setFill(primary);
     pdf.roundedRect(cx, y, halfW, 1.5, 0.5, 0.5, "F");
-
     pdf.setFontSize(6.5);
     pdf.setFont("helvetica", "bold");
     setColor(TEXT_LIGHT);
     pdf.text("FRECUENCIA DE VISITA", cx + 4, y + 8);
-
     pdf.setFontSize(22);
     pdf.setFont("helvetica", "bold");
-    setColor({ r: primary.r, g: primary.g, b: primary.b });
+    setColor(primary);
     pdf.text(
-      data.visitFrequency > 0 ? `${data.visitFrequency} días` : "—",
+      data.visitFrequency > 0 ? `${data.visitFrequency} dias` : "Sin datos",
       cx + 4,
       y + 21,
     );
-
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "bold");
     setColor(TEXT_DARK);
     pdf.text(freqLabel, cx + 4, y + 29);
-
     pdf.setFontSize(6.5);
     pdf.setFont("helvetica", "normal");
     setColor(TEXT_LIGHT);
-    pdf.text("promedio entre visitas · últimos 90 días", cx + 4, y + 36);
+    pdf.text("promedio entre visitas · ultimos 90 dias", cx + 4, y + 36);
 
     y += 49;
     drawSpacer(4);
   }
 
-  // ── SERVICIOS POPULARES ───────────────────────────────────────────────────
+  // ── SERVICIOS ─────────────────────────────────────────────────────────────
   if (selectedIds.includes("servicios")) {
     drawSectionTitle(`Servicios populares · ${data.currentMonth}`);
 
@@ -576,16 +476,17 @@ async function buildPDF(
       data.topServices.forEach((svc, i) => {
         newPageIfNeeded(18);
         const pct = Math.round((svc.count / maxCount) * 100);
+        const barX = margin + 10;
+        const barW = colW - 10 - 45;
+        const fillW = (pct / 100) * barW;
 
-        // Número de posición
+        // FIX: "N°1" en vez de "✦" — helvetica no soporta unicode especial
+        const rankLabel = svc.isTop ? "N.1" : String(i + 1);
+
         pdf.setFontSize(7);
         pdf.setFont("helvetica", svc.isTop ? "bold" : "normal");
-        setColor(
-          svc.isTop ? { r: primary.r, g: primary.g, b: primary.b } : TEXT_LIGHT,
-        );
-        pdf.text(svc.isTop ? "N°1" : String(i + 1), margin + 2, y + 4, {
-          align: "center",
-        });
+        setColor(svc.isTop ? primary : TEXT_LIGHT);
+        pdf.text(rankLabel, margin + 2, y + 4, { align: "center" });
 
         // Nombre
         pdf.setFontSize(8);
@@ -593,17 +494,15 @@ async function buildPDF(
         setColor(svc.isTop ? TEXT_DARK : TEXT_MID);
         pdf.text(svc.name, margin + 10, y + 4);
 
-        // Citas (derecha)
+        // Citas
         pdf.setFontSize(8);
         pdf.setFont("helvetica", "bold");
-        setColor(
-          svc.isTop ? { r: primary.r, g: primary.g, b: primary.b } : TEXT_LIGHT,
-        );
+        setColor(svc.isTop ? primary : TEXT_LIGHT);
         pdf.text(String(svc.count), pageW - margin - 20, y + 4, {
           align: "right",
         });
 
-        // Ingresos (derecha)
+        // Ingresos
         pdf.setFontSize(8);
         pdf.setFont("helvetica", "normal");
         setColor(TEXT_MID);
@@ -612,15 +511,12 @@ async function buildPDF(
         });
 
         // Barra de proporción
-        const barX = margin + 10;
-        const barW = colW - 10 - 45;
-        const fillW = (pct / 100) * barW;
-        setFill({ r: 243, g: 237, b: 232 }); // #F3EDE8
+        setFill({ r: 243, g: 237, b: 232 });
         pdf.roundedRect(barX, y + 7, barW, 2.5, 0.5, 0.5, "F");
         if (fillW > 0) {
           setFill(
             svc.isTop
-              ? { r: primary.r, g: primary.g, b: primary.b }
+              ? primary
               : {
                   r: Math.min(255, primary.r + 80),
                   g: Math.min(255, primary.g + 80),
@@ -632,7 +528,6 @@ async function buildPDF(
 
         y += 14;
 
-        // Separador ligero entre servicios
         if (i < data.topServices.length - 1) {
           setDraw({ r: 243, g: 237, b: 232 });
           pdf.setLineWidth(0.15);
@@ -644,22 +539,20 @@ async function buildPDF(
     drawSpacer(4);
   }
 
-  // ── Actualizar pie de todas las páginas con total de páginas ─────────────
+  // ── Actualizar pie con total de páginas ───────────────────────────────────
   const totalPages = pdf.getNumberOfPages();
   for (let pg = 1; pg <= totalPages; pg++) {
     pdf.setPage(pg);
-    // Sobreescribir el número de página con el total correcto
     setFill(BG_PAGE);
     pdf.rect(pageW - margin - 30, pageH - 11, 35, 8, "F");
     pdf.setFontSize(7);
     pdf.setFont("helvetica", "normal");
     setColor(TEXT_XLIGHT);
-    pdf.text(`Página ${pg} de ${totalPages}`, pageW - margin, pageH - 7, {
+    pdf.text(`Pagina ${pg} de ${totalPages}`, pageW - margin, pageH - 7, {
       align: "right",
     });
   }
 
-  // ── Descargar ─────────────────────────────────────────────────────────────
   const fileName = `BeautySync_${data.salonName.replace(/\s+/g, "_")}_${data.currentMonth.replace(/\s+/g, "_")}.pdf`;
   pdf.save(fileName);
 }
@@ -729,10 +622,15 @@ function ExportModal({
   const noneSelected = selected.size === 0;
   const isGenerating = status === "generating";
 
+  // FIX: if/else en vez de expresión ternaria — evita ESLint no-unused-expressions
   const toggle = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }, []);
@@ -759,7 +657,6 @@ function ExportModal({
 
   return (
     <>
-      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -771,8 +668,6 @@ function ExportModal({
           backdropFilter: "blur(4px)",
         }}
       />
-
-      {/* Panel */}
       <motion.div
         initial={{ opacity: 0, y: 16, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -825,7 +720,6 @@ function ExportModal({
 
         {/* Cuerpo */}
         <div className="px-6 py-4">
-          {/* Seleccionar todo */}
           <motion.button
             whileHover={{ x: 2 }}
             onClick={toggleAll}
@@ -888,7 +782,7 @@ function ExportModal({
                 <Download size={15} strokeWidth={2} />
                 {selected.size === CATEGORIES.length
                   ? "Exportar reporte completo"
-                  : `Exportar ${selected.size} ${selected.size === 1 ? "sección" : "secciones"}`}
+                  : `Exportar ${selected.size} ${selected.size === 1 ? "seccion" : "secciones"}`}
               </>
             )}
           </motion.button>
@@ -898,7 +792,7 @@ function ExportModal({
               className="text-xs text-center mt-2"
               style={{ color: "#B91C1C" }}
             >
-              Ocurrió un error. Intenta de nuevo.
+              Ocurrio un error. Intenta de nuevo.
             </p>
           )}
           {noneSelected && (
@@ -906,7 +800,7 @@ function ExportModal({
               className="text-xs text-center mt-2"
               style={{ color: "#C4B8B0" }}
             >
-              Selecciona al menos una sección.
+              Selecciona al menos una seccion.
             </p>
           )}
         </div>
