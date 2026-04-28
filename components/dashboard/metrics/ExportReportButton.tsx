@@ -583,7 +583,7 @@ async function buildPDF(
         setColor(
           svc.isTop ? { r: primary.r, g: primary.g, b: primary.b } : TEXT_LIGHT,
         );
-        pdf.text(svc.isTop ? "✦" : String(i + 1), margin + 2, y + 4, {
+        pdf.text(svc.isTop ? "N°1" : String(i + 1), margin + 2, y + 4, {
           align: "center",
         });
 
