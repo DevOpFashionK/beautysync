@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import RegisterStepper from "@/components/auth/RegisterStepper";
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Crear cuenta — BeautySync",
