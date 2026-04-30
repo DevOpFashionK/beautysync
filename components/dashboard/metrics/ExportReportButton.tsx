@@ -8,7 +8,8 @@
 // FIXES:
 //   - Eliminada función drawBar (declarada pero nunca usada)
 //   - toggle usa if/else en vez de expresión ternaria (ESLint no-unused-expressions)
-//   - Símbolo ✦ reemplazado por "N°1" en el PDF (helvetica no soporta unicode especial)
+//   - Simbolo ✦ reemplazado por "N.1" en el PDF (helvetica no soporta unicode especial)
+//   - Caracteres con tilde simplificados en strings de jsPDF (helvetica = ASCII basico)
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -84,13 +85,13 @@ const CATEGORIES: Category[] = [
   },
   {
     id: "retencion",
-    label: "Retención",
+    label: "Retencion",
     description: "Rebooking y Frecuencia de visita",
   },
   {
     id: "servicios",
     label: "Servicios populares",
-    description: "Top 5 servicios más solicitados del mes",
+    description: "Top 5 servicios mas solicitados del mes",
   },
 ];
 
@@ -131,7 +132,7 @@ function deltaText(delta: number | null): string {
   return `${delta > 0 ? "+" : ""}${delta}% vs mes anterior`;
 }
 
-// ─── Motor de PDF ─────────────────────────────────────────────────────────────
+// ─── Motor de PDF — lógica intacta ───────────────────────────────────────────
 
 async function buildPDF(
   data: ReportData,
@@ -340,7 +341,7 @@ async function buildPDF(
         sublabel: "por cita completada",
       },
       {
-        label: "Vs año anterior",
+        label: "Vs ano anterior",
         value: formatCurrency(data.ingresosYearAgo),
         sublabel: deltaText(data.revenueYearDelta),
       },
@@ -480,7 +481,7 @@ async function buildPDF(
         const barW = colW - 10 - 45;
         const fillW = (pct / 100) * barW;
 
-        // FIX: "N°1" en vez de "✦" — helvetica no soporta unicode especial
+        // FIX: "N.1" en vez de "✦" — helvetica no soporta unicode especial
         const rankLabel = svc.isTop ? "N.1" : String(i + 1);
 
         pdf.setFontSize(7);
@@ -510,7 +511,7 @@ async function buildPDF(
           align: "right",
         });
 
-        // Barra de proporción
+        // Barra de proporcion
         setFill({ r: 243, g: 237, b: 232 });
         pdf.roundedRect(barX, y + 7, barW, 2.5, 0.5, 0.5, "F");
         if (fillW > 0) {
@@ -539,7 +540,7 @@ async function buildPDF(
     drawSpacer(4);
   }
 
-  // ── Actualizar pie con total de páginas ───────────────────────────────────
+  // ── Actualizar pie con total de paginas ───────────────────────────────────
   const totalPages = pdf.getNumberOfPages();
   for (let pg = 1; pg <= totalPages; pg++) {
     pdf.setPage(pg);
@@ -557,7 +558,7 @@ async function buildPDF(
   pdf.save(fileName);
 }
 
-// ─── Checkbox item ────────────────────────────────────────────────────────────
+// ─── Checkbox item Dark Atelier ───────────────────────────────────────────────
 
 function CategoryCheckbox({
   category,
@@ -575,28 +576,54 @@ function CategoryCheckbox({
       whileHover={{ x: 2 }}
       whileTap={{ scale: 0.99 }}
       onClick={() => onChange(category.id)}
-      className="w-full flex items-start gap-3 py-3 px-1 text-left"
-      style={{ borderBottom: "1px solid #F3EDE8" }}
+      style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "12px",
+        padding: "12px 0",
+        textAlign: "left",
+        background: "none",
+        border: "none",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        cursor: "pointer",
+      }}
     >
-      <div className="mt-0.5 shrink-0">
+      <div style={{ marginTop: "1px", flexShrink: 0 }}>
         {checked ? (
           <CheckSquare
-            size={17}
-            strokeWidth={2}
-            style={{ color: primaryColor }}
+            size={16}
+            strokeWidth={1.75}
+            style={{ color: `${primaryColor}CC` }}
           />
         ) : (
-          <Square size={17} strokeWidth={1.5} style={{ color: "#C4B8B0" }} />
+          <Square
+            size={16}
+            strokeWidth={1.5}
+            style={{ color: "rgba(245,242,238,0.2)" }}
+          />
         )}
       </div>
       <div>
         <p
-          className="text-sm font-semibold leading-tight"
-          style={{ color: checked ? "#2D2420" : "#5C4F48" }}
+          style={{
+            fontSize: "13px",
+            fontWeight: 400,
+            lineHeight: 1.3,
+            color: checked ? "rgba(245,242,238,0.85)" : "rgba(245,242,238,0.4)",
+            margin: 0,
+          }}
         >
           {category.label}
         </p>
-        <p className="text-xs mt-0.5" style={{ color: "#B5A99F" }}>
+        <p
+          style={{
+            fontSize: "11px",
+            marginTop: "3px",
+            color: "rgba(245,242,238,0.2)",
+            margin: "3px 0 0",
+          }}
+        >
           {category.description}
         </p>
       </div>
@@ -604,7 +631,7 @@ function CategoryCheckbox({
   );
 }
 
-// ─── Modal ────────────────────────────────────────────────────────────────────
+// ─── Modal Dark Atelier ───────────────────────────────────────────────────────
 
 function ExportModal({
   data,
@@ -657,17 +684,22 @@ function ExportModal({
 
   return (
     <>
+      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 z-50"
         style={{
-          background: "rgba(45,36,32,0.35)",
-          backdropFilter: "blur(4px)",
+          position: "fixed",
+          inset: 0,
+          zIndex: 50,
+          background: "rgba(8,7,6,0.75)",
+          backdropFilter: "blur(6px)",
         }}
       />
+
+      {/* Modal */}
       <motion.div
         initial={{ opacity: 0, y: 16, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -675,69 +707,141 @@ function ExportModal({
         transition={{ type: "spring", damping: 28, stiffness: 320 }}
         className="fixed z-50 inset-x-4 bottom-4 sm:inset-auto sm:bottom-auto
                    sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
-                   sm:w-[420px] rounded-2xl shadow-2xl overflow-hidden"
-        style={{ background: "#FDFBF8" }}
+                   sm:w-[400px]"
+        style={{
+          background: "#0E0C0B",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: "14px",
+          overflow: "hidden",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.6)",
+        }}
       >
+        {/* Acento esquina */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: "14px",
+            height: "14px",
+            borderTop: "1px solid rgba(255,45,85,0.35)",
+            borderRight: "1px solid rgba(255,45,85,0.35)",
+            borderTopRightRadius: "14px",
+            pointerEvents: "none",
+          }}
+        />
+
         {/* Header */}
         <div
-          className="flex items-center justify-between px-6 py-5"
-          style={{ borderBottom: "1px solid #EDE8E3" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "18px 20px",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+          }}
         >
-          <div className="flex items-center gap-3">
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ background: `${data.primaryColor}14` }}
+              style={{
+                width: "30px",
+                height: "30px",
+                borderRadius: "7px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: `${data.primaryColor}12`,
+                border: `1px solid ${data.primaryColor}20`,
+              }}
             >
               <FileText
-                size={15}
+                size={14}
                 strokeWidth={1.75}
-                style={{ color: data.primaryColor }}
+                style={{ color: `${data.primaryColor}CC` }}
               />
             </div>
             <div>
-              <p className="text-sm font-semibold" style={{ color: "#2D2420" }}>
+              <p
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 400,
+                  color: "rgba(245,242,238,0.85)",
+                  margin: 0,
+                }}
+              >
                 Exportar reporte
               </p>
-              <p className="text-xs" style={{ color: "#B5A99F" }}>
+              <p
+                style={{
+                  fontSize: "10px",
+                  color: "rgba(245,242,238,0.22)",
+                  margin: 0,
+                  letterSpacing: "0.04em",
+                }}
+              >
                 {data.currentMonth}
               </p>
             </div>
           </div>
+
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg"
-            style={{ color: "#C4B8B0" }}
+            style={{
+              padding: "4px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "rgba(245,242,238,0.2)",
+              display: "flex",
+              alignItems: "center",
+              transition: "color 0.2s",
+            }}
             onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.color = "#9C8E85")
+              ((e.currentTarget as HTMLElement).style.color =
+                "rgba(245,242,238,0.5)")
             }
             onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.color = "#C4B8B0")
+              ((e.currentTarget as HTMLElement).style.color =
+                "rgba(245,242,238,0.2)")
             }
           >
-            <X size={16} strokeWidth={1.75} />
+            <X size={15} strokeWidth={1.5} />
           </button>
         </div>
 
         {/* Cuerpo */}
-        <div className="px-6 py-4">
+        <div style={{ padding: "16px 20px" }}>
+          {/* Toggle all */}
           <motion.button
             whileHover={{ x: 2 }}
             onClick={toggleAll}
-            className="w-full flex items-center gap-2 mb-2 pb-3 text-xs font-semibold"
             style={{
-              color: data.primaryColor,
-              borderBottom: `1px solid ${data.primaryColor}20`,
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "4px",
+              paddingBottom: "12px",
+              fontSize: "11px",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: `${data.primaryColor}AA`,
+              background: "none",
+              border: "none",
+              borderBottom: `1px solid rgba(255,45,85,0.1)` as string,
+              cursor: "pointer",
             }}
           >
             {allSelected ? (
-              <CheckSquare size={14} strokeWidth={2} />
+              <CheckSquare size={13} strokeWidth={1.75} />
             ) : (
-              <Square size={14} strokeWidth={1.5} />
+              <Square size={13} strokeWidth={1.5} />
             )}
             {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
           </motion.button>
 
-          <div className="flex flex-col">
+          <div style={{ display: "flex", flexDirection: "column" }}>
             {CATEGORIES.map((cat) => (
               <CategoryCheckbox
                 key={cat.id}
@@ -751,35 +855,59 @@ function ExportModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4" style={{ borderTop: "1px solid #EDE8E3" }}>
+        <div
+          style={{
+            padding: "16px 20px",
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
           <motion.button
             whileHover={!isGenerating && !noneSelected ? { y: -1 } : {}}
             whileTap={!isGenerating && !noneSelected ? { scale: 0.98 } : {}}
             onClick={handleExport}
             disabled={noneSelected || isGenerating}
-            className="w-full flex items-center justify-center gap-2.5 py-3
-                       rounded-xl text-sm font-semibold transition-all duration-200"
             style={{
-              background: noneSelected
-                ? "#EDE8E3"
-                : `linear-gradient(135deg, ${data.primaryColor} 0%, ${data.primaryColor}CC 100%)`,
-              color: noneSelected ? "#B5A99F" : "#FFFFFF",
-              opacity: isGenerating ? 0.85 : 1,
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              padding: "12px",
+              borderRadius: "8px",
+              fontSize: "12px",
+              fontWeight: 400,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              transition: "all 0.2s",
               cursor: noneSelected || isGenerating ? "not-allowed" : "pointer",
+              background: noneSelected
+                ? "rgba(255,255,255,0.04)"
+                : "rgba(255,45,85,0.1)",
+              border: noneSelected
+                ? "1px solid rgba(255,255,255,0.07)"
+                : `1px solid rgba(255,45,85,0.25)`,
+              color: noneSelected
+                ? "rgba(245,242,238,0.2)"
+                : "rgba(255,45,85,0.75)",
+              opacity: isGenerating ? 0.7 : 1,
             }}
           >
             {isGenerating ? (
               <>
-                <Loader2 size={15} strokeWidth={2} className="animate-spin" />{" "}
+                <Loader2
+                  size={14}
+                  strokeWidth={1.75}
+                  className="animate-spin"
+                />
                 Generando PDF...
               </>
             ) : status === "done" ? (
               <>
-                <Download size={15} strokeWidth={2} /> ¡Listo! Descargando...
+                <Download size={14} strokeWidth={1.75} /> Listo! Descargando...
               </>
             ) : (
               <>
-                <Download size={15} strokeWidth={2} />
+                <Download size={14} strokeWidth={1.75} />
                 {selected.size === CATEGORIES.length
                   ? "Exportar reporte completo"
                   : `Exportar ${selected.size} ${selected.size === 1 ? "seccion" : "secciones"}`}
@@ -789,16 +917,24 @@ function ExportModal({
 
           {status === "error" && (
             <p
-              className="text-xs text-center mt-2"
-              style={{ color: "#B91C1C" }}
+              style={{
+                fontSize: "11px",
+                textAlign: "center",
+                marginTop: "8px",
+                color: "rgba(252,165,165,0.7)",
+              }}
             >
               Ocurrio un error. Intenta de nuevo.
             </p>
           )}
           {noneSelected && (
             <p
-              className="text-xs text-center mt-2"
-              style={{ color: "#C4B8B0" }}
+              style={{
+                fontSize: "11px",
+                textAlign: "center",
+                marginTop: "8px",
+                color: "rgba(245,242,238,0.15)",
+              }}
             >
               Selecciona al menos una seccion.
             </p>
@@ -809,7 +945,7 @@ function ExportModal({
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── Botón trigger Dark Atelier ───────────────────────────────────────────────
 
 export default function ExportReportButton({ data }: ExportReportButtonProps) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -820,24 +956,40 @@ export default function ExportReportButton({ data }: ExportReportButtonProps) {
         whileHover={{ y: -1 }}
         whileTap={{ scale: 0.97 }}
         onClick={() => setModalOpen(true)}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl
-                   text-sm font-medium transition-all duration-200"
         style={{
-          background: "#FFFFFF",
-          border: "1px solid #EDE8E3",
-          color: "#5C4F48",
+          display: "flex",
+          alignItems: "center",
+          gap: "7px",
+          padding: "9px 16px",
+          borderRadius: "8px",
+          fontSize: "11px",
+          fontWeight: 400,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          color: "rgba(245,242,238,0.35)",
+          cursor: "pointer",
+          transition: "all 0.2s",
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLElement).style.borderColor =
-            data.primaryColor;
-          (e.currentTarget as HTMLElement).style.color = data.primaryColor;
+            `${data.primaryColor}35`;
+          (e.currentTarget as HTMLElement).style.color =
+            `${data.primaryColor}AA`;
+          (e.currentTarget as HTMLElement).style.background =
+            `${data.primaryColor}08`;
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.borderColor = "#EDE8E3";
-          (e.currentTarget as HTMLElement).style.color = "#5C4F48";
+          (e.currentTarget as HTMLElement).style.borderColor =
+            "rgba(255,255,255,0.07)";
+          (e.currentTarget as HTMLElement).style.color =
+            "rgba(245,242,238,0.35)";
+          (e.currentTarget as HTMLElement).style.background =
+            "rgba(255,255,255,0.03)";
         }}
       >
-        <Download size={14} strokeWidth={1.75} />
+        <Download size={13} strokeWidth={1.5} />
         Exportar reporte
       </motion.button>
 

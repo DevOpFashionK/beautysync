@@ -1,18 +1,7 @@
 "use client";
 
 // components/dashboard/metrics/AppointmentsChart.tsx
-//
-// Gráfica de barras: citas agendadas por semana (últimas 8 semanas).
-// Recibe datos ya procesados desde el Server Component — no hace fetch propio.
-//
-// Diseño: sistema dashboard (Tailwind v4, paleta cálida, rounded-2xl)
-// Recharts: BarChart responsive con tooltip personalizado y eje X con labels
-// de semana legibles ("Sem 14", "Sem 15", etc. — o "Esta sem" para la actual).
-//
-// Props:
-//   weeklyData  — array de { weekLabel, citas, ingresos } (8 semanas, más antigua → más reciente)
-//   primaryColor — color de acento del salón (usado en las barras)
-//   loading     — muestra skeleton si true
+// Gráfica de barras: citas por semana (últimas 8 semanas). Recharts intacto.
 
 import { motion } from "framer-motion";
 import {
@@ -30,15 +19,10 @@ import { TrendingUp } from "lucide-react";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface WeeklyDataPoint {
-  /** Label corto para el eje X: "Sem 14", "Esta sem" */
   weekLabel: string;
-  /** Semana ISO (YYYY-Www) — usado como key único */
   weekKey: string;
-  /** Total de citas en esa semana (no canceladas) */
   citas: number;
-  /** Ingresos estimados de citas completadas/confirmadas */
   ingresos: number;
-  /** true si es la semana actual — recibe color más saturado */
   isCurrent: boolean;
 }
 
@@ -48,7 +32,7 @@ interface AppointmentsChartProps {
   loading?: boolean;
 }
 
-// ─── Tooltip personalizado ────────────────────────────────────────────────────
+// ─── Tooltip Dark Atelier ─────────────────────────────────────────────────────
 
 function CustomTooltip({
   active,
@@ -60,46 +44,51 @@ function CustomTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-
   const data = payload[0].payload;
-
   const dollars = Math.floor(data.ingresos);
   const cents = Math.round((data.ingresos - dollars) * 100);
   const revenue = `$${dollars}.${String(cents).padStart(2, "0")}`;
 
   return (
     <div
-      className="rounded-xl px-4 py-3 shadow-lg"
       style={{
-        background: "#FFFFFF",
-        border: "1px solid #EDE8E3",
-        minWidth: "140px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "10px",
+        padding: "12px 16px",
+        minWidth: "130px",
       }}
     >
       <p
-        className="text-xs font-semibold mb-2"
-        style={{ color: "#9C8E85", letterSpacing: "0.06em" }}
+        style={{
+          fontSize: "10px",
+          letterSpacing: "0.1em",
+          color: "rgba(245,242,238,0.3)",
+          marginBottom: "8px",
+          textTransform: "uppercase",
+        }}
       >
         {label}
       </p>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-baseline gap-1.5">
+      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
           <span
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
               fontSize: "1.5rem",
-              fontWeight: 600,
-              color: "#2D2420",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.88)",
               lineHeight: 1,
             }}
           >
             {data.citas}
           </span>
-          <span className="text-xs" style={{ color: "#B5A99F" }}>
+          <span style={{ fontSize: "11px", color: "rgba(245,242,238,0.3)" }}>
             {data.citas === 1 ? "cita" : "citas"}
           </span>
         </div>
-        <p className="text-xs font-medium" style={{ color: "#9C8E85" }}>
+        <p style={{ fontSize: "11px", color: "rgba(245,242,238,0.25)" }}>
           {revenue} estimados
         </p>
       </div>
@@ -107,51 +96,89 @@ function CustomTooltip({
   );
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
+// ─── Skeleton Dark ────────────────────────────────────────────────────────────
 
 function ChartSkeleton() {
-  // 8 barras de altura aleatoria fija para el skeleton
   const heights = [40, 65, 55, 80, 45, 70, 60, 90];
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.2 }}
-      className="rounded-2xl p-6 animate-pulse"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      className="animate-pulse"
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
-      {/* Header skeleton */}
-      <div className="flex items-center justify-between mb-6">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "24px",
+        }}
+      >
         <div>
           <div
-            className="h-3 rounded-lg w-32 mb-2"
-            style={{ background: "#F3EDE8" }}
+            style={{
+              height: "10px",
+              width: "120px",
+              borderRadius: "4px",
+              background: "rgba(255,255,255,0.04)",
+              marginBottom: "8px",
+            }}
           />
           <div
-            className="h-7 rounded-lg w-16"
-            style={{ background: "#F3EDE8" }}
+            style={{
+              height: "24px",
+              width: "56px",
+              borderRadius: "6px",
+              background: "rgba(255,255,255,0.05)",
+            }}
           />
         </div>
-        <div className="w-9 h-9 rounded-xl" style={{ background: "#F3EDE8" }} />
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            background: "rgba(255,255,255,0.04)",
+          }}
+        />
       </div>
-      {/* Barras skeleton */}
-      <div className="flex items-end gap-2 h-36 px-2">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          gap: "6px",
+          height: "120px",
+        }}
+      >
         {heights.map((h, i) => (
           <div
             key={i}
-            className="flex-1 rounded-t-lg"
-            style={{ height: `${h}%`, background: "#F3EDE8" }}
+            style={{
+              flex: 1,
+              height: `${h}%`,
+              borderRadius: "4px 4px 0 0",
+              background: "rgba(255,255,255,0.04)",
+            }}
           />
         ))}
       </div>
-      {/* Eje X skeleton */}
-      <div className="flex gap-2 mt-3 px-2">
+      <div style={{ display: "flex", gap: "6px", marginTop: "10px" }}>
         {heights.map((_, i) => (
           <div
             key={i}
-            className="flex-1 h-2.5 rounded-lg"
-            style={{ background: "#F3EDE8" }}
+            style={{
+              flex: 1,
+              height: "8px",
+              borderRadius: "4px",
+              background: "rgba(255,255,255,0.03)",
+            }}
           />
         ))}
       </div>
@@ -159,7 +186,7 @@ function ChartSkeleton() {
   );
 }
 
-// ─── Empty state ─────────────────────────────────────────────────────────────
+// ─── Empty Dark ───────────────────────────────────────────────────────────────
 
 function ChartEmpty({ primaryColor }: { primaryColor: string }) {
   return (
@@ -167,32 +194,56 @@ function ChartEmpty({ primaryColor }: { primaryColor: string }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.2 }}
-      className="rounded-2xl p-6 flex flex-col items-center justify-center py-16"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingTop: "56px",
+        paddingBottom: "56px",
+      }}
     >
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-        style={{ background: `${primaryColor}14` }}
+        style={{
+          width: "36px",
+          height: "36px",
+          borderRadius: "8px",
+          background: `${primaryColor}12`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "14px",
+        }}
       >
         <TrendingUp
-          size={18}
+          size={16}
           strokeWidth={1.75}
-          style={{ color: primaryColor }}
+          style={{ color: `${primaryColor}99` }}
         />
       </div>
       <p
         style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontSize: "1.2rem",
-          fontWeight: 500,
-          color: "#9C8E85",
+          fontFamily:
+            "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+          fontSize: "1.1rem",
+          fontWeight: 300,
+          color: "rgba(245,242,238,0.35)",
+          marginBottom: "4px",
         }}
       >
         Sin datos aún
       </p>
       <p
-        className="text-xs mt-1 text-center"
-        style={{ color: "#C4B8B0", maxWidth: "18rem" }}
+        style={{
+          fontSize: "11px",
+          color: "rgba(245,242,238,0.15)",
+          textAlign: "center",
+          maxWidth: "18rem",
+        }}
       >
         La gráfica aparecerá cuando haya citas registradas.
       </p>
@@ -213,59 +264,86 @@ export default function AppointmentsChart({
   if (!hasData) return <ChartEmpty primaryColor={primaryColor} />;
 
   const totalCitas = weeklyData.reduce((sum, w) => sum + w.citas, 0);
-
-  // Semana actual: último elemento del array
   const currentWeek = weeklyData[weeklyData.length - 1];
-
-  // Color de barra: semana actual usa primaryColor, resto usa versión más suave
   const barColorActive = primaryColor;
-  const barColorInactive = `${primaryColor}55`; // ~33% opacidad
+  const barColorInactive = `${primaryColor}44`;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.2 }}
-      className="rounded-2xl p-6"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: "20px",
+        }}
+      >
         <div>
           <p
-            className="text-xs font-medium uppercase tracking-wider mb-1.5"
-            style={{ color: "#9C8E85", letterSpacing: "0.08em" }}
+            style={{
+              fontSize: "10px",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "rgba(245,242,238,0.22)",
+              marginBottom: "6px",
+            }}
           >
             Citas · últimas 8 semanas
           </p>
           <p
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
               fontSize: "1.9rem",
-              fontWeight: 600,
-              color: "#2D2420",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.88)",
               lineHeight: 1,
-              letterSpacing: "-0.02em",
+              letterSpacing: "-0.03em",
             }}
           >
             {totalCitas}
           </p>
-          <p className="text-xs mt-1" style={{ color: "#B5A99F" }}>
+          <p
+            style={{
+              fontSize: "11px",
+              marginTop: "4px",
+              color: "rgba(245,242,238,0.2)",
+            }}
+          >
             Esta semana:{" "}
-            <span style={{ color: primaryColor, fontWeight: 600 }}>
+            <span style={{ color: `${primaryColor}CC`, fontWeight: 400 }}>
               {currentWeek.citas}
             </span>
           </p>
         </div>
-
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: `${primaryColor}14` }}
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            background: `${primaryColor}12`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
         >
           <TrendingUp
-            size={16}
+            size={14}
             strokeWidth={1.75}
-            style={{ color: primaryColor }}
+            style={{ color: `${primaryColor}CC` }}
           />
         </div>
       </div>
@@ -279,14 +357,14 @@ export default function AppointmentsChart({
         >
           <CartesianGrid
             vertical={false}
-            stroke="#EDE8E3"
+            stroke="rgba(255,255,255,0.04)"
             strokeDasharray="3 3"
           />
           <XAxis
             dataKey="weekLabel"
             tick={{
               fontSize: 11,
-              fill: "#B5A99F",
+              fill: "rgba(245,242,238,0.2)",
               fontFamily: "inherit",
             }}
             axisLine={false}
@@ -297,7 +375,7 @@ export default function AppointmentsChart({
             allowDecimals={false}
             tick={{
               fontSize: 11,
-              fill: "#C4B8B0",
+              fill: "rgba(245,242,238,0.15)",
               fontFamily: "inherit",
             }}
             axisLine={false}
@@ -305,9 +383,9 @@ export default function AppointmentsChart({
           />
           <Tooltip
             content={<CustomTooltip />}
-            cursor={{ fill: "#FAF8F5", radius: 6 }}
+            cursor={{ fill: "rgba(255,255,255,0.03)", radius: 4 }}
           />
-          <Bar dataKey="citas" radius={[6, 6, 0, 0]} maxBarSize={40}>
+          <Bar dataKey="citas" radius={[4, 4, 0, 0]} maxBarSize={36}>
             {weeklyData.map((entry) => (
               <Cell
                 key={entry.weekKey}

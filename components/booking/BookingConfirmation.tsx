@@ -1,10 +1,10 @@
 "use client";
 
 // components/booking/BookingConfirmation.tsx
-// Fase 8.1 v2 — Pantalla de confirmación tipo "ticket de reserva" premium
+// Pantalla de confirmación tipo ticket premium. Lógica intacta.
 
 import { motion } from "framer-motion";
-import { Calendar, Clock, Scissors, Share2, Phone } from "lucide-react";
+import { Calendar, Clock, Scissors, Share2 } from "lucide-react";
 import type { SelectedService } from "@/types/booking.types";
 
 interface BookingConfirmationProps {
@@ -27,117 +27,103 @@ const styles = `
     text-align: center;
   }
 
-  /* Checkmark animado */
+  /* Checkmark */
   .bc-check-wrap {
     position: relative;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
   }
 
-  .bc-check-ring {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-
-  /* Partículas */
   .bc-particle {
     position: absolute;
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
     pointer-events: none;
   }
 
   /* Heading */
   .bc-title {
-    font-family: var(--font-cormorant), Georgia, serif;
+    font-family: var(--font-display);
     font-size: 2rem;
-    font-weight: 600;
-    line-height: 1.15;
-    margin-bottom: 6px;
-    letter-spacing: -0.01em;
+    font-weight: 300;
+    line-height: 1.1;
+    margin-bottom: 5px;
+    letter-spacing: -0.025em;
   }
 
   .bc-subtitle {
-    font-size: 14px;
-    color: rgba(245, 242, 238, 0.45);
+    font-size: 13px;
+    color: rgba(245,242,238,0.35);
     margin-bottom: 24px;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
+    letter-spacing: 0.02em;
   }
 
-  /* Ticket de reserva */
+  /* Ticket */
   .bc-ticket {
     width: 100%;
-    border-radius: 20px;
+    border-radius: 18px;
     overflow: hidden;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
 
-  /* Sección superior del ticket */
   .bc-ticket-top {
-    padding: 20px 20px 16px;
+    padding: 18px 20px 14px;
   }
 
   .bc-ticket-salon {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-bottom: 4px;
-    font-family: var(--font-jakarta), sans-serif;
-    opacity: 0.6;
+    font-family: var(--font-body);
+    opacity: 0.55;
   }
 
   .bc-ticket-service {
-    font-family: var(--font-cormorant), Georgia, serif;
-    font-size: 1.375rem;
-    font-weight: 600;
-    line-height: 1.2;
-    margin-bottom: 0;
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 300;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
   }
 
-  /* Separador tipo perforado */
-  .bc-ticket-perf {
+  /* Perforado */
+  .bc-perf {
     display: flex;
     align-items: center;
-    gap: 0;
-    padding: 0 -8px;
     margin: 0 -1px;
   }
 
-  .bc-perf-circle-left {
-    width: 16px;
-    height: 16px;
+  .bc-perf-left {
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    background: var(--bg-base, #0D0C0B);
+    background: var(--bg, #080706);
     flex-shrink: 0;
-    margin-left: -8px;
+    margin-left: -7px;
   }
 
-  .bc-perf-circle-right {
-    width: 16px;
-    height: 16px;
+  .bc-perf-right {
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    background: var(--bg-base, #0D0C0B);
+    background: var(--bg, #080706);
     flex-shrink: 0;
-    margin-right: -8px;
+    margin-right: -7px;
   }
 
   .bc-perf-line {
     flex: 1;
-    border-top: 1.5px dashed rgba(255,255,255,0.1);
+    border-top: 1.5px dashed rgba(255,255,255,0.08);
   }
 
-  /* Sección inferior del ticket */
   .bc-ticket-bottom {
-    padding: 16px 20px 20px;
+    padding: 14px 20px 18px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
 
   .bc-ticket-row {
@@ -147,9 +133,9 @@ const styles = `
   }
 
   .bc-ticket-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -157,74 +143,80 @@ const styles = `
   }
 
   .bc-ticket-label {
-    font-size: 11px;
-    color: rgba(245, 242, 238, 0.35);
+    font-size: 10px;
+    color: rgba(245,242,238,0.3);
     margin-bottom: 2px;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .bc-ticket-value {
-    font-size: 14px;
-    font-weight: 600;
-    color: rgba(245, 242, 238, 0.88);
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(245,242,238,0.82);
     text-transform: capitalize;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
+    letter-spacing: 0.01em;
   }
 
-  /* Nota informativa */
+  /* Nota */
   .bc-note {
     width: 100%;
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin-bottom: 20px;
+    border-radius: 13px;
+    padding: 13px 15px;
+    margin-bottom: 18px;
     text-align: left;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
   }
 
   .bc-note-title {
     font-size: 12px;
-    font-weight: 700;
-    color: rgba(245, 242, 238, 0.7);
+    font-weight: 600;
+    color: rgba(245,242,238,0.55);
     margin-bottom: 5px;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
   }
 
   .bc-note-text {
     font-size: 12px;
-    color: rgba(245, 242, 238, 0.35);
+    color: rgba(245,242,238,0.28);
     line-height: 1.6;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
+    letter-spacing: 0.01em;
   }
 
-  .bc-note-phone {
-    font-weight: 600;
+  .bc-phone-link {
+    font-weight: 500;
     text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   /* Acciones */
   .bc-actions {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
   }
 
-  @media (min-width: 400px) {
+  @media (min-width: 380px) {
     .bc-actions { flex-direction: row; }
   }
 
   .bc-btn-primary {
     flex: 1;
     padding: 12px 20px;
-    border-radius: 12px;
+    border-radius: 11px;
     border: none;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     color: #fff;
     cursor: pointer;
-    transition: opacity 0.15s, transform 0.15s;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
+    letter-spacing: 0.04em;
+    transition: opacity 0.15s;
   }
 
   .bc-btn-primary:hover { opacity: 0.9; }
@@ -232,28 +224,30 @@ const styles = `
   .bc-btn-secondary {
     flex: 1;
     padding: 12px 20px;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04);
-    font-size: 14px;
+    border-radius: 11px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    font-size: 13px;
     font-weight: 500;
-    color: rgba(245, 242, 238, 0.55);
+    color: rgba(245,242,238,0.45);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    transition: background 0.15s, color 0.15s;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
+    letter-spacing: 0.04em;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
   }
 
   .bc-btn-secondary:hover {
-    background: rgba(255,255,255,0.07);
-    color: rgba(245, 242, 238, 0.8);
+    background: rgba(255,255,255,0.06);
+    color: rgba(245,242,238,0.7);
+    border-color: rgba(255,255,255,0.14);
   }
 `;
 
-// ─── Partículas de celebración ────────────────────────────────────────────────
+// ─── Partículas — intactas ────────────────────────────────────────────────────
 const PARTICLES = [
   { x: 15, y: 35, delay: 0.6 },
   { x: 50, y: 15, delay: 0.68 },
@@ -263,7 +257,7 @@ const PARTICLES = [
   { x: 50, y: 70, delay: 0.84 },
 ];
 
-// ─── Checkmark animado ────────────────────────────────────────────────────────
+// ─── Checkmark animado — intacto ─────────────────────────────────────────────
 function AnimatedCheck({ color }: { color: string }) {
   return (
     <svg
@@ -277,7 +271,7 @@ function AnimatedCheck({ color }: { color: string }) {
         r="24"
         stroke={color}
         strokeWidth="1.5"
-        fill={`${color}16`}
+        fill={`${color}14`}
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -310,6 +304,7 @@ export default function BookingConfirmation({
 }: BookingConfirmationProps) {
   const firstName = clientName.split(" ")[0];
 
+  // ── handleShare — lógica intacta ──────────────────────────────────────────
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -340,17 +335,12 @@ export default function BookingConfirmation({
                 top: `${p.y}%`,
               }}
               initial={{ scale: 0, opacity: 1 }}
-              animate={{
-                scale: [0, 1, 0],
-                opacity: [1, 1, 0],
-                y: [-10, -50],
-              }}
+              animate={{ scale: [0, 1, 0], opacity: [1, 1, 0], y: [-10, -55] }}
               transition={{ duration: 0.9, delay: p.delay, ease: "easeOut" }}
             />
           ))}
 
           <motion.div
-            className="bc-check-ring"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
@@ -367,7 +357,7 @@ export default function BookingConfirmation({
 
         {/* ── Heading ── */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
@@ -377,49 +367,52 @@ export default function BookingConfirmation({
           <p className="bc-subtitle">Te esperamos, {firstName} 🌸</p>
         </motion.div>
 
-        {/* ── Ticket de reserva ── */}
+        {/* ── Ticket ── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.62 }}
           className="bc-ticket"
           style={{
-            background: `${primaryColor}10`,
-            border: `1px solid ${primaryColor}28`,
+            background: `${primaryColor}0E`,
+            border: `1px solid ${primaryColor}22`,
           }}
         >
-          {/* Top del ticket */}
+          {/* Top */}
           <div
             className="bc-ticket-top"
-            style={{ borderBottom: `1px solid ${primaryColor}18` }}
+            style={{ borderBottom: `1px solid ${primaryColor}15` }}
           >
             <p className="bc-ticket-salon" style={{ color: primaryColor }}>
               {salonName}
             </p>
             <p
               className="bc-ticket-service"
-              style={{ color: "rgba(245,242,238,0.92)" }}
+              style={{ color: "rgba(245,242,238,0.88)" }}
             >
               {service.name}
             </p>
           </div>
 
-          {/* Separador perforado */}
-          <div className="bc-ticket-perf">
-            <div className="bc-perf-circle-left" />
+          {/* Perforado */}
+          <div className="bc-perf">
+            <div className="bc-perf-left" />
             <div className="bc-perf-line" />
-            <div className="bc-perf-circle-right" />
+            <div className="bc-perf-right" />
           </div>
 
-          {/* Bottom del ticket */}
+          {/* Bottom */}
           <div className="bc-ticket-bottom">
-            {/* Fecha */}
             <div className="bc-ticket-row">
               <div
                 className="bc-ticket-icon"
-                style={{ background: `${primaryColor}16` }}
+                style={{ background: `${primaryColor}14` }}
               >
-                <Calendar size={15} style={{ color: primaryColor }} />
+                <Calendar
+                  size={14}
+                  strokeWidth={1.75}
+                  style={{ color: primaryColor }}
+                />
               </div>
               <div style={{ textAlign: "left" }}>
                 <p className="bc-ticket-label">Fecha</p>
@@ -427,13 +420,16 @@ export default function BookingConfirmation({
               </div>
             </div>
 
-            {/* Hora */}
             <div className="bc-ticket-row">
               <div
                 className="bc-ticket-icon"
-                style={{ background: `${primaryColor}16` }}
+                style={{ background: `${primaryColor}14` }}
               >
-                <Clock size={15} style={{ color: primaryColor }} />
+                <Clock
+                  size={14}
+                  strokeWidth={1.75}
+                  style={{ color: primaryColor }}
+                />
               </div>
               <div style={{ textAlign: "left" }}>
                 <p className="bc-ticket-label">Hora</p>
@@ -441,13 +437,16 @@ export default function BookingConfirmation({
               </div>
             </div>
 
-            {/* Servicio */}
             <div className="bc-ticket-row">
               <div
                 className="bc-ticket-icon"
-                style={{ background: `${primaryColor}16` }}
+                style={{ background: `${primaryColor}14` }}
               >
-                <Scissors size={15} style={{ color: primaryColor }} />
+                <Scissors
+                  size={14}
+                  strokeWidth={1.75}
+                  style={{ color: primaryColor }}
+                />
               </div>
               <div style={{ textAlign: "left" }}>
                 <p className="bc-ticket-label">Duración aprox.</p>
@@ -461,7 +460,7 @@ export default function BookingConfirmation({
           </div>
         </motion.div>
 
-        {/* ── Nota informativa ── */}
+        {/* ── Nota ── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -478,7 +477,7 @@ export default function BookingConfirmation({
               Para cancelar antes, contacta al salón:{" "}
               <a
                 href={`tel:${salonPhone}`}
-                className="bc-note-phone"
+                className="bc-phone-link"
                 style={{ color: primaryColor }}
               >
                 {salonPhone}
@@ -489,23 +488,22 @@ export default function BookingConfirmation({
 
         {/* ── Acciones ── */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.88 }}
           className="bc-actions"
         >
           {typeof navigator !== "undefined" && "share" in navigator && (
             <button onClick={handleShare} className="bc-btn-secondary">
-              <Share2 size={14} />
+              <Share2 size={13} strokeWidth={1.75} />
               Compartir
             </button>
           )}
-
           <button
             onClick={onBookAnother}
             className="bc-btn-primary"
             style={{
-              backgroundColor: primaryColor,
+              background: primaryColor,
               boxShadow: `0 8px 24px ${primaryColor}30`,
             }}
           >

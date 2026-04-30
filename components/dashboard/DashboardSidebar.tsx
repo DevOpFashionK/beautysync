@@ -32,6 +32,7 @@ interface SidebarProps {
   ownerName?: string;
 }
 
+// ── NAV ITEM ──────────────────────────────────────────────────────────────────
 function NavItem({
   href,
   icon: Icon,
@@ -48,34 +49,47 @@ function NavItem({
   primaryColor: string;
 }) {
   return (
-    <Link href={href} onClick={onClick}>
+    <Link href={href} onClick={onClick} style={{ textDecoration: "none" }}>
       <motion.div
-        whileHover={{ x: 3 }}
+        whileHover={{ x: 2 }}
         whileTap={{ scale: 0.98 }}
-        className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm
-                   transition-all duration-200 cursor-pointer relative"
-        style={
-          active
-            ? {
-                background: `${primaryColor}12`,
-                color: primaryColor,
-                fontWeight: 600,
-              }
-            : { color: "#9C8E85", fontWeight: 400 }
-        }
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          padding: "9px 12px",
+          borderRadius: "8px",
+          fontSize: "12px",
+          letterSpacing: "0.04em",
+          position: "relative",
+          cursor: "pointer",
+          transition: "background 0.15s",
+          background: active ? "rgba(255,45,85,0.08)" : "transparent",
+          color: active ? "rgba(245,242,238,0.9)" : "rgba(245,242,238,0.28)",
+          fontWeight: active ? 400 : 400,
+          borderLeft: active
+            ? "1px solid rgba(255,45,85,0.35)"
+            : "1px solid transparent",
+        }}
+        onMouseEnter={(e) => {
+          if (!active) {
+            e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+            e.currentTarget.style.color = "rgba(245,242,238,0.5)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!active) {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "rgba(245,242,238,0.28)";
+          }
+        }}
       >
-        {active && (
-          <motion.div
-            layoutId="sidebar-indicator"
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full"
-            style={{ background: primaryColor }}
-          />
-        )}
         <Icon
-          size={16}
+          size={15}
+          strokeWidth={active ? 1.75 : 1.5}
           style={{
-            color: active ? primaryColor : "#B5A99F",
-            strokeWidth: active ? 2 : 1.5,
+            color: active ? "rgba(255,45,85,0.75)" : "rgba(245,242,238,0.22)",
+            flexShrink: 0,
           }}
         />
         {label}
@@ -84,81 +98,135 @@ function NavItem({
   );
 }
 
-export default function DashboardSidebar({ ownerName = "" }: SidebarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [mobileOpen, setMobileOpen] = useState(false);
+// ── SIDEBAR CONTENT ───────────────────────────────────────────────────────────
+interface SidebarContentProps {
+  onNavClick?: () => void;
+  pathname: string;
+  salonName: string;
+  primaryColor: string;
+  logoUrl: string | null;
+  ownerName: string;
+  initials: string;
+  onLogout: () => void;
+}
 
-  // Lee directamente del Context — se actualiza en tiempo real
-  const { salon } = useSalon();
-  const { name: salonName, primaryColor, logoUrl } = salon;
+function SidebarContent({
+  onNavClick,
+  pathname,
+  salonName,
+  primaryColor,
+  logoUrl,
+  ownerName,
+  initials,
+  onLogout,
+}: SidebarContentProps) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        padding: "28px 0",
+      }}
+    >
+      {/* ── Identidad del salón ── */}
+      <div style={{ padding: "0 20px", marginBottom: "32px" }}>
+        {/* Logo row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "10px",
+          }}
+        >
+          {/* Logo box — logo del salón o inicial */}
+          <div
+            style={{
+              width: "28px",
+              height: "28px",
+              borderRadius: "6px",
+              border: "1px solid rgba(255,45,85,0.22)",
+              overflow: "hidden",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(255,45,85,0.06)",
+            }}
+          >
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={salonName}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            ) : (
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 500,
+                  color: "rgba(255,45,85,0.7)",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {salonName.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
 
-  const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-  };
-
-  const initials = ownerName
-    ? ownerName
-        .split(" ")
-        .slice(0, 2)
-        .map((w) => w[0]?.toUpperCase())
-        .join("")
-    : "?";
-
-  const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => (
-    <div className="flex flex-col h-full py-8">
-      {/* Salon identity */}
-      <div className="px-6 mb-10">
-        <div className="flex items-center gap-2.5 mb-1">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={salonName}
-              className="w-8 h-8 rounded-lg object-contain bg-white border border-[#EDE8E3]"
-            />
-          ) : (
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center
-                         text-white text-xs font-bold tracking-wide"
-              style={{ background: primaryColor }}
-            >
-              {salonName.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <p
-            className="text-xs font-semibold tracking-widest uppercase"
-            style={{ color: primaryColor, letterSpacing: "0.12em" }}
+          {/* Marca BeautySync */}
+          <span
+            style={{
+              fontSize: "9px",
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              color: "rgba(245,242,238,0.2)",
+              fontWeight: 400,
+            }}
           >
             BeautySync
-          </p>
+          </span>
         </div>
+
+        {/* Nombre del salón */}
         <p
-          className="text-lg leading-tight mt-2 pl-0.5"
           style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
-            fontWeight: 500,
-            color: "#2D2420",
+            fontFamily:
+              "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+            fontSize: "1.25rem",
+            fontWeight: 300,
+            color: "rgba(245,242,238,0.9)",
             letterSpacing: "-0.01em",
+            lineHeight: 1.2,
+            margin: 0,
+            paddingLeft: "2px",
           }}
         >
           {salonName}
         </p>
       </div>
 
-      {/* Separador */}
-      <div className="px-6 mb-6">
-        <div
-          className="h-px"
-          style={{
-            background: "linear-gradient(90deg, #E8E0D8 0%, transparent 100%)",
-          }}
-        />
-      </div>
+      {/* ── Separador ── */}
+      <div
+        style={{
+          margin: "0 20px 24px",
+          height: "1px",
+          background:
+            "linear-gradient(90deg, rgba(255,255,255,0.06) 0%, transparent 100%)",
+        }}
+      />
 
-      {/* Nav */}
-      <nav className="flex-1 px-4 flex flex-col gap-0.5">
+      {/* ── Nav ── */}
+      <nav
+        style={{
+          flex: 1,
+          padding: "0 12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "2px",
+        }}
+      >
         {navItems.map((item) => (
           <NavItem
             key={item.href}
@@ -176,78 +244,197 @@ export default function DashboardSidebar({ ownerName = "" }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="px-6 pt-6" style={{ borderTop: "1px solid #EDE8E3" }}>
+      {/* ── Footer ── */}
+      <div
+        style={{
+          padding: "20px 20px 0",
+          borderTop: "1px solid rgba(255,255,255,0.04)",
+          marginTop: "16px",
+        }}
+      >
+        {/* Owner info */}
         {ownerName && (
-          <div className="flex items-center gap-3 mb-4">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "16px",
+            }}
+          >
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center
-                         text-xs font-semibold text-white shrink-0"
-              style={{ background: primaryColor }}
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                background: "rgba(255,45,85,0.1)",
+                border: "1px solid rgba(255,45,85,0.2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "10px",
+                fontWeight: 400,
+                color: "rgba(255,45,85,0.65)",
+                flexShrink: 0,
+                letterSpacing: "0.02em",
+              }}
             >
               {initials}
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-neutral-700 truncate leading-tight">
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "rgba(245,242,238,0.45)",
+                  margin: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  lineHeight: 1.3,
+                }}
+              >
                 {ownerName}
               </p>
-              <p className="text-xs" style={{ color: "#B5A99F" }}>
+              <p
+                style={{
+                  fontSize: "10px",
+                  color: "rgba(245,242,238,0.18)",
+                  margin: 0,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                }}
+              >
                 Propietaria
               </p>
             </div>
           </div>
         )}
 
+        {/* Logout */}
         <motion.button
           whileHover={{ x: 2 }}
           whileTap={{ scale: 0.97 }}
-          onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 py-2 text-sm transition-colors"
-          style={{ color: "#C4B8B0" }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#E53E3E")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#C4B8B0")}
+          onClick={onLogout}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "8px 0",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "11px",
+            color: "rgba(245,242,238,0.18)",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            transition: "color 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "rgba(255,80,80,0.6)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "rgba(245,242,238,0.18)";
+          }}
         >
-          <LogOut size={15} strokeWidth={1.5} />
+          <LogOut size={13} strokeWidth={1.5} />
           Cerrar sesión
         </motion.button>
       </div>
     </div>
   );
+}
+
+// ── DASHBOARD SIDEBAR ─────────────────────────────────────────────────────────
+export default function DashboardSidebar({ ownerName = "" }: SidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { salon } = useSalon();
+  const { name: salonName, primaryColor, logoUrl } = salon;
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
+  const initials = ownerName
+    ? ownerName
+        .split(" ")
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase())
+        .join("")
+    : salonName.charAt(0).toUpperCase();
 
   return (
     <>
-      {/* Desktop */}
+      {/* ── Desktop sidebar ──────────────────────────────────────── */}
       <aside
-        className="hidden lg:flex flex-col w-56 min-h-screen sticky top-0 shrink-0"
-        style={{ background: "#FDFBF8", borderRight: "1px solid #EDE8E3" }}
+        style={{
+          display: "none",
+          width: "220px",
+          minHeight: "100vh",
+          flexShrink: 0,
+          background: "#0D0B0A",
+          borderRight: "1px solid rgba(255,255,255,0.05)",
+          position: "sticky",
+          top: 0,
+        }}
+        className="lg:flex lg:flex-col"
       >
-        <SidebarContent />
+        <SidebarContent
+          pathname={pathname}
+          salonName={salonName}
+          primaryColor={primaryColor}
+          logoUrl={logoUrl}
+          ownerName={ownerName}
+          initials={initials}
+          onLogout={handleLogout}
+        />
       </aside>
 
-      {/* Mobile topbar */}
+      {/* ── Mobile topbar ────────────────────────────────────────── */}
       <div
-        className="lg:hidden fixed top-0 left-0 right-0 z-40 px-5 py-4
-                   flex items-center justify-between"
+        className="lg:hidden"
         style={{
-          background: "rgba(253,251,248,0.92)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid #EDE8E3",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 40,
+          padding: "14px 20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "rgba(13,11,10,0.92)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
         }}
       >
-        <div className="flex items-center gap-2.5">
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {logoUrl && (
             <img
               src={logoUrl}
               alt={salonName}
-              className="w-7 h-7 rounded-lg object-contain"
+              style={{
+                width: "24px",
+                height: "24px",
+                borderRadius: "5px",
+                objectFit: "contain",
+              }}
             />
           )}
           <p
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              fontWeight: 500,
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+              fontWeight: 300,
               fontSize: "1.1rem",
-              color: "#2D2420",
+              color: "rgba(245,242,238,0.9)",
+              margin: 0,
             }}
           >
             {salonName}
@@ -255,44 +442,85 @@ export default function DashboardSidebar({ ownerName = "" }: SidebarProps) {
         </div>
         <button
           onClick={() => setMobileOpen(true)}
-          className="p-2 rounded-xl transition-colors"
-          style={{ color: "#9C8E85" }}
+          style={{
+            padding: "6px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "rgba(245,242,238,0.3)",
+            display: "flex",
+            alignItems: "center",
+          }}
         >
-          <Menu size={20} strokeWidth={1.5} />
+          <Menu size={18} strokeWidth={1.5} />
         </button>
       </div>
 
-      {/* Mobile drawer */}
+      {/* ── Mobile drawer ────────────────────────────────────────── */}
       <AnimatePresence>
         {mobileOpen && (
           <>
+            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 z-50"
               style={{
-                background: "rgba(45,36,32,0.3)",
+                position: "fixed",
+                inset: 0,
+                zIndex: 50,
+                background: "rgba(8,7,6,0.7)",
                 backdropFilter: "blur(4px)",
               }}
             />
+
+            {/* Drawer */}
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed left-0 top-0 bottom-0 z-50 w-64 shadow-2xl"
-              style={{ background: "#FDFBF8" }}
+              style={{
+                position: "fixed",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                zIndex: 50,
+                width: "260px",
+                background: "#0D0B0A",
+                borderRight: "1px solid rgba(255,255,255,0.05)",
+              }}
             >
+              {/* Cerrar */}
               <button
                 onClick={() => setMobileOpen(false)}
-                className="absolute top-5 right-4 p-1.5 rounded-lg"
-                style={{ color: "#B5A99F" }}
+                style={{
+                  position: "absolute",
+                  top: "18px",
+                  right: "14px",
+                  padding: "6px",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "rgba(245,242,238,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                }}
               >
-                <X size={18} strokeWidth={1.5} />
+                <X size={16} strokeWidth={1.5} />
               </button>
-              <SidebarContent onNavClick={() => setMobileOpen(false)} />
+
+              <SidebarContent
+                onNavClick={() => setMobileOpen(false)}
+                pathname={pathname}
+                salonName={salonName}
+                primaryColor={primaryColor}
+                logoUrl={logoUrl}
+                ownerName={ownerName}
+                initials={initials}
+                onLogout={handleLogout}
+              />
             </motion.div>
           </>
         )}

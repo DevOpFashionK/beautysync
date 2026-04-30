@@ -1,9 +1,15 @@
 "use client";
 
+// components/dashboard/SubscriptionStatus.tsx
 import { motion } from "framer-motion";
 import { Clock, AlertTriangle, XCircle, CheckCircle } from "lucide-react";
 
-type SubscriptionStatusType = "trialing" | "active" | "past_due" | "canceled" | "expired";
+type SubscriptionStatusType =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "expired";
 
 interface SubscriptionStatusProps {
   status: string;
@@ -15,9 +21,80 @@ function daysRemaining(dateStr: string | null): number {
   if (!dateStr) return 0;
   const end = new Date(dateStr);
   const now = new Date();
-  return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  return Math.max(
+    0,
+    Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+  );
 }
 
+// ── Banner base Dark Atelier ──────────────────────────────────────────────────
+function StatusBanner({
+  icon: Icon,
+  children,
+  variant,
+}: {
+  icon: React.ElementType;
+  children: React.ReactNode;
+  variant: "amber" | "red" | "blue" | "rose";
+}) {
+  const styles = {
+    amber: {
+      background: "rgba(234,179,8,0.07)",
+      border: "1px solid rgba(234,179,8,0.22)", // ✅ fix: 0.18 → 0.22
+      color: "rgba(251,191,36,0.85)",
+      iconColor: "rgba(251,191,36,0.7)",
+    },
+    red: {
+      background: "rgba(239,68,68,0.07)",
+      border: "1px solid rgba(239,68,68,0.22)", // ✅ fix: 0.18 → 0.22
+      color: "rgba(252,165,165,0.85)",
+      iconColor: "rgba(252,165,165,0.7)",
+    },
+    blue: {
+      background: "rgba(59,130,246,0.07)",
+      border: "1px solid rgba(99,179,237,0.22)", // ✅ fix: 0.18 → 0.22 + token info exacto
+      color: "rgba(147,197,253,0.85)",
+      iconColor: "rgba(147,197,253,0.7)",
+    },
+    rose: {
+      background: "rgba(255,45,85,0.08)", // ✅ fix: 0.07 → roseGhost 0.08
+      border: "1px solid rgba(255,45,85,0.22)", // ✅ fix: 0.2 → roseBorder 0.22
+      color: "rgba(255,120,120,0.85)",
+      iconColor: "rgba(255,45,85,0.6)",
+    },
+  };
+
+  const s = styles[variant];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        padding: "12px 16px",
+        borderRadius: "10px",
+        fontSize: "13px",
+        lineHeight: 1.55,
+        background: s.background,
+        border: s.border,
+        color: s.color,
+      }}
+    >
+      <Icon
+        size={15}
+        strokeWidth={1.5}
+        style={{ color: s.iconColor, flexShrink: 0 }}
+      />
+      <span>{children}</span>
+    </motion.div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function SubscriptionStatus({
   status,
   trialEndsAt,
@@ -25,7 +102,7 @@ export default function SubscriptionStatus({
 }: SubscriptionStatusProps) {
   const typedStatus = status as SubscriptionStatusType;
 
-  // No mostrar nada si está active con bastante tiempo restante
+  // Active con bastante tiempo — no mostrar nada
   if (typedStatus === "active") {
     const days = daysRemaining(periodEnd);
     if (days > 7) return null;
@@ -33,49 +110,32 @@ export default function SubscriptionStatus({
 
   if (typedStatus === "trialing") {
     const days = daysRemaining(trialEndsAt);
-    if (days > 10) return null; // Solo mostrar si quedan ≤10 días de trial
+    if (days > 10) return null; // Solo mostrar si quedan ≤10 días
 
     return (
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 text-sm"
-      >
-        <Clock size={16} className="shrink-0" />
-        <span>
-          Tu prueba gratuita termina en <strong>{days} días</strong>. Activa tu suscripción para continuar sin interrupciones.
-        </span>
-      </motion.div>
+      <StatusBanner icon={Clock} variant="amber">
+        Tu prueba gratuita termina en{" "}
+        <strong style={{ color: "rgba(251,191,36,0.95)" }}>{days} días</strong>.
+        Activa tu suscripción para continuar sin interrupciones.
+      </StatusBanner>
     );
   }
 
   if (typedStatus === "past_due") {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-orange-50 border border-orange-200 text-orange-700 text-sm"
-      >
-        <AlertTriangle size={16} className="shrink-0" />
-        <span>
-          Tu pago está pendiente. Actualiza tu método de pago para mantener acceso completo.
-        </span>
-      </motion.div>
+      <StatusBanner icon={AlertTriangle} variant="amber">
+        Tu pago está pendiente. Actualiza tu método de pago para mantener acceso
+        completo.
+      </StatusBanner>
     );
   }
 
   if (typedStatus === "expired" || typedStatus === "canceled") {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-sm"
-      >
-        <XCircle size={16} className="shrink-0" />
-        <span>
-          Tu suscripción ha expirado. Reactiva tu plan para acceder a todas las funciones.
-        </span>
-      </motion.div>
+      <StatusBanner icon={XCircle} variant="red">
+        Tu suscripción ha expirado. Reactiva tu plan para acceder a todas las
+        funciones.
+      </StatusBanner>
     );
   }
 
@@ -83,16 +143,11 @@ export default function SubscriptionStatus({
   if (typedStatus === "active") {
     const days = daysRemaining(periodEnd);
     return (
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 text-sm"
-      >
-        <CheckCircle size={16} className="shrink-0" />
-        <span>
-          Tu suscripción renueva en <strong>{days} días</strong>.
-        </span>
-      </motion.div>
+      <StatusBanner icon={CheckCircle} variant="blue">
+        Tu suscripción renueva en{" "}
+        <strong style={{ color: "rgba(147,197,253,0.95)" }}>{days} días</strong>
+        .
+      </StatusBanner>
     );
   }
 

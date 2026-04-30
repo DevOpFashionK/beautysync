@@ -44,8 +44,8 @@ export default function ForgotPasswordPage() {
   const onSubmit = async (data: ForgotForm) => {
     const supabase = createClient();
 
-    // CRÍTICO: Llamamos resetPasswordForEmail independientemente de si el
-    // email existe — así evitamos revelar qué emails están registrados.
+    // CRÍTICO: Siempre llamamos resetPasswordForEmail independientemente
+    // de si el email existe — previene User Enumeration Attack.
     // Supabase maneja internamente el caso de email inexistente sin error.
     await supabase.auth.resetPasswordForEmail(data.email, {
       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`,
@@ -59,222 +59,313 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap');
 
-        :root {
-          --midnight: #0F0A1E;
-          --card-bg: rgba(26,20,45,0.85);
-          --electric-rose: #FF2D55;
-          --rose-deep: #D4003C;
-          --violet-neon: #7000FF;
-          --muted-lavender: #B3B0C2;
-          --font-display: 'Cormorant Garamond', Georgia, serif;
-          --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
+        /* ── TOKENS Dark Atelier ─────────────────────────────────── */
+        .fp-root {
+          --bg:           #080706;
+          --surface:      #0E0C0B;
+          --surface2:     #131110;
+          --rose:         #FF2D55;
+          --rose-dim:     rgba(255,45,85,0.55);
+          --rose-ghost:   rgba(255,45,85,0.08);
+          --rose-border:  rgba(255,45,85,0.22);
+          --border:       rgba(255,255,255,0.055);
+          --border-mid:   rgba(255,255,255,0.09);
+          --text-primary: rgba(245,242,238,0.9);
+          --text-mid:     rgba(245,242,238,0.45);
+          --text-dim:     rgba(245,242,238,0.18);
+          --serif:        var(--font-cormorant, 'Cormorant Garamond', Georgia, serif);
+          --sans:         var(--font-jakarta, 'Plus Jakarta Sans', system-ui, sans-serif);
         }
 
+        /* ── ROOT ────────────────────────────────────────────────── */
         .fp-root {
           min-height: 100vh;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: var(--midnight);
-          font-family: var(--font-body);
+          background: var(--bg);
+          font-family: var(--sans);
           position: relative;
           overflow: hidden;
-          padding: 2rem 1rem;
+          padding: 2rem 1.5rem;
         }
+
+        /* Radiales de fondo */
         .fp-root::before {
           content: '';
           position: fixed;
-          width: 600px; height: 600px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(112,0,255,0.14) 0%, transparent 65%);
-          top: -180px; left: -150px;
+          width: 600px; height: 600px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,45,85,0.07) 0%, transparent 65%);
+          top: -200px; right: -150px;
           pointer-events: none; z-index: 0;
         }
         .fp-root::after {
           content: '';
           position: fixed;
-          width: 500px; height: 500px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(255,45,85,0.10) 0%, transparent 65%);
-          bottom: -120px; right: -100px;
+          width: 450px; height: 450px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,45,85,0.04) 0%, transparent 65%);
+          bottom: -150px; left: -80px;
           pointer-events: none; z-index: 0;
         }
 
-        .fp-container {
+        /* Grid de fondo */
+        .fp-grid {
+          position: fixed; inset: 0; pointer-events: none; z-index: 0;
+          background-image:
+            linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+          background-size: 64px 64px;
+        }
+
+        /* ── CONTENEDOR ──────────────────────────────────────────── */
+        .fp-wrap {
           position: relative; z-index: 1;
-          width: 100%; max-width: 440px;
+          width: 100%; max-width: 420px;
+          display: flex; flex-direction: column; align-items: center;
         }
 
-        /* Logo */
+        /* ── LOGO ────────────────────────────────────────────────── */
         .fp-logo {
-          display: flex; align-items: center;
-          gap: 0.5rem; justify-content: center;
-          margin-bottom: 2rem;
+          display: flex; align-items: center; gap: 10px;
+          margin-bottom: 40px;
+          text-decoration: none;
         }
-        .fp-gem {
-          width: 32px; height: 32px;
-          background: linear-gradient(135deg, var(--electric-rose), var(--violet-neon));
-          border-radius: 8px;
+        .fp-logo-box {
+          width: 28px; height: 28px;
+          border: 1px solid var(--rose-border); border-radius: 6px;
           display: flex; align-items: center; justify-content: center;
-          font-size: 0.875rem; color: #fff;
-          box-shadow: 0 4px 16px rgba(255,45,85,0.35);
+          flex-shrink: 0;
         }
-        .fp-brand {
-          font-family: var(--font-display);
-          font-size: 1.375rem; font-weight: 500;
-          color: #fff; letter-spacing: 0.02em;
+        .fp-logo-box span {
+          font-size: 9px; font-weight: 500;
+          color: var(--rose); letter-spacing: -0.03em;
+        }
+        .fp-logo-name {
+          font-size: 13px; color: rgba(245,242,238,0.45);
+          letter-spacing: 0.08em; font-weight: 400; text-transform: uppercase;
         }
 
-        /* Header */
-        .fp-header { text-align: center; margin-bottom: 2rem; }
-        .fp-eyebrow {
-          font-size: 0.6875rem; font-weight: 600;
-          letter-spacing: 0.12em; text-transform: uppercase;
-          color: var(--electric-rose); margin-bottom: 0.5rem;
+        /* ── HEADER ──────────────────────────────────────────────── */
+        .fp-header {
+          text-align: center; margin-bottom: 28px; width: 100%;
+        }
+        .fp-header-eyebrow {
+          display: flex; align-items: center; justify-content: center;
+          gap: 10px; margin-bottom: 14px;
+        }
+        .fp-eyebrow-line {
+          width: 18px; height: 1px; background: var(--rose-dim);
+          display: inline-block;
+        }
+        .fp-eyebrow-text {
+          font-size: 10px; letter-spacing: 0.18em;
+          text-transform: uppercase; color: var(--rose-dim);
         }
         .fp-title {
-          font-family: var(--font-display);
-          font-size: 2rem; font-weight: 500;
-          color: #fff; margin: 0 0 0.5rem;
-          line-height: 1.2;
+          font-family: var(--serif);
+          font-size: 2.5rem; font-weight: 300;
+          color: var(--text-primary); margin: 0 0 10px;
+          line-height: 1.08; letter-spacing: -0.03em;
         }
+        .fp-title em { font-style: normal; color: var(--rose); }
         .fp-sub {
-          font-size: 0.875rem; color: var(--muted-lavender);
-          line-height: 1.6; margin: 0;
+          font-size: 13px; color: var(--text-mid);
+          line-height: 1.75; margin: 0; font-weight: 300;
+          max-width: 340px;
         }
 
-        /* Card glass */
-        .fp-glass {
-          background: var(--card-bg);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 20px;
+        /* ── CARD ────────────────────────────────────────────────── */
+        .fp-card {
+          width: 100%;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 16px;
           padding: 2rem;
-          box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.06) inset;
+          position: relative; overflow: hidden;
+        }
+        /* Acento esquina superior derecha */
+        .fp-card::before {
+          content: '';
+          position: absolute; top: 0; right: 0;
+          width: 16px; height: 16px;
+          border-top: 1px solid var(--rose-border);
+          border-right: 1px solid var(--rose-border);
+          border-top-right-radius: 16px;
+          pointer-events: none;
+        }
+        /* Radial interior */
+        .fp-card::after {
+          content: '';
+          position: absolute; top: -40px; right: -40px;
+          width: 180px; height: 180px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,45,85,0.05) 0%, transparent 70%);
+          pointer-events: none;
         }
 
-        /* Campo */
-        .fp-field { margin-bottom: 1.25rem; }
+        /* ── CAMPO ───────────────────────────────────────────────── */
+        .fp-field { margin-bottom: 6px; }
         .fp-label {
-          display: block; font-size: 0.8125rem;
-          font-weight: 500; color: rgba(255,255,255,0.7);
-          margin-bottom: 0.5rem; letter-spacing: 0.01em;
+          display: block;
+          font-size: 10px; font-weight: 400;
+          color: var(--text-mid);
+          letter-spacing: 0.1em; text-transform: uppercase;
+          margin-bottom: 8px;
         }
         .fp-input {
-          width: 100%; background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 10px; padding: 0.875rem 1rem;
-          font-size: 0.9375rem; color: #fff;
-          font-family: var(--font-body);
-          transition: border-color 0.2s, box-shadow 0.2s;
+          width: 100%;
+          background: var(--surface2);
+          border: 1px solid var(--border-mid);
+          border-radius: 8px;
+          padding: 12px 14px;
+          font-size: 14px; color: var(--text-primary);
+          font-family: var(--sans);
+          transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
           outline: none; box-sizing: border-box;
         }
-        .fp-input::placeholder { color: rgba(255,255,255,0.25); }
+        .fp-input::placeholder { color: var(--text-dim); }
         .fp-input:focus {
-          border-color: rgba(255,45,85,0.5);
-          box-shadow: 0 0 0 3px rgba(255,45,85,0.12);
+          border-color: var(--rose-border);
+          background: rgba(255,45,85,0.04);
+          box-shadow: 0 0 0 3px rgba(255,45,85,0.08);
         }
         .fp-input.err {
-          border-color: rgba(255,80,80,0.5);
-          box-shadow: 0 0 0 3px rgba(255,80,80,0.1);
+          border-color: rgba(255,80,80,0.45);
         }
         .fp-err-msg {
-          font-size: 0.75rem; color: #ff8080;
-          margin: 0.375rem 0 0; padding-left: 0.25rem;
+          font-size: 11px; color: rgba(255,110,110,0.85);
+          margin: 6px 0 0;
         }
 
-        /* CTA */
+        /* ── CTA ─────────────────────────────────────────────────── */
         .fp-cta {
-          width: 100%; padding: 0.9375rem 1.5rem;
-          background: linear-gradient(135deg, var(--electric-rose) 0%, var(--rose-deep) 100%);
-          border: none; border-radius: 10px;
-          font-family: var(--font-body);
-          font-size: 0.9375rem; font-weight: 700;
-          color: #fff; cursor: pointer;
-          display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+          width: 100%; margin-top: 20px;
+          padding: 13px 20px;
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          border-radius: 8px;
+          font-family: var(--sans);
+          font-size: 12px; font-weight: 400;
+          color: var(--rose-dim);
+          letter-spacing: 0.1em; text-transform: uppercase;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
           transition: all 0.2s;
-          box-shadow: 0 4px 20px rgba(255,45,85,0.35), 0 1px 0 rgba(255,255,255,0.12) inset;
-          letter-spacing: 0.01em; margin-top: 0.5rem;
         }
         .fp-cta:hover:not(:disabled) {
-          background: linear-gradient(135deg, #ff4d6d 0%, #e8003f 100%);
-          box-shadow: 0 6px 28px rgba(255,45,85,0.5), 0 1px 0 rgba(255,255,255,0.12) inset;
-          transform: translateY(-1px);
+          background: rgba(255,45,85,0.16);
+          border-color: rgba(255,45,85,0.42);
+          color: var(--rose);
         }
-        .fp-cta:active:not(:disabled) { transform: translateY(0); }
-        .fp-cta:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .fp-cta:active:not(:disabled) { opacity: 0.85; }
+        .fp-cta:disabled { opacity: 0.35; cursor: not-allowed; }
 
-        /* Back link */
+        /* ── BACK LINK ───────────────────────────────────────────── */
         .fp-back {
           display: flex; align-items: center; justify-content: center;
-          gap: 0.375rem; margin-top: 1.5rem;
-          font-size: 0.8125rem; color: var(--muted-lavender);
+          gap: 6px; margin-top: 20px;
+          font-size: 11px; color: var(--text-dim);
+          letter-spacing: 0.06em; text-transform: uppercase;
           text-decoration: none;
           transition: color 0.2s;
         }
-        .fp-back:hover { color: #fff; }
+        .fp-back:hover { color: var(--text-mid); }
 
-        /* Estado de éxito */
+        /* ── ESTADO ÉXITO ────────────────────────────────────────── */
+        .fp-success-icon-wrap {
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 24px;
+        }
         .fp-success-icon {
-          width: 64px; height: 64px;
-          background: linear-gradient(135deg, rgba(255,45,85,0.15), rgba(112,0,255,0.15));
-          border: 1px solid rgba(255,45,85,0.25);
+          width: 56px; height: 56px;
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
           border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
-          margin: 0 auto 1.5rem;
+          position: relative;
         }
+        /* Anillo exterior */
+        .fp-success-icon::before {
+          content: '';
+          position: absolute; inset: -5px;
+          border-radius: 50%;
+          border: 1px solid var(--rose-border);
+          opacity: 0.4;
+        }
+
         .fp-success-title {
-          font-family: var(--font-display);
-          font-size: 1.625rem; font-weight: 500;
-          color: #fff; text-align: center;
-          margin: 0 0 0.75rem;
+          font-family: var(--serif);
+          font-size: 1.8rem; font-weight: 300;
+          color: var(--text-primary);
+          text-align: center; margin: 0 0 14px;
+          letter-spacing: -0.02em; line-height: 1.1;
         }
         .fp-success-text {
-          font-size: 0.875rem; color: var(--muted-lavender);
-          text-align: center; line-height: 1.7;
-          margin: 0 0 0.5rem;
+          font-size: 13px; color: var(--text-mid);
+          text-align: center; line-height: 1.75;
+          margin: 0; font-weight: 300;
         }
         .fp-success-email {
-          color: var(--electric-rose); font-weight: 600;
+          color: var(--rose-dim); font-weight: 400;
           word-break: break-all;
         }
-        .fp-success-note {
-          font-size: 0.75rem; color: rgba(255,255,255,0.3);
-          text-align: center; margin-top: 1.25rem;
-          line-height: 1.6;
+
+        /* Divider */
+        .fp-success-divider {
+          height: 1px; background: var(--border);
+          margin: 20px 0;
         }
+
+        .fp-success-note {
+          font-size: 11px; color: var(--text-dim);
+          text-align: center; line-height: 1.65;
+          letter-spacing: 0.02em;
+        }
+
       `}</style>
 
       <div className="fp-root">
-        <div className="fp-container">
+        <div className="fp-grid" aria-hidden="true" />
+
+        <div className="fp-wrap">
           {/* Logo */}
-          <div className="fp-logo">
-            <div className="fp-gem">✦</div>
-            <span className="fp-brand">BeautySync</span>
-          </div>
+          <Link href="/" className="fp-logo">
+            <div className="fp-logo-box">
+              <span>BS</span>
+            </div>
+            <span className="fp-logo-name">BeautySync</span>
+          </Link>
 
           <AnimatePresence mode="wait">
-            {/* ── Vista: formulario ── */}
+            {/* ── Vista: formulario ──────────────────────────────── */}
             {!submitted && (
               <motion.div
                 key="form"
-                initial={{ opacity: 0, y: 24 }}
+                style={{ width: "100%" }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
+                exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               >
                 <div className="fp-header">
-                  <p className="fp-eyebrow">Recuperar acceso</p>
-                  <h1 className="fp-title">¿Olvidaste tu contraseña?</h1>
+                  <div className="fp-header-eyebrow">
+                    <span className="fp-eyebrow-line" />
+                    <span className="fp-eyebrow-text">Recuperar acceso</span>
+                    <span className="fp-eyebrow-line" />
+                  </div>
+                  <h1 className="fp-title">
+                    ¿Olvidaste tu
+                    <br />
+                    <em>contraseña?</em>
+                  </h1>
                   <p className="fp-sub">
                     Ingresa tu email y te enviaremos un enlace para crear una
                     nueva contraseña.
                   </p>
                 </div>
 
-                <div className="fp-glass">
+                <div className="fp-card">
                   <form
                     onSubmit={handleSubmit(onSubmit)}
                     noValidate
@@ -303,12 +394,12 @@ export default function ForgotPasswordPage() {
                     >
                       {isSubmitting ? (
                         <>
-                          <Loader2 size={16} className="animate-spin" />{" "}
+                          <Loader2 size={14} className="animate-spin" />{" "}
                           Enviando enlace…
                         </>
                       ) : (
                         <>
-                          Enviar enlace de recuperación <ArrowRight size={16} />
+                          Enviar enlace de recuperación <ArrowRight size={14} />
                         </>
                       )}
                     </button>
@@ -316,26 +407,29 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <Link href="/login" className="fp-back">
-                  <ArrowLeft size={14} /> Volver al inicio de sesión
+                  <ArrowLeft size={13} /> Volver al inicio de sesión
                 </Link>
               </motion.div>
             )}
 
-            {/* ── Vista: éxito ── */}
+            {/* ── Vista: éxito ───────────────────────────────────── */}
             {submitted && (
               <motion.div
                 key="success"
-                initial={{ opacity: 0, y: 24 }}
+                style={{ width: "100%" }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               >
-                <div className="fp-glass">
-                  <div className="fp-success-icon">
-                    <MailCheck size={28} color="#FF2D55" />
+                <div className="fp-card">
+                  <div className="fp-success-icon-wrap">
+                    <div className="fp-success-icon">
+                      <MailCheck size={22} color="rgba(255,45,85,0.7)" />
+                    </div>
                   </div>
 
-                  <h2 className="fp-success-title">Revisa tu email</h2>
+                  <h2 className="fp-success-title">Revisa tu email.</h2>
 
                   <p className="fp-success-text">
                     Si existe una cuenta asociada a{" "}
@@ -344,6 +438,8 @@ export default function ForgotPasswordPage() {
                     próximos minutos.
                   </p>
 
+                  <div className="fp-success-divider" />
+
                   <p className="fp-success-note">
                     ¿No llegó? Revisa tu carpeta de spam o espera unos minutos
                     antes de intentar de nuevo.
@@ -351,7 +447,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <Link href="/login" className="fp-back">
-                  <ArrowLeft size={14} /> Volver al inicio de sesión
+                  <ArrowLeft size={13} /> Volver al inicio de sesión
                 </Link>
               </motion.div>
             )}

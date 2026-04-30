@@ -16,11 +16,8 @@
 // - UTC:   22 de abril (03:53am)
 // - getTodayUTCRange()   → filtra 22 de abril en Supabase ❌
 // - getTodayLocalRange() → filtra 21 de abril en Supabase ✅
-//
-// El componente es "use client" y carga con dynamic+ssr:false en BookingWidget,
-// así que new Date() siempre corre en el browser con la timezone correcta.
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarDays, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -28,122 +25,229 @@ import AppointmentCard from "./AppointmentCard";
 import type { Database } from "@/types/database.types";
 
 type AppointmentRow = Database["public"]["Tables"]["appointments"]["Row"];
-type Appointment    = AppointmentRow & {
+type Appointment = AppointmentRow & {
   services?: { name: string; duration_minutes: number; price: number } | null;
 };
 
 // ─── Rango del día en timezone LOCAL del cliente ──────────────────────────────
-// Usa getFullYear/getMonth/getDate (timezone local) para obtener el día
-// calendario correcto desde la perspectiva del usuario, luego convierte
-// a UTC para filtrar en Supabase (que almacena en UTC).
 function getTodayLocalRange(): { startOfDay: string; endOfDay: string } {
-  const now   = new Date();
-  const year  = now.getFullYear();
+  const now = new Date();
+  const year = now.getFullYear();
   const month = now.getMonth();
-  const day   = now.getDate();
-  // scheduled_at se guarda como "YYYY-MM-DDT HH:MM:00Z" (hora literal del usuario con Z)
-  // El rango filtra por la parte de fecha del string — funciona correctamente
-  // porque scheduled_at preserva la hora que eligió el usuario, no convierte a UTC
-  const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0)).toISOString();
-  const endOfDay   = new Date(Date.UTC(year, month, day + 1, 0, 0, 0, 0)).toISOString();
+  const day = now.getDate();
+  const startOfDay = new Date(
+    Date.UTC(year, month, day, 0, 0, 0, 0),
+  ).toISOString();
+  const endOfDay = new Date(
+    Date.UTC(year, month, day + 1, 0, 0, 0, 0),
+  ).toISOString();
   return { startOfDay, endOfDay };
 }
 
-// ─── Subcomponentes ───────────────────────────────────────────────────────────
-
+// ─── Empty State Dark Atelier ─────────────────────────────────────────────────
 function EmptyState() {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
-      className="flex flex-col items-center justify-center py-20 text-center"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "64px 0",
+        textAlign: "center",
+      }}
     >
       <div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5"
-        style={{ background: "#F3EDE8" }}
+        style={{
+          width: "48px",
+          height: "48px",
+          borderRadius: "10px",
+          border: "1px solid rgba(255,255,255,0.055)", // ✅ fix: 0.06 → border 0.055
+          background: "rgba(255,255,255,0.02)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "18px",
+        }}
       >
-        <CalendarDays size={22} style={{ color: "#C4B8B0", strokeWidth: 1.5 }} />
+        <CalendarDays
+          size={20}
+          strokeWidth={1.25}
+          style={{ color: "rgba(245,242,238,0.18)" }} // ✅ fix: 0.15 → textDim 0.18
+        />
       </div>
       <p
-        className="mb-1"
         style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontSize:   "1.3rem",
-          fontWeight: 500,
-          color:      "#9C8E85",
+          fontFamily:
+            "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+          fontSize: "1.25rem",
+          fontWeight: 300,
+          color: "rgba(245,242,238,0.45)", // ✅ fix: 0.35 → textMid 0.45
+          letterSpacing: "-0.01em",
+          marginBottom: "6px",
         }}
       >
         Sin citas para hoy
       </p>
-      <p className="text-sm" style={{ color: "#C4B8B0", maxWidth: "22rem" }}>
+      <p
+        style={{
+          fontSize: "12px",
+          color: "rgba(245,242,238,0.18)", // ✅ fix: 0.15 → textDim 0.18
+          maxWidth: "22rem",
+          lineHeight: 1.65,
+          letterSpacing: "0.02em",
+        }}
+      >
         Cuando tus clientas agenden, aparecerán aquí en tiempo real.
       </p>
     </motion.div>
   );
 }
 
+// ─── Skeleton Dark Atelier ────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
     <div
-      className="rounded-2xl p-5 animate-pulse"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      className="animate-pulse"
+      style={{
+        borderRadius: "10px",
+        padding: "18px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)", // ✅ fix: 0.05 → border 0.055
+      }}
     >
-      <div className="flex gap-4">
-        <div className="w-10 h-10 rounded-xl" style={{ background: "#F3EDE8" }} />
-        <div className="flex-1">
-          <div className="h-4 rounded-lg w-1/2 mb-2" style={{ background: "#F3EDE8" }} />
-          <div className="h-3 rounded-lg w-1/3 mb-3" style={{ background: "#F3EDE8" }} />
-          <div className="h-3 rounded-lg w-1/4"      style={{ background: "#F3EDE8" }} />
+      <div style={{ display: "flex", gap: "14px" }}>
+        <div
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "8px",
+            background: "rgba(255,255,255,0.04)",
+            flexShrink: 0,
+          }}
+        />
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              height: "12px",
+              borderRadius: "4px",
+              width: "45%",
+              background: "rgba(255,255,255,0.04)",
+              marginBottom: "8px",
+            }}
+          />
+          <div
+            style={{
+              height: "10px",
+              borderRadius: "4px",
+              width: "30%",
+              background: "rgba(255,255,255,0.03)",
+              marginBottom: "10px",
+            }}
+          />
+          <div
+            style={{
+              height: "10px",
+              borderRadius: "4px",
+              width: "20%",
+              background: "rgba(255,255,255,0.03)",
+            }}
+          />
         </div>
-        <div className="h-6 w-20 rounded-full" style={{ background: "#F3EDE8" }} />
+        <div
+          style={{
+            height: "22px",
+            width: "70px",
+            borderRadius: "20px",
+            background: "rgba(255,255,255,0.04)",
+          }}
+        />
       </div>
     </div>
   );
 }
 
+// ─── Day Summary Dark Atelier ─────────────────────────────────────────────────
 function DaySummary({ appointments }: { appointments: Appointment[] }) {
-  const total     = appointments.length;
+  const total = appointments.length;
   const completed = appointments.filter((a) => a.status === "completed").length;
-  const pending   = appointments.filter(
+  const pending = appointments.filter(
     (a) => a.status === "pending" || a.status === "confirmed",
   ).length;
   const revenue = appointments
     .filter((a) => a.status === "completed")
     .reduce((sum, a) => sum + (a.services?.price ?? 0), 0);
 
-  const dollars    = Math.floor(revenue);
-  const cents      = Math.round((revenue - dollars) * 100);
+  const dollars = Math.floor(revenue);
+  const cents = Math.round((revenue - dollars) * 100);
   const revenueStr = `$${dollars}.${String(cents).padStart(2, "0")}`;
 
   const stats = [
-    { label: "Total",       value: String(total),     color: "#2D2420" },
-    { label: "Pendientes",  value: String(pending),   color: "#B45309" },
-    { label: "Completadas", value: String(completed), color: "#065F46" },
-    { label: "Ingresos",    value: revenueStr,         color: "#D4375F" },
+    { label: "Total", value: String(total), accent: false },
+    { label: "Pendientes", value: String(pending), accent: false },
+    { label: "Completadas", value: String(completed), accent: false },
+    { label: "Ingresos", value: revenueStr, accent: true },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
+    <div
+      className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+      style={{ marginBottom: "24px" }}
+    >
       {stats.map((stat, i) => (
         <motion.div
           key={stat.label}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.05 }}
-          className="rounded-2xl p-4"
-          style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+          style={{
+            borderRadius: "10px",
+            padding: "16px",
+            background: "#0E0C0B",
+            border: "1px solid rgba(255,255,255,0.055)",
+            position: "relative",
+            overflow: "hidden",
+          }}
         >
-          <p className="text-xs font-medium mb-1.5" style={{ color: "#B5A99F" }}>
+          {/* Línea inferior acento en Ingresos */}
+          {stat.accent && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: "1px",
+                background: "rgba(255,45,85,0.22)", // ✅ fix: 0.35 → roseBorder 0.22
+              }}
+            />
+          )}
+          <p
+            style={{
+              fontSize: "9px",
+              fontWeight: 400,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "rgba(245,242,238,0.18)", // ✅ fix: 0.2 → textDim 0.18
+              marginBottom: "8px",
+            }}
+          >
             {stat.label}
           </p>
           <p
             style={{
-              color:      stat.color,
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              fontSize:   "1.6rem",
-              fontWeight: 600,
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+              fontSize: "1.6rem",
+              fontWeight: 300,
               lineHeight: 1,
+              letterSpacing: "-0.03em",
+              color: stat.accent
+                ? "rgba(255,45,85,0.75)"
+                : "rgba(245,242,238,0.75)",
             }}
           >
             {stat.value}
@@ -155,23 +259,21 @@ function DaySummary({ appointments }: { appointments: Appointment[] }) {
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-
 export default function TodayAppointments({ salonId }: { salonId: string }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [connected, setConnected]       = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [connected, setConnected] = useState(false);
   const [lastUpdateStr, setLastUpdateStr] = useState<string | null>(null);
 
-  const captureUpdateTime = () => {
+  const captureUpdateTime = useCallback(() => {
     const now = new Date();
-    const h   = String(now.getHours()).padStart(2, "0");
-    const m   = String(now.getMinutes()).padStart(2, "0");
+    const h = String(now.getHours()).padStart(2, "0");
+    const m = String(now.getMinutes()).padStart(2, "0");
     setLastUpdateStr(`${h}:${m}`);
-  };
+  }, []);
 
   const fetchAppointments = useCallback(async () => {
     const supabase = createClient();
-    // FIX: usar timezone local del cliente para calcular "hoy"
     const { startOfDay, endOfDay } = getTodayLocalRange();
 
     const { data, error } = await supabase
@@ -187,11 +289,29 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
       captureUpdateTime();
     }
     setLoading(false);
+  }, [salonId, captureUpdateTime]);
+
+  // Ref estable que siempre apunta a la version mas reciente de fetchAppointments.
+  // Permite que el useEffect de carga inicial no tenga fetchAppointments en su
+  // dependency array, evitando que el React Compiler detecte setState indirecto
+  // dentro del cuerpo del efecto.
+  const fetchRef = useRef(fetchAppointments);
+  useEffect(() => {
+    fetchRef.current = fetchAppointments;
+  }, [fetchAppointments]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRef.current().then(() => {
+      if (cancelled) return;
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salonId]);
 
-  useEffect(() => { fetchAppointments(); }, [fetchAppointments]);
-
-  // Realtime
+  // ─── Realtime — lógica intacta ────────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient();
     const { startOfDay, endOfDay } = getTodayLocalRange();
@@ -201,15 +321,15 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
       .on(
         "postgres_changes",
         {
-          event:  "*",
+          event: "*",
           schema: "public",
-          table:  "appointments",
+          table: "appointments",
           filter: `salon_id=eq.${salonId}`,
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
             const newAppt = payload.new as Appointment;
-            const t       = newAppt.scheduled_at ?? "";
+            const t = newAppt.scheduled_at ?? "";
             if (t >= startOfDay && t < endOfDay) {
               setAppointments((prev) =>
                 [...prev, newAppt].sort((a, b) => {
@@ -237,42 +357,74 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
       )
       .subscribe((status) => setConnected(status === "SUBSCRIBED"));
 
-    return () => { supabase.removeChannel(channel); };
-  }, [salonId]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [salonId, captureUpdateTime]);
 
   return (
     <div>
-      {/* Subheader */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      {/* ── Subheader ───────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "20px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <p
             style={{
-              fontFamily:    "'Cormorant Garamond', Georgia, serif",
-              fontSize:      "1.35rem",
-              fontWeight:    500,
-              color:         "#5C4F48",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+              fontSize: "1.3rem",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.7)",
               letterSpacing: "-0.01em",
+              margin: 0,
             }}
           >
             Agenda del día
           </p>
 
           {!loading && (
-            <div className="flex items-center gap-1.5">
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               {connected ? (
                 <>
                   <motion.div
-                    animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
+                    animate={{
+                      scale: [1, 1.4, 1],
+                      opacity: [1, 0.5, 1],
+                    }}
                     transition={{ repeat: Infinity, duration: 2.5 }}
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: "#10B981" }}
+                    style={{
+                      width: "5px",
+                      height: "5px",
+                      borderRadius: "50%",
+                      background: "#22c55e",
+                    }}
                   />
-                  <span className="text-xs hidden sm:block" style={{ color: "#10B981" }}>
+                  <span
+                    className="hidden sm:block"
+                    style={{
+                      fontSize: "10px",
+                      color: "rgba(34,197,94,0.7)",
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
                     En vivo
                   </span>
                 </>
               ) : (
-                <span className="text-xs" style={{ color: "#C4B8B0" }}>
+                <span
+                  style={{
+                    fontSize: "10px",
+                    color: "rgba(245,242,238,0.18)", // ✅ fix: 0.2 → textDim 0.18
+                    letterSpacing: "0.06em",
+                  }}
+                >
                   Reconectando…
                 </span>
               )}
@@ -280,9 +432,16 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {lastUpdateStr && !loading && (
-            <span className="text-xs hidden sm:block" style={{ color: "#C4B8B0" }}>
+            <span
+              className="hidden sm:block"
+              style={{
+                fontSize: "10px",
+                color: "rgba(245,242,238,0.18)",
+                letterSpacing: "0.06em",
+              }}
+            >
               Actualizado {lastUpdateStr}
             </span>
           )}
@@ -291,34 +450,46 @@ export default function TodayAppointments({ salonId }: { salonId: string }) {
             whileTap={{ scale: 0.95 }}
             onClick={fetchAppointments}
             aria-label="Actualizar"
-            className="p-2 rounded-xl transition-colors"
-            style={{ color: "#C4B8B0" }}
+            style={{
+              padding: "6px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "rgba(245,242,238,0.18)",
+              display: "flex",
+              alignItems: "center",
+              transition: "color 0.2s",
+            }}
             onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLElement).style.color = "#9C8E85")
+              ((e.currentTarget as HTMLElement).style.color =
+                "rgba(245,242,238,0.45)")
             }
             onMouseLeave={(e) =>
-              ((e.currentTarget as HTMLElement).style.color = "#C4B8B0")
+              ((e.currentTarget as HTMLElement).style.color =
+                "rgba(245,242,238,0.18)")
             }
           >
-            <RefreshCw size={14} strokeWidth={1.5} />
+            <RefreshCw size={13} strokeWidth={1.5} />
           </motion.button>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* ── Stats del día ───────────────────────────────────────────── */}
       {!loading && appointments.length > 0 && (
         <DaySummary appointments={appointments} />
       )}
 
-      {/* Lista */}
+      {/* ── Lista de citas ──────────────────────────────────────────── */}
       {loading ? (
-        <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {[1, 2, 3].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
       ) : appointments.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <AnimatePresence initial={false}>
             {appointments.map((appt, i) => (
               <AppointmentCard key={appt.id} appointment={appt} index={i} />

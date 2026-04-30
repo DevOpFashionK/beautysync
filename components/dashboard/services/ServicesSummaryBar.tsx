@@ -2,7 +2,7 @@
 
 // components/dashboard/services/ServicesSummaryBar.tsx
 import { motion } from "framer-motion";
-import { Layers, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 interface ServicesSummaryBarProps {
   totalServices: number;
@@ -20,40 +20,117 @@ export default function ServicesSummaryBar({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15 }}
-      className="flex items-center gap-4 mt-6 pt-5 border-t border-[#EDE8E3]"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "20px",
+        marginTop: "24px",
+        paddingTop: "20px",
+        borderTop: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
-      <div className="flex items-center gap-2">
+      {/* Activos */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: `${primaryColor}12` }}
+          style={{
+            width: "30px",
+            height: "30px",
+            borderRadius: "7px",
+            background: `${primaryColor}12`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <Eye size={14} style={{ color: primaryColor }} />
+          <Eye
+            size={13}
+            strokeWidth={1.75}
+            style={{ color: `${primaryColor}CC` }}
+          />
         </div>
         <div>
           <p
-            className="font-['Cormorant_Garamond'] text-xl font-bold leading-none"
-            style={{ color: primaryColor }}
+            style={{
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+              fontSize: "1.4rem",
+              fontWeight: 300,
+              lineHeight: 1,
+              color: `${primaryColor}CC`,
+              margin: 0,
+            }}
           >
             {totalServices}
           </p>
-          <p className="text-[10px] text-[#9C8E85] font-medium">
+          <p
+            style={{
+              fontSize: "10px",
+              color: "rgba(245,242,238,0.2)",
+              margin: 0,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
             {totalServices === 1 ? "servicio activo" : "servicios activos"}
           </p>
         </div>
       </div>
 
+      {/* Inactivos */}
       {inactiveCount > 0 && (
         <>
-          <div className="w-px h-8 bg-[#EDE8E3]" />
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-[#FAF8F5]">
-              <EyeOff size={14} className="text-[#C4B8B0]" />
+          <div
+            style={{
+              width: "1px",
+              height: "28px",
+              background: "rgba(255,255,255,0.06)",
+            }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div
+              style={{
+                width: "30px",
+                height: "30px",
+                borderRadius: "7px",
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <EyeOff
+                size={13}
+                strokeWidth={1.75}
+                style={{ color: "rgba(245,242,238,0.2)" }}
+              />
             </div>
             <div>
-              <p className="font-['Cormorant_Garamond'] text-xl font-bold leading-none text-[#C4B8B0]">
+              <p
+                style={{
+                  fontFamily:
+                    "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                  fontSize: "1.4rem",
+                  fontWeight: 300,
+                  lineHeight: 1,
+                  color: "rgba(245,242,238,0.25)",
+                  margin: 0,
+                }}
+              >
                 {inactiveCount}
               </p>
-              <p className="text-[10px] text-[#C4B8B0] font-medium">inactivos</p>
+              <p
+                style={{
+                  fontSize: "10px",
+                  color: "rgba(245,242,238,0.15)",
+                  margin: 0,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                }}
+              >
+                inactivos
+              </p>
             </div>
           </div>
         </>

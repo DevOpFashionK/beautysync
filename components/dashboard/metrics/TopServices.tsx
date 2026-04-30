@@ -1,17 +1,7 @@
 "use client";
 
 // components/dashboard/metrics/TopServices.tsx
-//
-// Ranking de servicios más populares del mes actual.
-// Muestra hasta 5 servicios ordenados por cantidad de citas,
-// con barra de proporción relativa al más popular y precio promedio.
-//
-// Recibe datos ya procesados desde el Server Component — no hace fetch propio.
-//
-// Props:
-//   services     — array de hasta 5 servicios con métricas del mes
-//   primaryColor — color de acento del salón
-//   loading      — muestra skeleton si true
+// Ranking top 5 servicios del mes. Barras de proporción animadas. Lógica intacta.
 
 import { motion } from "framer-motion";
 import { Scissors } from "lucide-react";
@@ -19,17 +9,11 @@ import { Scissors } from "lucide-react";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface TopServiceDataPoint {
-  /** ID del servicio */
   id: string;
-  /** Nombre del servicio */
   name: string;
-  /** Cantidad de citas este mes (no canceladas) */
   count: number;
-  /** Ingresos generados este mes (citas completadas/confirmadas) */
   revenue: number;
-  /** Porcentaje relativo al servicio más popular (0–100) */
   pct: number;
-  /** true si es el servicio #1 */
   isTop: boolean;
 }
 
@@ -47,7 +31,8 @@ function formatRevenue(amount: number): string {
   return `$${dollars}.${String(cents).padStart(2, "0")}`;
 }
 
-/** Número de posición con estilo: 1 → corona, 2–5 → número */
+// ─── Rank Badge Dark ──────────────────────────────────────────────────────────
+
 function RankBadge({
   rank,
   isTop,
@@ -60,25 +45,39 @@ function RankBadge({
   if (isTop) {
     return (
       <div
-        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm"
         style={{
-          background: `${primaryColor}18`,
-          color: primaryColor,
-          fontWeight: 700,
+          width: "26px",
+          height: "26px",
+          borderRadius: "6px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          background: `${primaryColor}14`,
+          border: `1px solid ${primaryColor}25`,
+          fontSize: "13px",
+          color: `${primaryColor}CC`,
         }}
       >
-        ✦
+        N.1
       </div>
     );
   }
-
   return (
     <div
-      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0
-                 text-xs font-semibold"
       style={{
-        background: "#F3EDE8",
-        color: "#B5A99F",
+        width: "26px",
+        height: "26px",
+        borderRadius: "6px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        fontSize: "11px",
+        color: "rgba(245,242,238,0.22)",
+        letterSpacing: "0.02em",
       }}
     >
       {rank}
@@ -86,58 +85,99 @@ function RankBadge({
   );
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
+// ─── Skeleton Dark ────────────────────────────────────────────────────────────
 
 function TopServicesSkeleton() {
   const widths = ["100%", "72%", "55%", "40%", "28%"];
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.16 }}
-      className="rounded-2xl p-6 animate-pulse"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      className="animate-pulse"
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
-      {/* Header skeleton */}
-      <div className="flex items-center justify-between mb-6">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "24px",
+        }}
+      >
         <div>
           <div
-            className="h-3 rounded-lg w-40 mb-2"
-            style={{ background: "#F3EDE8" }}
+            style={{
+              height: "10px",
+              width: "120px",
+              borderRadius: "4px",
+              background: "rgba(255,255,255,0.04)",
+              marginBottom: "8px",
+            }}
           />
           <div
-            className="h-6 rounded-lg w-32"
-            style={{ background: "#F3EDE8" }}
+            style={{
+              height: "20px",
+              width: "140px",
+              borderRadius: "6px",
+              background: "rgba(255,255,255,0.05)",
+            }}
           />
         </div>
-        <div className="w-9 h-9 rounded-xl" style={{ background: "#F3EDE8" }} />
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            background: "rgba(255,255,255,0.04)",
+          }}
+        />
       </div>
-
-      {/* Filas skeleton */}
-      <div className="flex flex-col gap-4">
+      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {widths.map((w, i) => (
-          <div key={i} className="flex items-start gap-3">
-            {/* Badge */}
+          <div
+            key={i}
+            style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}
+          >
             <div
-              className="w-7 h-7 rounded-lg shrink-0"
-              style={{ background: "#F3EDE8" }}
+              style={{
+                width: "26px",
+                height: "26px",
+                borderRadius: "6px",
+                background: "rgba(255,255,255,0.04)",
+                flexShrink: 0,
+              }}
             />
-            <div className="flex-1 min-w-0">
-              {/* Nombre */}
+            <div style={{ flex: 1 }}>
               <div
-                className="h-3.5 rounded-lg mb-2"
-                style={{ background: "#F3EDE8", width: w }}
+                style={{
+                  height: "11px",
+                  borderRadius: "4px",
+                  background: "rgba(255,255,255,0.04)",
+                  marginBottom: "8px",
+                  width: w,
+                }}
               />
-              {/* Barra */}
               <div
-                className="h-1.5 rounded-full w-full mb-1.5"
-                style={{ background: "#F3EDE8" }}
+                style={{
+                  height: "4px",
+                  borderRadius: "2px",
+                  background: "rgba(255,255,255,0.03)",
+                  marginBottom: "6px",
+                }}
               />
-              {/* Stats */}
               <div
-                className="h-3 rounded-lg w-24"
-                style={{ background: "#F3EDE8" }}
+                style={{
+                  height: "10px",
+                  borderRadius: "4px",
+                  background: "rgba(255,255,255,0.03)",
+                  width: "70px",
+                }}
               />
             </div>
           </div>
@@ -147,7 +187,7 @@ function TopServicesSkeleton() {
   );
 }
 
-// ─── Empty state ─────────────────────────────────────────────────────────────
+// ─── Empty Dark ───────────────────────────────────────────────────────────────
 
 function TopServicesEmpty({ primaryColor }: { primaryColor: string }) {
   return (
@@ -155,32 +195,56 @@ function TopServicesEmpty({ primaryColor }: { primaryColor: string }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.16 }}
-      className="rounded-2xl p-6 flex flex-col items-center justify-center py-16"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingTop: "56px",
+        paddingBottom: "56px",
+      }}
     >
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-        style={{ background: `${primaryColor}14` }}
+        style={{
+          width: "36px",
+          height: "36px",
+          borderRadius: "8px",
+          background: `${primaryColor}12`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "14px",
+        }}
       >
         <Scissors
-          size={18}
+          size={16}
           strokeWidth={1.75}
-          style={{ color: primaryColor }}
+          style={{ color: `${primaryColor}99` }}
         />
       </div>
       <p
         style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontSize: "1.2rem",
-          fontWeight: 500,
-          color: "#9C8E85",
+          fontFamily:
+            "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+          fontSize: "1.1rem",
+          fontWeight: 300,
+          color: "rgba(245,242,238,0.35)",
+          marginBottom: "4px",
         }}
       >
         Sin servicios este mes
       </p>
       <p
-        className="text-xs mt-1 text-center"
-        style={{ color: "#C4B8B0", maxWidth: "18rem" }}
+        style={{
+          fontSize: "11px",
+          color: "rgba(245,242,238,0.15)",
+          textAlign: "center",
+          maxWidth: "18rem",
+        }}
       >
         El ranking aparecerá cuando haya citas registradas este mes.
       </p>
@@ -188,7 +252,7 @@ function TopServicesEmpty({ primaryColor }: { primaryColor: string }) {
   );
 }
 
-// ─── Fila de un servicio ─────────────────────────────────────────────────────
+// ─── Fila de servicio ─────────────────────────────────────────────────────────
 
 function ServiceRow({
   service,
@@ -208,31 +272,48 @@ function ServiceRow({
       initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay: 0.16 + index * 0.05 }}
-      className="flex items-start gap-3"
+      style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}
     >
-      {/* Badge de posición */}
       <RankBadge
         rank={rank}
         isTop={service.isTop}
         primaryColor={primaryColor}
       />
 
-      {/* Contenido */}
-      <div className="flex-1 min-w-0">
+      <div style={{ flex: 1, minWidth: 0 }}>
         {/* Nombre + conteo */}
-        <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: "8px",
+            marginBottom: "6px",
+          }}
+        >
           <p
-            className="text-sm font-medium truncate"
             style={{
-              color: service.isTop ? "#2D2420" : "#5C4F48",
-              fontWeight: service.isTop ? 600 : 500,
+              fontSize: "13px",
+              fontWeight: 400,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              margin: 0,
+              color: service.isTop
+                ? "rgba(245,242,238,0.85)"
+                : "rgba(245,242,238,0.45)",
             }}
           >
             {service.name}
           </p>
           <span
-            className="text-xs font-semibold shrink-0"
-            style={{ color: service.isTop ? primaryColor : "#9C8E85" }}
+            style={{
+              fontSize: "11px",
+              flexShrink: 0,
+              color: service.isTop
+                ? `${primaryColor}CC`
+                : "rgba(245,242,238,0.22)",
+            }}
           >
             {service.count} {service.count === 1 ? "cita" : "citas"}
           </span>
@@ -240,8 +321,14 @@ function ServiceRow({
 
         {/* Barra de proporción */}
         <div
-          className="w-full rounded-full overflow-hidden mb-1.5"
-          style={{ height: "5px", background: "#F3EDE8" }}
+          style={{
+            width: "100%",
+            borderRadius: "2px",
+            overflow: "hidden",
+            height: "3px",
+            background: "rgba(255,255,255,0.04)",
+            marginBottom: "5px",
+          }}
         >
           <motion.div
             initial={{ width: "0%" }}
@@ -253,14 +340,20 @@ function ServiceRow({
             }}
             style={{
               height: "100%",
-              borderRadius: "9999px",
-              background: service.isTop ? primaryColor : `${primaryColor}60`,
+              borderRadius: "2px",
+              background: service.isTop ? primaryColor : `${primaryColor}44`,
             }}
           />
         </div>
 
         {/* Ingresos */}
-        <p className="text-xs" style={{ color: "#B5A99F" }}>
+        <p
+          style={{
+            fontSize: "11px",
+            color: "rgba(245,242,238,0.18)",
+            margin: 0,
+          }}
+        >
           {formatRevenue(service.revenue)} este mes
         </p>
       </div>
@@ -285,50 +378,84 @@ export default function TopServices({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.16 }}
-      className="rounded-2xl p-6"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: "20px",
+        }}
+      >
         <div>
           <p
-            className="text-xs font-medium uppercase tracking-wider mb-1.5"
-            style={{ color: "#9C8E85", letterSpacing: "0.08em" }}
+            style={{
+              fontSize: "10px",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "rgba(245,242,238,0.22)",
+              marginBottom: "6px",
+            }}
           >
             Servicios · este mes
           </p>
           <p
-            className="truncate max-w-[180px]"
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              fontSize: "1.35rem",
-              fontWeight: 600,
-              color: "#2D2420",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+              fontSize: "1.3rem",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.85)",
               lineHeight: 1.1,
-              letterSpacing: "-0.01em",
+              letterSpacing: "-0.02em",
+              maxWidth: "200px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {topService.name}
           </p>
-          <p className="text-xs mt-1" style={{ color: "#B5A99F" }}>
+          <p
+            style={{
+              fontSize: "11px",
+              marginTop: "4px",
+              color: "rgba(245,242,238,0.2)",
+            }}
+          >
             es el más solicitado
           </p>
         </div>
-
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: `${primaryColor}14` }}
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            background: `${primaryColor}12`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
         >
           <Scissors
-            size={16}
+            size={14}
             strokeWidth={1.75}
-            style={{ color: primaryColor }}
+            style={{ color: `${primaryColor}CC` }}
           />
         </div>
       </div>
 
-      {/* Lista de servicios */}
-      <div className="flex flex-col gap-4">
+      {/* Lista */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         {services.map((service, i) => (
           <ServiceRow
             key={service.id}

@@ -7,12 +7,12 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { XCircle, AlertTriangle, X } from "lucide-react";
+import { XCircle, AlertTriangle, X, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface CancelSubscriptionProps {
   primaryColor?: string;
-  accessUntil: string | null; // current_period_end
+  accessUntil: string | null;
 }
 
 function formatDateSimple(dateStr: string | null): string {
@@ -25,7 +25,7 @@ function formatDateSimple(dateStr: string | null): string {
 }
 
 export function CancelSubscription({
-  primaryColor = "#D4375F",
+  primaryColor = "#FF2D55",
   accessUntil,
 }: CancelSubscriptionProps) {
   const router = useRouter();
@@ -37,23 +37,15 @@ export function CancelSubscription({
   async function handleConfirmCancel() {
     setLoading(true);
     setError(null);
-
     try {
-      const res = await fetch("/api/billing/cancel", {
-        method: "POST",
-      });
-
+      const res = await fetch("/api/billing/cancel", { method: "POST" });
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.error ?? "Error al cancelar. Intenta de nuevo.");
         return;
       }
-
       setCanceled(true);
       setShowModal(false);
-
-      // Refrescar la página para que el Server Component refleje el nuevo status
       router.refresh();
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -62,28 +54,58 @@ export function CancelSubscription({
     }
   }
 
-  // Una vez cancelada, mostrar confirmación en lugar del botón
+  // ── Estado post-cancelación ────────────────────────────────────────────────
   if (canceled) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl border border-gray-200 bg-gray-50 p-5"
+        style={{
+          borderRadius: "10px",
+          border: "1px solid rgba(255,255,255,0.07)",
+          background: "rgba(255,255,255,0.03)",
+          padding: "18px 20px",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "12px",
+        }}
       >
-        <div className="flex items-start gap-3">
-          <XCircle className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-gray-600">
-              Suscripción cancelada
-            </p>
-            <p className="text-xs text-[#9C8E85] mt-1">
-              Tu acceso se mantiene activo hasta el{" "}
-              <strong className="text-[#2D2420]">
-                {formatDateSimple(accessUntil)}
-              </strong>
-              . Después de esa fecha tu cuenta pasará a modo gratuito.
-            </p>
-          </div>
+        <XCircle
+          size={16}
+          strokeWidth={1.5}
+          style={{
+            color: "rgba(245,242,238,0.22)",
+            flexShrink: 0,
+            marginTop: 2,
+          }}
+        />
+        <div>
+          <p
+            style={{
+              fontSize: "13px",
+              fontWeight: 400,
+              color: "rgba(245,242,238,0.45)",
+              margin: "0 0 4px",
+            }}
+          >
+            Suscripción cancelada
+          </p>
+          <p
+            style={{
+              fontSize: "12px",
+              color: "rgba(245,242,238,0.22)",
+              lineHeight: 1.65,
+              margin: 0,
+            }}
+          >
+            Tu acceso se mantiene activo hasta el{" "}
+            <strong
+              style={{ color: "rgba(245,242,238,0.55)", fontWeight: 400 }}
+            >
+              {formatDateSimple(accessUntil)}
+            </strong>
+            . Después de esa fecha tu cuenta pasará a modo gratuito.
+          </p>
         </div>
       </motion.div>
     );
@@ -91,18 +113,36 @@ export function CancelSubscription({
 
   return (
     <>
-      {/* Botón para abrir modal */}
-      <div className="text-center pt-2">
+      {/* Trigger */}
+      <div style={{ textAlign: "center", paddingTop: "4px" }}>
         <button
           onClick={() => setShowModal(true)}
-          className="text-xs text-[#C4B8B0] hover:text-[#9C8E85] underline
-            underline-offset-2 transition-colors cursor-pointer"
+          style={{
+            fontSize: "11px",
+            color: "rgba(245,242,238,0.18)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            textDecoration: "underline",
+            textUnderlineOffset: "3px",
+            transition: "color 0.2s",
+            fontFamily: "inherit",
+            letterSpacing: "0.03em",
+          }}
+          onMouseEnter={(e) =>
+            ((e.currentTarget as HTMLElement).style.color =
+              "rgba(245,242,238,0.35)")
+          }
+          onMouseLeave={(e) =>
+            ((e.currentTarget as HTMLElement).style.color =
+              "rgba(245,242,238,0.18)")
+          }
         >
           Cancelar suscripción
         </button>
       </div>
 
-      {/* Modal de confirmación */}
+      {/* Modal */}
       <AnimatePresence>
         {showModal && (
           <>
@@ -113,105 +153,277 @@ export function CancelSubscription({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => !loading && setShowModal(false)}
-              className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(8,7,6,0.8)",
+                backdropFilter: "blur(6px)",
+                zIndex: 50,
+              }}
             />
 
             {/* Modal */}
             <motion.div
               key="modal"
-              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              initial={{ opacity: 0, scale: 0.96, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 flex items-center justify-center px-4"
+              exit={{ opacity: 0, scale: 0.96, y: 16 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 51,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "16px",
+              }}
             >
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative">
+              <div
+                style={{
+                  background: "#0E0C0B",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: "14px",
+                  width: "100%",
+                  maxWidth: "420px",
+                  padding: "28px 24px",
+                  position: "relative",
+                  boxShadow: "0 32px 80px rgba(0,0,0,0.6)",
+                }}
+              >
+                {/* Acento esquina */}
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    width: "14px",
+                    height: "14px",
+                    borderTop: "1px solid rgba(234,179,8,0.3)",
+                    borderRight: "1px solid rgba(234,179,8,0.3)",
+                    borderTopRightRadius: "14px",
+                    pointerEvents: "none",
+                  }}
+                />
+
                 {/* Cerrar */}
                 <button
                   onClick={() => !loading && setShowModal(false)}
                   disabled={loading}
-                  className="absolute top-4 right-4 text-[#C4B8B0] hover:text-[#9C8E85]
-                    transition-colors disabled:opacity-40"
+                  style={{
+                    position: "absolute",
+                    top: "16px",
+                    right: "16px",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "rgba(245,242,238,0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    opacity: loading ? 0.4 : 1,
+                    transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLElement).style.color =
+                      "rgba(245,242,238,0.5)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLElement).style.color =
+                      "rgba(245,242,238,0.2)")
+                  }
                 >
-                  <X className="w-4 h-4" />
+                  <X size={15} strokeWidth={1.5} />
                 </button>
 
                 {/* Ícono */}
                 <div
-                  className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center
-                  justify-center mb-4"
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "10px",
+                    background: "rgba(234,179,8,0.08)",
+                    border: "1px solid rgba(234,179,8,0.18)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "18px",
+                  }}
                 >
-                  <AlertTriangle className="w-6 h-6 text-amber-500" />
+                  <AlertTriangle
+                    size={18}
+                    strokeWidth={1.75}
+                    style={{ color: "rgba(251,191,36,0.75)" }}
+                  />
                 </div>
 
-                {/* Texto */}
-                <h3 className="font-display text-xl text-[#2D2420] mb-2">
+                {/* Título */}
+                <h3
+                  style={{
+                    fontFamily:
+                      "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                    fontSize: "1.5rem",
+                    fontWeight: 300,
+                    color: "rgba(245,242,238,0.88)",
+                    letterSpacing: "-0.02em",
+                    margin: "0 0 10px",
+                  }}
+                >
                   ¿Cancelar suscripción?
                 </h3>
-                <p className="text-sm text-[#9C8E85] mb-4 leading-relaxed">
+
+                {/* Descripción */}
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: "rgba(245,242,238,0.35)",
+                    lineHeight: 1.7,
+                    margin: "0 0 16px",
+                  }}
+                >
                   Tu plan seguirá activo hasta el{" "}
-                  <strong className="text-[#2D2420]">
+                  <strong
+                    style={{ color: "rgba(245,242,238,0.65)", fontWeight: 400 }}
+                  >
                     {formatDateSimple(accessUntil)}
                   </strong>
                   . Después de esa fecha tu widget de reservas se pausará y las
                   clientas no podrán agendar en línea.
                 </p>
 
-                {/* Lista de consecuencias */}
-                <ul className="space-y-2 mb-6">
+                {/* Consecuencias */}
+                <ul
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "7px",
+                    margin: "0 0 20px",
+                    padding: 0,
+                    listStyle: "none",
+                  }}
+                >
                   {[
                     "El widget de reservas dejará de aceptar citas",
                     "Los emails automáticos se pausarán",
                     "Podrás reactivar tu plan en cualquier momento",
                   ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-amber-500 font-bold text-xs mt-0.5">
+                    <li
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "8px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "rgba(251,191,36,0.5)",
+                          fontSize: "12px",
+                          marginTop: "1px",
+                          flexShrink: 0,
+                        }}
+                      >
                         —
                       </span>
-                      <span className="text-xs text-[#9C8E85]">{item}</span>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "rgba(245,242,238,0.28)",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {item}
+                      </span>
                     </li>
                   ))}
                 </ul>
 
                 {/* Error */}
                 {error && (
-                  <p
-                    className="text-xs text-red-500 bg-red-50 rounded-xl
-                    py-2 px-3 mb-4"
+                  <div
+                    style={{
+                      background: "rgba(239,68,68,0.07)",
+                      border: "1px solid rgba(239,68,68,0.18)",
+                      borderRadius: "7px",
+                      padding: "10px 12px",
+                      fontSize: "12px",
+                      color: "rgba(252,165,165,0.85)",
+                      marginBottom: "14px",
+                    }}
                   >
                     {error}
-                  </p>
+                  </div>
                 )}
 
                 {/* Botones */}
-                <div className="flex gap-3">
+                <div style={{ display: "flex", gap: "10px" }}>
                   <button
                     onClick={() => setShowModal(false)}
                     disabled={loading}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-medium
-                      border transition-colors disabled:opacity-40"
-                      style={{
-                        borderColor : primaryColor,
-                        color : primaryColor,
-                      }}
+                    style={{
+                      flex: 1,
+                      padding: "11px",
+                      borderRadius: "8px",
+                      border: `1px solid ${primaryColor}30`,
+                      background: `${primaryColor}08`,
+                      color: `${primaryColor}99`,
+                      fontSize: "12px",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      cursor: loading ? "not-allowed" : "pointer",
+                      opacity: loading ? 0.5 : 1,
+                      transition: "all 0.2s",
+                      fontFamily: "inherit",
+                    }}
                   >
                     Mantener plan
                   </button>
                   <button
                     onClick={handleConfirmCancel}
                     disabled={loading}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold
-                      bg-red-500 text-white hover:bg-red-600 transition-colors
-                      disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{
+                      flex: 1,
+                      padding: "11px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(239,68,68,0.25)",
+                      background: "rgba(239,68,68,0.1)",
+                      color: "rgba(252,165,165,0.85)",
+                      fontSize: "12px",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      cursor: loading ? "not-allowed" : "pointer",
+                      opacity: loading ? 0.7 : 1,
+                      transition: "all 0.2s",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      fontFamily: "inherit",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) {
+                        (e.currentTarget as HTMLElement).style.background =
+                          "rgba(239,68,68,0.18)";
+                        (e.currentTarget as HTMLElement).style.borderColor =
+                          "rgba(239,68,68,0.35)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background =
+                        "rgba(239,68,68,0.1)";
+                      (e.currentTarget as HTMLElement).style.borderColor =
+                        "rgba(239,68,68,0.25)";
+                    }}
                   >
                     {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span
-                          className="w-4 h-4 border-2 border-white
-                          border-t-transparent rounded-full animate-spin"
-                        />
+                      <>
+                        <Loader2
+                          size={13}
+                          strokeWidth={1.75}
+                          className="animate-spin"
+                        />{" "}
                         Cancelando…
-                      </span>
+                      </>
                     ) : (
                       "Sí, cancelar"
                     )}

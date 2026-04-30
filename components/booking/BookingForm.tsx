@@ -1,7 +1,7 @@
 "use client";
 
 // components/booking/BookingForm.tsx
-// Fase 8.1 v2 — Formulario adaptado a la estética oscura premium
+// Lógica de validación Zod, focusHandlers y handleFormSubmit 100% intactos.
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import type { BookingFormData, SelectedService } from "@/types/booking.types";
 
-// ─── Schema ───────────────────────────────────────────────────────────────────
+// ─── Schema — intacto ─────────────────────────────────────────────────────────
 const bookingFormSchema = z.object({
   client_name: z
     .string()
@@ -45,7 +45,6 @@ const bookingFormSchema = z.object({
 
 type FormValues = z.infer<typeof bookingFormSchema>;
 
-// ─── Props ────────────────────────────────────────────────────────────────────
 interface BookingFormProps {
   service: SelectedService;
   selectedDateDisplay: string;
@@ -59,82 +58,100 @@ interface BookingFormProps {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const styles = `
   .bf-title {
-    font-family: var(--font-cormorant), Georgia, serif;
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: rgba(245, 242, 238, 0.95);
-    line-height: 1.15;
-    margin-bottom: 4px;
-    letter-spacing: -0.01em;
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 300;
+    color: rgba(245,242,238,0.92);
+    line-height: 1.1;
+    margin-bottom: 5px;
+    letter-spacing: -0.025em;
   }
 
   .bf-subtitle {
     font-size: 13px;
-    color: rgba(245, 242, 238, 0.4);
-    font-family: var(--font-jakarta), sans-serif;
+    color: rgba(245,242,238,0.3);
+    font-family: var(--font-body);
+    letter-spacing: 0.02em;
     margin-bottom: 20px;
   }
 
-  /* Resumen de cita */
+  /* Resumen de cita — mini ticket */
   .bf-summary {
     border-radius: 14px;
-    padding: 14px 16px;
+    padding: 16px;
     margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
   }
 
-  .bf-summary-service {
+  .bf-summary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    pointer-events: none;
+  }
+
+  .bf-sum-service {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
-  .bf-summary-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+  .bf-sum-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
   }
 
-  .bf-summary-label {
-    font-size: 11px;
-    color: rgba(245, 242, 238, 0.35);
-    margin-bottom: 2px;
-    font-family: var(--font-jakarta), sans-serif;
+  .bf-sum-label {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(245,242,238,0.28);
+    margin-bottom: 3px;
+    font-family: var(--font-body);
   }
 
-  .bf-summary-name {
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 1.2;
-    font-family: var(--font-jakarta), sans-serif;
+  .bf-sum-name {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 300;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
   }
 
-  .bf-summary-divider {
+  .bf-sum-divider {
     height: 1px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
-  .bf-summary-meta {
+  .bf-sum-meta {
     display: flex;
     align-items: center;
     gap: 16px;
   }
 
-  .bf-summary-meta-item {
+  .bf-sum-item {
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 12px;
-    color: rgba(245, 242, 238, 0.45);
-    font-family: var(--font-jakarta), sans-serif;
+    font-size: 11px;
+    color: rgba(245,242,238,0.38);
+    font-family: var(--font-body);
     text-transform: capitalize;
+    letter-spacing: 0.02em;
   }
 
-  /* Campos del formulario */
+  /* Campos */
   .bf-field {
     display: flex;
     flex-direction: column;
@@ -145,35 +162,35 @@ const styles = `
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    color: rgba(245, 242, 238, 0.45);
-    letter-spacing: 0.04em;
+    font-size: 10px;
+    font-weight: 500;
+    color: rgba(245,242,238,0.35);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
   }
 
   .bf-required {
-    color: #EF4444;
+    color: rgba(255,45,85,0.6);
     margin-left: 1px;
   }
 
   .bf-input {
     width: 100%;
     padding: 11px 14px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    background: rgba(255, 255, 255, 0.05);
+    border-radius: 11px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
     font-size: 14px;
-    color: rgba(245, 242, 238, 0.9);
+    color: rgba(245,242,238,0.88);
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     box-sizing: border-box;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
   }
 
   .bf-input::placeholder {
-    color: rgba(245, 242, 238, 0.2);
+    color: rgba(245,242,238,0.18);
   }
 
   .bf-input:disabled {
@@ -181,13 +198,13 @@ const styles = `
     cursor: not-allowed;
   }
 
-  /* Prefijo teléfono */
+  /* Teléfono */
   .bf-phone-wrap {
     display: flex;
     align-items: stretch;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    background: rgba(255, 255, 255, 0.05);
+    border-radius: 11px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
     overflow: hidden;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
@@ -197,63 +214,64 @@ const styles = `
     align-items: center;
     gap: 6px;
     padding: 11px 12px;
-    background: rgba(255, 255, 255, 0.04);
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255,255,255,0.03);
+    border-right: 1px solid rgba(255,255,255,0.06);
     flex-shrink: 0;
   }
 
-  .bf-phone-prefix-text {
+  .bf-prefix-text {
     font-size: 13px;
-    font-weight: 600;
-    color: rgba(245, 242, 238, 0.45);
-    font-family: var(--font-jakarta), sans-serif;
+    font-weight: 500;
+    color: rgba(245,242,238,0.35);
+    font-family: var(--font-body);
   }
 
   .bf-phone-input {
     flex: 1;
     padding: 11px 14px;
     font-size: 14px;
-    color: rgba(245, 242, 238, 0.9);
+    color: rgba(245,242,238,0.88);
     outline: none;
     background: transparent;
     border: none;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
   }
 
   .bf-phone-input::placeholder {
-    color: rgba(245, 242, 238, 0.2);
+    color: rgba(245,242,238,0.18);
   }
 
-  .bf-error-msg {
-    font-size: 12px;
-    color: #F87171;
-    font-family: var(--font-jakarta), sans-serif;
+  .bf-error {
+    font-size: 11px;
+    color: rgba(255,100,100,0.8);
+    font-family: var(--font-body);
+    letter-spacing: 0.02em;
   }
 
-  /* Error de API */
+  /* API error */
   .bf-api-error {
-    border-radius: 12px;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    padding: 12px 16px;
-    margin-bottom: 16px;
+    border-radius: 11px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.18);
+    padding: 12px 14px;
+    margin-bottom: 14px;
   }
 
   .bf-api-error-text {
-    font-size: 13px;
-    color: #FCA5A5;
-    line-height: 1.5;
-    font-family: var(--font-jakarta), sans-serif;
+    font-size: 12px;
+    color: rgba(252,165,165,0.85);
+    line-height: 1.55;
+    font-family: var(--font-body);
   }
 
-  /* Botón submit */
+  /* Submit */
   .bf-submit {
     width: 100%;
     padding: 14px 24px;
-    border-radius: 12px;
+    border-radius: 11px;
     border: none;
-    font-size: 15px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 600;
     color: #fff;
     cursor: pointer;
     display: flex;
@@ -261,43 +279,40 @@ const styles = `
     justify-content: center;
     gap: 8px;
     margin-top: 4px;
-    transition: opacity 0.15s, transform 0.15s;
-    font-family: var(--font-jakarta), sans-serif;
-    letter-spacing: 0.01em;
+    transition: opacity 0.15s, transform 0.12s;
+    font-family: var(--font-body);
+    letter-spacing: 0.04em;
   }
 
   .bf-submit:disabled {
-    opacity: 0.55;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
-  /* Nota de privacidad */
   .bf-privacy {
     text-align: center;
     font-size: 11px;
-    color: rgba(245, 242, 238, 0.22);
+    color: rgba(245,242,238,0.18);
     padding-top: 4px;
-    font-family: var(--font-jakarta), sans-serif;
-    line-height: 1.5;
+    font-family: var(--font-body);
+    letter-spacing: 0.04em;
   }
 `;
 
 // ─── FieldWrapper ─────────────────────────────────────────────────────────────
-interface FieldWrapperProps {
-  label: string;
-  icon: React.ReactNode;
-  error?: string;
-  required?: boolean;
-  children: React.ReactNode;
-}
-
 function FieldWrapper({
   label,
   icon,
   error,
   required,
   children,
-}: FieldWrapperProps) {
+}: {
+  label: string;
+  icon: React.ReactNode;
+  error?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className="bf-field">
       <label className="bf-label">
@@ -312,7 +327,7 @@ function FieldWrapper({
             initial={{ opacity: 0, y: -4, height: 0 }}
             animate={{ opacity: 1, y: 0, height: "auto" }}
             exit={{ opacity: 0, y: -4, height: 0 }}
-            className="bf-error-msg"
+            className="bf-error"
           >
             {error}
           </motion.p>
@@ -346,31 +361,31 @@ export default function BookingForm({
     },
   });
 
+  // ── Handlers — lógica intacta ──────────────────────────────────────────────
   const handleFormSubmit = (values: FormValues) => {
     onSubmit({ ...values, client_phone: `+503 ${values.client_phone}` });
   };
 
-  // Focus/blur handlers para inputs
   const focusHandlers = {
     onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      e.currentTarget.style.borderColor = `${primaryColor}70`;
-      e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
-      e.currentTarget.style.background = "rgba(255,255,255,0.07)";
+      e.currentTarget.style.borderColor = `${primaryColor}60`;
+      e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}14`;
+      e.currentTarget.style.background = "rgba(255,255,255,0.06)";
     },
     onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)";
+      e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
       e.currentTarget.style.boxShadow = "none";
-      e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+      e.currentTarget.style.background = "rgba(255,255,255,0.04)";
     },
   };
 
   const phoneFocusHandlers = {
     onFocusCapture: (e: React.FocusEvent<HTMLDivElement>) => {
-      e.currentTarget.style.borderColor = `${primaryColor}70`;
-      e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
+      e.currentTarget.style.borderColor = `${primaryColor}60`;
+      e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}14`;
     },
     onBlurCapture: (e: React.FocusEvent<HTMLDivElement>) => {
-      e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)";
+      e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
       e.currentTarget.style.boxShadow = "none";
     },
   };
@@ -389,50 +404,60 @@ export default function BookingForm({
         <p className="bf-subtitle">Para confirmar tu reserva</p>
       </motion.div>
 
-      {/* Resumen de la cita */}
+      {/* Resumen de cita — mini ticket */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
         className="bf-summary"
         style={{
-          background: `${primaryColor}0E`,
-          border: `1px solid ${primaryColor}28`,
+          background: `${primaryColor}0D`,
+          border: `1px solid ${primaryColor}22`,
         }}
       >
-        <div className="bf-summary-service">
+        <div className="bf-sum-service">
           <div
-            className="bf-summary-icon"
+            className="bf-sum-icon"
             style={{ background: `${primaryColor}18` }}
           >
-            <Scissors size={15} style={{ color: primaryColor }} />
+            <Scissors
+              size={14}
+              strokeWidth={1.75}
+              style={{ color: primaryColor }}
+            />
           </div>
           <div>
-            <p className="bf-summary-label">Servicio seleccionado</p>
-            <p className="bf-summary-name" style={{ color: primaryColor }}>
+            <p className="bf-sum-label">Servicio seleccionado</p>
+            <p className="bf-sum-name" style={{ color: primaryColor }}>
               {service.name}
             </p>
           </div>
         </div>
-
         <div
-          className="bf-summary-divider"
-          style={{ background: `${primaryColor}20` }}
+          className="bf-sum-divider"
+          style={{ background: `${primaryColor}18` }}
         />
-
-        <div className="bf-summary-meta">
-          <span className="bf-summary-meta-item">
-            <Calendar size={12} style={{ color: primaryColor, opacity: 0.7 }} />
+        <div className="bf-sum-meta">
+          <span className="bf-sum-item">
+            <Calendar
+              size={11}
+              strokeWidth={1.75}
+              style={{ color: primaryColor, opacity: 0.6 }}
+            />
             {selectedDateDisplay}
           </span>
-          <span className="bf-summary-meta-item">
-            <Clock size={12} style={{ color: primaryColor, opacity: 0.7 }} />
+          <span className="bf-sum-item">
+            <Clock
+              size={11}
+              strokeWidth={1.75}
+              style={{ color: primaryColor, opacity: 0.6 }}
+            />
             {selectedTimeDisplay}
           </span>
         </div>
       </motion.div>
 
-      {/* Error de API */}
+      {/* API error */}
       <AnimatePresence>
         {apiError && (
           <motion.div
@@ -449,18 +474,18 @@ export default function BookingForm({
       {/* Formulario */}
       <form
         onSubmit={handleSubmit(handleFormSubmit)}
-        style={{ display: "flex", flexDirection: "column", gap: 16 }}
+        style={{ display: "flex", flexDirection: "column", gap: 14 }}
         noValidate
       >
         {/* Nombre */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
           <FieldWrapper
             label="Nombre completo"
-            icon={<User size={11} />}
+            icon={<User size={10} strokeWidth={1.75} />}
             error={errors.client_name?.message}
             required
           >
@@ -477,20 +502,20 @@ export default function BookingForm({
 
         {/* Teléfono */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.13 }}
         >
           <FieldWrapper
             label="Teléfono"
-            icon={<Phone size={11} />}
+            icon={<Phone size={10} strokeWidth={1.75} />}
             error={errors.client_phone?.message}
             required
           >
             <div className="bf-phone-wrap" {...phoneFocusHandlers}>
               <div className="bf-phone-prefix">
-                <span style={{ fontSize: 14 }}>🇸🇻</span>
-                <span className="bf-phone-prefix-text">+503</span>
+                <span style={{ fontSize: 13 }}>🇸🇻</span>
+                <span className="bf-prefix-text">+503</span>
               </div>
               <input
                 {...register("client_phone")}
@@ -518,13 +543,13 @@ export default function BookingForm({
 
         {/* Email */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.16 }}
         >
           <FieldWrapper
             label="Email (opcional)"
-            icon={<Mail size={11} />}
+            icon={<Mail size={10} strokeWidth={1.75} />}
             error={errors.client_email?.message}
           >
             <input
@@ -540,13 +565,13 @@ export default function BookingForm({
 
         {/* Notas */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.19 }}
         >
           <FieldWrapper
             label="Notas adicionales (opcional)"
-            icon={<MessageSquare size={11} />}
+            icon={<MessageSquare size={10} strokeWidth={1.75} />}
             error={errors.client_notes?.message}
           >
             <textarea
@@ -554,40 +579,40 @@ export default function BookingForm({
               rows={3}
               placeholder="Alergias, preferencias, preguntas..."
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = `${primaryColor}70`;
-                e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
-                e.currentTarget.style.background = "rgba(255,255,255,0.07)";
+                e.currentTarget.style.borderColor = `${primaryColor}60`;
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}14`;
+                e.currentTarget.style.background = "rgba(255,255,255,0.06)";
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
                 e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.04)";
               }}
               className="bf-input"
-              style={{ resize: "none", height: 88 }}
+              style={{ resize: "none", height: 84 }}
             />
           </FieldWrapper>
         </motion.div>
 
         {/* Submit */}
         <motion.button
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.22 }}
-          whileHover={!isLoading ? { scale: 1.015 } : {}}
-          whileTap={!isLoading ? { scale: 0.985 } : {}}
+          whileHover={!isLoading ? { scale: 1.012 } : {}}
+          whileTap={!isLoading ? { scale: 0.988 } : {}}
           type="submit"
           disabled={isLoading}
           className="bf-submit"
           style={{
-            backgroundColor: primaryColor,
+            background: primaryColor,
             boxShadow: `0 8px 28px ${primaryColor}35`,
           }}
         >
           {isLoading ? (
             <>
-              <Loader2 size={16} className="animate-spin" />
-              Confirmando reserva...
+              <Loader2 size={15} className="animate-spin" /> Confirmando
+              reserva...
             </>
           ) : (
             "Confirmar reserva →"

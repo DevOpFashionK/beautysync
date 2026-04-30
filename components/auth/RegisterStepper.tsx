@@ -1,5 +1,10 @@
 "use client";
 
+// components/auth/RegisterStepper.tsx
+// Lógica completa intacta: schemas Zod, rate limiting, OTP, signUp,
+// verifyOtp, creación de salón, trial de 14 días.
+// Solo se actualizan los colores internos duros al sistema Dark Atelier.
+
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -18,7 +23,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-// ─── SANITIZACIÓN ─────────────────────────────────────────────────────────────
+// ─── SANITIZACIÓN — intacta ───────────────────────────────────────────────────
 function sanitizeText(value: string): string {
   return value
     .replace(/[<>]/g, "")
@@ -32,11 +37,10 @@ function sanitizeEmail(value: string): string {
   return value.toLowerCase().trim().replace(/\s/g, "");
 }
 
-// ─── SCHEMAS ZOD ──────────────────────────────────────────────────────────────
+// ─── SCHEMAS ZOD — intactos ───────────────────────────────────────────────────
 const STRONG_PASSWORD =
   /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,72}$/;
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-const PHONE_REGEX = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,8}$/;
 const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
 const step1Schema = z
@@ -95,7 +99,7 @@ const step2Schema = z.object({
 type Step1Data = z.infer<typeof step1Schema>;
 type Step2Data = z.infer<typeof step2Schema>;
 
-// ─── RATE LIMITING ────────────────────────────────────────────────────────────
+// ─── RATE LIMITING — intacto ──────────────────────────────────────────────────
 const RATE_LIMIT_MAX = 3;
 const RATE_LIMIT_WINDOW = 60;
 
@@ -119,7 +123,7 @@ function useRateLimit() {
   return { checkLimit };
 }
 
-// ─── PASSWORD STRENGTH ────────────────────────────────────────────────────────
+// ─── PASSWORD STRENGTH — intacto ─────────────────────────────────────────────
 function getPasswordStrength(pwd: string): {
   score: number;
   label: string;
@@ -143,7 +147,7 @@ function getPasswordStrength(pwd: string): {
   return levels[Math.min(score, 5)];
 }
 
-// ─── ANIMACIONES ──────────────────────────────────────────────────────────────
+// ─── ANIMACIONES — intactas ───────────────────────────────────────────────────
 const slideVariants = {
   enter: (d: number) => ({ x: d > 0 ? 60 : -60, opacity: 0 }),
   center: { x: 0, opacity: 1 },
@@ -151,7 +155,21 @@ const slideVariants = {
 };
 const transition = { duration: 0.38, ease: [0.22, 1, 0.36, 1] as const };
 
-// ─── INPUT FIELD ──────────────────────────────────────────────────────────────
+// ─── Tokens Dark Atelier ──────────────────────────────────────────────────────
+const T = {
+  surface2: "#131110",
+  border: "rgba(255,255,255,0.055)",
+  borderMid: "rgba(255,255,255,0.09)",
+  textPrimary: "rgba(245,242,238,0.9)",
+  textMid: "rgba(245,242,238,0.45)",
+  textDim: "rgba(245,242,238,0.18)",
+  rose: "#FF2D55",
+  roseDim: "rgba(255,45,85,0.55)",
+  roseGhost: "rgba(255,45,85,0.08)",
+  roseBorder: "rgba(255,45,85,0.22)",
+};
+
+// ─── InputField Dark ─────────────────────────────────────────────────────────
 function InputField({
   label,
   type = "text",
@@ -170,22 +188,54 @@ function InputField({
   autoComplete?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-neutral-600">{label}</label>
+    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+      <label
+        style={{
+          fontSize: "10px",
+          fontWeight: 400,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: T.textDim,
+        }}
+      >
+        {label}
+      </label>
       <input
         type={type}
         placeholder={placeholder}
         maxLength={maxLength}
         autoComplete={autoComplete}
         spellCheck={false}
-        className={`input-base ${error ? "border-red-400" : ""}`}
+        style={{
+          width: "100%",
+          padding: "11px 14px",
+          borderRadius: "8px",
+          border: `1px solid ${error ? "rgba(255,80,80,0.45)" : T.borderMid}`,
+          background: T.surface2,
+          fontSize: "14px",
+          color: T.textPrimary,
+          outline: "none",
+          transition: "border-color 0.2s, box-shadow 0.2s",
+          boxSizing: "border-box",
+          fontFamily: "inherit",
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = T.roseBorder;
+          e.currentTarget.style.boxShadow = `0 0 0 3px ${T.roseGhost}`;
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = error
+            ? "rgba(255,80,80,0.45)"
+            : T.borderMid;
+          e.currentTarget.style.boxShadow = "none";
+        }}
         {...registration}
       />
       {error && (
         <motion.p
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-xs text-red-500"
+          style={{ fontSize: "11px", color: "rgba(255,110,110,0.85)" }}
         >
           {error}
         </motion.p>
@@ -194,36 +244,58 @@ function InputField({
   );
 }
 
-// ─── STEP INDICATOR ──────────────────────────────────────────────────────────
+// ─── StepIndicator Dark ───────────────────────────────────────────────────────
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex items-center gap-3 justify-center mb-10">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        justifyContent: "center",
+        marginBottom: "36px",
+      }}
+    >
       {Array.from({ length: total }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3">
+        <div
+          key={i}
+          style={{ display: "flex", alignItems: "center", gap: "12px" }}
+        >
           <motion.div
             animate={{
-              backgroundColor:
-                i <= current ? "#FF2D55" : "rgba(255,255,255,0.1)",
+              backgroundColor: i <= current ? T.rose : "rgba(255,255,255,0.07)",
               scale: i === current ? 1.1 : 1,
             }}
             transition={{ duration: 0.3 }}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold"
             style={{
-              color: i <= current ? "#fff" : "rgba(255,255,255,0.3)",
+              width: "28px",
+              height: "28px",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "11px",
+              fontWeight: 400,
+              color: i <= current ? "#fff" : "rgba(245,242,238,0.2)",
               boxShadow:
-                i === current ? "0 0 12px rgba(255,45,85,0.5)" : "none",
+                i === current ? `0 0 14px rgba(255,45,85,0.45)` : "none",
             }}
           >
-            {i < current ? <CheckCircle size={16} /> : i + 1}
+            {i < current ? <CheckCircle size={14} /> : i + 1}
           </motion.div>
           {i < total - 1 && (
             <motion.div
               animate={{
                 backgroundColor:
-                  i < current ? "#FF2D55" : "rgba(255,255,255,0.1)",
+                  i < current ? T.rose : "rgba(255,255,255,0.08)",
               }}
               transition={{ duration: 0.4 }}
-              className="h-0.5 w-12 rounded-full"
+              style={{
+                height: "1.5px",
+                width: "40px",
+                borderRadius: "2px",
+                opacity: i < current ? 0.7 : 1,
+              }}
             />
           )}
         </div>
@@ -231,6 +303,157 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
     </div>
   );
 }
+
+// ─── Botón ghost dark ─────────────────────────────────────────────────────────
+function BtnGhost({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick?: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      whileHover={{ scale: disabled ? 1 : 1.01 }}
+      whileTap={{ scale: disabled ? 1 : 0.99 }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "6px",
+        padding: "12px 20px",
+        borderRadius: "8px",
+        border: `1px solid ${T.border}`,
+        background: "transparent",
+        color: T.textMid,
+        fontSize: "13px",
+        fontWeight: 400,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.4 : 1,
+        transition: "all 0.2s",
+        fontFamily: "inherit",
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled)
+          (e.currentTarget as HTMLElement).style.borderColor = T.borderMid;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = T.border;
+      }}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
+// ─── Botón primario rose ──────────────────────────────────────────────────────
+function BtnPrimary({
+  onClick,
+  disabled,
+  type = "submit",
+  children,
+}: {
+  onClick?: () => void;
+  disabled?: boolean;
+  type?: "submit" | "button";
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      whileHover={{ y: disabled ? 0 : -1 }}
+      whileTap={{ scale: disabled ? 1 : 0.99 }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "7px",
+        padding: "12px 20px",
+        borderRadius: "8px",
+        border: `1px solid ${T.roseBorder}`,
+        background: T.roseGhost,
+        color: T.roseDim,
+        fontSize: "13px",
+        fontWeight: 400,
+        letterSpacing: "0.06em",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.4 : 1,
+        transition: "all 0.2s",
+        fontFamily: "inherit",
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          (e.currentTarget as HTMLElement).style.background =
+            "rgba(255,45,85,0.16)";
+          (e.currentTarget as HTMLElement).style.borderColor =
+            "rgba(255,45,85,0.42)";
+          (e.currentTarget as HTMLElement).style.color = T.rose;
+        }
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.background = T.roseGhost;
+        (e.currentTarget as HTMLElement).style.borderColor = T.roseBorder;
+        (e.currentTarget as HTMLElement).style.color = T.roseDim;
+      }}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
+// ─── Error banner dark ────────────────────────────────────────────────────────
+function ErrorBanner({ msg }: { msg: string | null }) {
+  return (
+    <AnimatePresence>
+      {msg && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          style={{
+            background: "rgba(239,68,68,0.07)",
+            border: "1px solid rgba(239,68,68,0.18)",
+            borderRadius: "8px",
+            padding: "10px 14px",
+          }}
+        >
+          <p style={{ fontSize: "12px", color: "rgba(252,165,165,0.85)" }}>
+            {msg}
+          </p>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+const SectionTitle = ({ title, sub }: { title: string; sub: string }) => (
+  <div style={{ marginBottom: "4px" }}>
+    <h2
+      style={{
+        fontFamily:
+          "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+        fontSize: "2rem",
+        fontWeight: 300,
+        color: T.textPrimary,
+        letterSpacing: "-0.025em",
+        lineHeight: 1.1,
+        margin: "0 0 6px",
+      }}
+    >
+      {title}
+    </h2>
+    <p style={{ fontSize: "13px", color: T.textDim, letterSpacing: "0.02em" }}>
+      {sub}
+    </p>
+  </div>
+);
 
 // ─── PASO 1 ───────────────────────────────────────────────────────────────────
 function Step1({ onNext }: { onNext: (d: Step1Data) => void }) {
@@ -249,17 +472,13 @@ function Step1({ onNext }: { onNext: (d: Step1Data) => void }) {
   return (
     <form
       onSubmit={handleSubmit(onNext)}
-      className="flex flex-col gap-5"
+      style={{ display: "flex", flexDirection: "column", gap: "18px" }}
       noValidate
     >
-      <div>
-        <h2 className="font-display text-3xl text-neutral-800 mb-1">
-          Tu cuenta
-        </h2>
-        <p className="text-sm text-neutral-400">
-          Comencemos con tus datos personales
-        </p>
-      </div>
+      <SectionTitle
+        title="Tu cuenta"
+        sub="Comencemos con tus datos personales"
+      />
 
       <InputField
         label="Nombre completo"
@@ -279,8 +498,17 @@ function Step1({ onNext }: { onNext: (d: Step1Data) => void }) {
         autoComplete="email"
       />
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-neutral-600">
+      {/* Contraseña con strength indicator */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        <label
+          style={{
+            fontSize: "10px",
+            fontWeight: 400,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: T.textDim,
+          }}
+        >
           Contraseña
         </label>
         <input
@@ -288,29 +516,72 @@ function Step1({ onNext }: { onNext: (d: Step1Data) => void }) {
           placeholder="Mínimo 8 caracteres"
           maxLength={72}
           autoComplete="new-password"
-          className={`input-base ${errors.password ? "border-red-400" : ""}`}
-          {...register("password")}
+          style={{
+            width: "100%",
+            padding: "11px 14px",
+            borderRadius: "8px",
+            border: `1px solid ${errors.password ? "rgba(255,80,80,0.45)" : T.borderMid}`,
+            background: T.surface2,
+            fontSize: "14px",
+            color: T.textPrimary,
+            outline: "none",
+            transition: "border-color 0.2s, box-shadow 0.2s",
+            boxSizing: "border-box",
+            fontFamily: "inherit",
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = T.roseBorder;
+            e.currentTarget.style.boxShadow = `0 0 0 3px ${T.roseGhost}`;
+          }}
+          {...(() => {
+            const reg = register("password");
+            return {
+              ...reg,
+              onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+                e.currentTarget.style.borderColor = errors.password
+                  ? "rgba(255,80,80,0.45)"
+                  : T.borderMid;
+                e.currentTarget.style.boxShadow = "none";
+                reg.onBlur(e);
+              },
+            };
+          })()}
         />
         {password.length > 0 && (
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex gap-1 flex-1">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginTop: "2px",
+            }}
+          >
+            <div style={{ display: "flex", gap: "4px", flex: 1 }}>
               {[1, 2, 3, 4, 5].map((i) => (
                 <div
                   key={i}
-                  className="h-1 flex-1 rounded-full transition-all duration-300"
                   style={{
-                    backgroundColor:
+                    height: "3px",
+                    flex: 1,
+                    borderRadius: "2px",
+                    transition: "background 0.3s",
+                    background:
                       i <= strength.score
                         ? strength.color
-                        : "rgba(255,255,255,0.1)",
+                        : "rgba(255,255,255,0.07)",
                   }}
                 />
               ))}
             </div>
             {strength.label && (
               <span
-                className="text-xs font-medium"
-                style={{ color: strength.color }}
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 400,
+                  color: strength.color,
+                  letterSpacing: "0.06em",
+                  whiteSpace: "nowrap",
+                }}
               >
                 {strength.label}
               </span>
@@ -318,15 +589,17 @@ function Step1({ onNext }: { onNext: (d: Step1Data) => void }) {
           </div>
         )}
         {errors.password && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-xs text-red-500"
-          >
+          <p style={{ fontSize: "11px", color: "rgba(255,110,110,0.85)" }}>
             {errors.password.message}
-          </motion.p>
+          </p>
         )}
-        <p className="text-xs text-neutral-400 mt-0.5">
+        <p
+          style={{
+            fontSize: "10px",
+            color: T.textDim,
+            letterSpacing: "0.03em",
+          }}
+        >
           Usa mayúsculas, números y símbolos (!@#$...)
         </p>
       </div>
@@ -341,14 +614,9 @@ function Step1({ onNext }: { onNext: (d: Step1Data) => void }) {
         autoComplete="new-password"
       />
 
-      <motion.button
-        type="submit"
-        whileHover={{ scale: 1.01 }}
-        whileTap={{ scale: 0.99 }}
-        className="btn-primary flex items-center justify-center gap-2 mt-2"
-      >
-        Continuar <ArrowRight size={16} />
-      </motion.button>
+      <BtnPrimary type="submit">
+        Continuar <ArrowRight size={14} strokeWidth={1.75} />
+      </BtnPrimary>
     </form>
   );
 }
@@ -368,7 +636,7 @@ function Step2({
     formState: { errors },
   } = useForm<Step2Data>({
     resolver: zodResolver(step2Schema),
-    defaultValues: { primary_color: "#D4375F" },
+    defaultValues: { primary_color: "#FF2D55" },
     mode: "onBlur",
   });
   const primaryColor = watch("primary_color");
@@ -376,15 +644,10 @@ function Step2({
   return (
     <form
       onSubmit={handleSubmit(onNext)}
-      className="flex flex-col gap-5"
+      style={{ display: "flex", flexDirection: "column", gap: "18px" }}
       noValidate
     >
-      <div>
-        <h2 className="font-display text-3xl text-neutral-800 mb-1">
-          Tu salón
-        </h2>
-        <p className="text-sm text-neutral-400">Cuéntanos sobre tu espacio</p>
-      </div>
+      <SectionTitle title="Tu salón" sub="Cuéntanos sobre tu espacio" />
 
       <InputField
         label="Nombre del salón"
@@ -402,42 +665,54 @@ function Step2({
         maxLength={200}
         autoComplete="street-address"
       />
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-neutral-600">
+
+      {/* Teléfono */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        <label
+          style={{
+            fontSize: "10px",
+            fontWeight: 400,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: T.textDim,
+          }}
+        >
           Teléfono (opcional)
         </label>
         <div
-          className="flex items-center rounded-xl overflow-hidden transition-all duration-150"
-          style={{ border: "1.5px solid rgba(255,255,255,0.12)" }}
+          style={{
+            display: "flex",
+            alignItems: "stretch",
+            borderRadius: "8px",
+            border: `1px solid ${T.borderMid}`,
+            background: T.surface2,
+            overflow: "hidden",
+            transition: "border-color 0.2s, box-shadow 0.2s",
+          }}
           onFocusCapture={(e) => {
-            const el = e.currentTarget as HTMLDivElement;
-            el.style.borderColor = "rgba(112,0,255,0.6)";
-            el.style.boxShadow = "0 0 0 3px rgba(112,0,255,0.1)";
+            (e.currentTarget as HTMLElement).style.borderColor = T.roseBorder;
+            (e.currentTarget as HTMLElement).style.boxShadow =
+              `0 0 0 3px ${T.roseGhost}`;
           }}
           onBlurCapture={(e) => {
-            const el = e.currentTarget as HTMLDivElement;
-            el.style.borderColor = "rgba(255,255,255,0.12)";
-            el.style.boxShadow = "none";
+            (e.currentTarget as HTMLElement).style.borderColor = T.borderMid;
+            (e.currentTarget as HTMLElement).style.boxShadow = "none";
           }}
         >
-          {/* Prefijo fijo */}
           <div
-            className="flex items-center gap-1.5 px-3 py-2.5 shrink-0"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              borderRight: "1px solid rgba(255,255,255,0.08)",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "11px 12px",
+              background: "rgba(255,255,255,0.03)",
+              borderRight: `1px solid ${T.border}`,
+              flexShrink: 0,
             }}
           >
-            <span className="text-sm">🇸🇻</span>
-            <span
-              className="text-sm font-medium"
-              style={{ color: "var(--muted-lavender)" }}
-            >
-              +503
-            </span>
+            <span style={{ fontSize: "13px" }}>🇸🇻</span>
+            <span style={{ fontSize: "13px", color: T.textDim }}>+503</span>
           </div>
-
-          {/* Input solo 8 dígitos */}
           <input
             {...register("phone")}
             type="tel"
@@ -445,8 +720,16 @@ function Step2({
             maxLength={8}
             placeholder="7000 0000"
             autoComplete="tel-national"
-            className="flex-1 px-3 py-2.5 text-sm outline-none bg-transparent"
-            style={{ color: "#fff" }}
+            style={{
+              flex: 1,
+              padding: "11px 14px",
+              fontSize: "14px",
+              color: T.textPrimary,
+              outline: "none",
+              background: "transparent",
+              border: "none",
+              fontFamily: "inherit",
+            }}
             onKeyDown={(e) => {
               const allowed = [
                 "Backspace",
@@ -455,67 +738,82 @@ function Step2({
                 "ArrowLeft",
                 "ArrowRight",
               ];
-              if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) {
+              if (!allowed.includes(e.key) && !/^\d$/.test(e.key))
                 e.preventDefault();
-              }
             }}
           />
         </div>
         {errors.phone && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-xs text-red-500"
-          >
+          <p style={{ fontSize: "11px", color: "rgba(255,110,110,0.85)" }}>
             {errors.phone.message}
-          </motion.p>
+          </p>
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-neutral-600">
+      {/* Color de marca */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        <label
+          style={{
+            fontSize: "10px",
+            fontWeight: 400,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: T.textDim,
+          }}
+        >
           Color de marca
         </label>
-        <div className="flex items-center gap-3">
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <input
             type="color"
-            className="w-12 h-12 rounded-xl border border-neutral-200 cursor-pointer p-1"
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "8px",
+              border: `1px solid ${T.borderMid}`,
+              cursor: "pointer",
+              padding: "4px",
+              background: T.surface2,
+            }}
             {...register("primary_color")}
           />
           <div
-            className="flex-1 h-12 rounded-xl flex items-center justify-center text-white text-sm font-medium transition-all"
             style={{
-              backgroundColor: HEX_COLOR_REGEX.test(primaryColor)
+              flex: 1,
+              height: "48px",
+              borderRadius: "8px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "12px",
+              letterSpacing: "0.08em",
+              color: "rgba(255,255,255,0.88)",
+              fontWeight: 400,
+              transition: "background 0.2s",
+              background: HEX_COLOR_REGEX.test(primaryColor)
                 ? primaryColor
-                : "#D4375F",
+                : "#FF2D55",
             }}
           >
             {primaryColor}
           </div>
         </div>
         {errors.primary_color && (
-          <p className="text-xs text-red-500">{errors.primary_color.message}</p>
+          <p style={{ fontSize: "11px", color: "rgba(255,110,110,0.85)" }}>
+            {errors.primary_color.message}
+          </p>
         )}
       </div>
 
-      <div className="flex gap-3 mt-2">
-        <motion.button
-          type="button"
-          onClick={onBack}
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-neutral-200 text-neutral-600 font-medium hover:bg-neutral-50 transition-colors"
-        >
-          <ArrowLeft size={16} /> Atrás
-        </motion.button>
-        <motion.button
-          type="submit"
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
-          className="flex-[2] btn-primary flex items-center justify-center gap-2"
-        >
-          Continuar <ArrowRight size={16} />
-        </motion.button>
+      <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+        <BtnGhost onClick={onBack}>
+          <ArrowLeft size={14} strokeWidth={1.75} /> Atrás
+        </BtnGhost>
+        <div style={{ flex: 2 }}>
+          <BtnPrimary type="submit">
+            Continuar <ArrowRight size={14} strokeWidth={1.75} />
+          </BtnPrimary>
+        </div>
       </div>
     </form>
   );
@@ -537,6 +835,7 @@ function Step3({
   const [error, setError] = useState<string | null>(null);
   const { checkLimit } = useRateLimit();
 
+  // ── handleConfirm — lógica intacta ────────────────────────────────────────
   const handleConfirm = async () => {
     const { allowed, waitSeconds } = checkLimit();
     if (!allowed) {
@@ -549,13 +848,10 @@ function Step3({
 
     try {
       const supabase = createClient();
-
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: step1Data.email,
         password: step1Data.password,
-        options: {
-          data: { full_name: sanitizeText(step1Data.full_name) },
-        },
+        options: { data: { full_name: sanitizeText(step1Data.full_name) } },
       });
 
       if (authError) {
@@ -577,8 +873,6 @@ function Step3({
         return;
       }
 
-      // ✅ signUp exitoso — Supabase envió el OTP al correo
-      // NO creamos el salón aquí — lo hacemos DESPUÉS de verificar el OTP
       onOtpSent(authData.user.id);
     } catch {
       setError("Ocurrió un error inesperado. Intenta de nuevo más tarde.");
@@ -588,62 +882,130 @@ function Step3({
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="font-display text-3xl text-neutral-800 mb-1">
-          ¡Todo listo!
-        </h2>
-        <p className="text-sm text-neutral-400">
-          Confirma tu información antes de comenzar
-        </p>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <SectionTitle
+        title="¡Todo listo!"
+        sub="Confirma tu información antes de comenzar"
+      />
 
-      {/* Resumen */}
-      <div className="bg-neutral-50 rounded-2xl p-5 flex flex-col gap-4">
+      {/* Resumen dark */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.025)",
+          border: `1px solid ${T.border}`,
+          borderRadius: "10px",
+          padding: "18px 20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "14px",
+        }}
+      >
         <div>
-          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+          <p
+            style={{
+              fontSize: "9px",
+              fontWeight: 400,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: T.textDim,
+              marginBottom: "6px",
+            }}
+          >
             Tu perfil
           </p>
-          <p className="font-semibold text-neutral-800">
+          <p
+            style={{
+              fontSize: "14px",
+              color: T.textPrimary,
+              margin: "0 0 2px",
+            }}
+          >
             {step1Data.full_name}
           </p>
-          <p className="text-sm text-neutral-500">
+          <p style={{ fontSize: "12px", color: T.textMid, margin: 0 }}>
             {step1Data.email.replace(/(.{2}).+(@.+)/, "$1•••$2")}
           </p>
         </div>
-        <div className="h-px bg-neutral-200" />
+        <div style={{ height: "1px", background: T.border }} />
         <div>
-          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+          <p
+            style={{
+              fontSize: "9px",
+              fontWeight: 400,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: T.textDim,
+              marginBottom: "6px",
+            }}
+          >
             Tu salón
           </p>
-          <p className="font-semibold text-neutral-800">
+          <p
+            style={{
+              fontSize: "14px",
+              color: T.textPrimary,
+              margin: "0 0 2px",
+            }}
+          >
             {step2Data.salon_name}
           </p>
-          <p className="text-sm text-neutral-500">{step2Data.address}</p>
+          <p style={{ fontSize: "12px", color: T.textMid, margin: 0 }}>
+            {step2Data.address}
+          </p>
           {step2Data.phone && (
-            <p className="text-sm text-neutral-500">{step2Data.phone}</p>
+            <p
+              style={{ fontSize: "12px", color: T.textMid, margin: "2px 0 0" }}
+            >
+              {step2Data.phone}
+            </p>
           )}
         </div>
-        <div className="h-px bg-neutral-200" />
-        <div className="flex items-center gap-3">
+        <div style={{ height: "1px", background: T.border }} />
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div
-            className="w-8 h-8 rounded-lg"
-            style={{ backgroundColor: step2Data.primary_color }}
+            style={{
+              width: "24px",
+              height: "24px",
+              borderRadius: "6px",
+              background: step2Data.primary_color,
+              flexShrink: 0,
+            }}
           />
-          <span className="text-sm text-neutral-600">
-            Color: {step2Data.primary_color}
+          <span style={{ fontSize: "12px", color: T.textMid }}>
+            {step2Data.primary_color}
           </span>
         </div>
       </div>
 
       {/* Badge seguridad */}
-      <div className="flex items-start gap-3 bg-pink-50 rounded-2xl p-4 border border-pink-100">
-        <ShieldCheck size={18} className="text-blush mt-0.5 shrink-0" />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "12px",
+          background: "rgba(255,255,255,0.03)",
+          border: `1px solid ${T.border}`,
+          borderRadius: "10px",
+          padding: "14px 16px",
+        }}
+      >
+        <ShieldCheck
+          size={16}
+          strokeWidth={1.75}
+          style={{ color: T.roseDim, flexShrink: 0, marginTop: 1 }}
+        />
         <div>
-          <p className="text-sm font-semibold text-neutral-700">
+          <p
+            style={{
+              fontSize: "12px",
+              fontWeight: 400,
+              color: T.textMid,
+              margin: "0 0 3px",
+            }}
+          >
             Datos protegidos
           </p>
-          <p className="text-xs text-neutral-500 mt-0.5">
+          <p style={{ fontSize: "11px", color: T.textDim, lineHeight: 1.6 }}>
             Tu contraseña se cifra con bcrypt. Nunca la almacenamos en texto
             plano.
           </p>
@@ -652,74 +1014,69 @@ function Step3({
 
       {/* Badge trial */}
       <div
-        className="flex items-start gap-3 rounded-2xl p-4"
         style={{
-          background: "rgba(0, 210, 120, 0.12)",
-          border: "1px solid rgba(0, 210, 120, 0.25)",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "12px",
+          background: T.roseGhost,
+          border: `1px solid ${T.roseBorder}`,
+          borderRadius: "10px",
+          padding: "14px 16px",
         }}
       >
         <Sparkles
-          size={18}
-          className="mt-0.5 shrink-0"
-          style={{ color: "#00D278" }}
+          size={16}
+          strokeWidth={1.75}
+          style={{ color: T.roseDim, flexShrink: 0, marginTop: 1 }}
         />
         <div>
-          <p className="text-sm font-semibold text-white">
+          <p
+            style={{
+              fontSize: "12px",
+              fontWeight: 400,
+              color: T.roseDim,
+              margin: "0 0 3px",
+            }}
+          >
             14 días de prueba gratuita
           </p>
           <p
-            className="text-xs mt-0.5"
-            style={{ color: "rgba(255,255,255,0.6)" }}
+            style={{
+              fontSize: "11px",
+              color: T.textDim,
+              lineHeight: 1.6,
+            }}
           >
             Sin tarjeta de crédito. Cancela cuando quieras.
           </p>
         </div>
       </div>
 
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600"
-        >
-          {error}
-        </motion.div>
-      )}
+      <ErrorBanner msg={error} />
 
-      <div className="flex gap-3">
-        <motion.button
-          type="button"
-          onClick={onBack}
-          disabled={loading}
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-neutral-200 text-neutral-600 font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50"
-        >
-          <ArrowLeft size={16} /> Atrás
-        </motion.button>
-        <motion.button
-          onClick={handleConfirm}
-          disabled={loading}
-          whileHover={{ scale: loading ? 1 : 1.01 }}
-          whileTap={{ scale: loading ? 1 : 0.99 }}
-          className="flex-[2] btn-primary flex items-center justify-center gap-2"
-        >
-          {loading ? (
-            <>
-              <Loader2 size={16} className="animate-spin" /> Creando tu salón…
-            </>
-          ) : (
-            <>
-              <Sparkles size={16} /> Comenzar ahora
-            </>
-          )}
-        </motion.button>
+      <div style={{ display: "flex", gap: "10px" }}>
+        <BtnGhost onClick={onBack} disabled={loading}>
+          <ArrowLeft size={14} strokeWidth={1.75} /> Atrás
+        </BtnGhost>
+        <div style={{ flex: 2 }}>
+          <BtnPrimary type="button" onClick={handleConfirm} disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 size={14} className="animate-spin" /> Creando tu salón…
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} strokeWidth={1.75} /> Comenzar ahora
+              </>
+            )}
+          </BtnPrimary>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── PASO 4 — VERIFICACIÓN OTP ────────────────────────────────────────────────
+// ─── PASO 4 — OTP ─────────────────────────────────────────────────────────────
 const OTP_LENGTH = 6;
 
 function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
@@ -731,37 +1088,28 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
   const [resending, setResending] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Countdown para reenvío
+  // Countdown reenvío — intacto
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const t = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [resendCooldown]);
 
-  // Auto-focus primer input al montar
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
 
+  // ── Handlers OTP — lógica intacta ─────────────────────────────────────────
   const handleChange = (index: number, value: string) => {
-    // Solo permitir dígitos
     const digit = value.replace(/\D/g, "").slice(-1);
     const newOtp = [...otp];
     newOtp[index] = digit;
     setOtp(newOtp);
     setError(null);
-
-    // Auto-avanzar al siguiente input
-    if (digit && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit cuando están todos los dígitos
+    if (digit && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
     if (digit && index === OTP_LENGTH - 1) {
       const fullOtp = [...newOtp.slice(0, OTP_LENGTH - 1), digit].join("");
-      if (fullOtp.length === OTP_LENGTH) {
-        handleVerify(fullOtp);
-      }
+      if (fullOtp.length === OTP_LENGTH) handleVerify(fullOtp);
     }
   };
 
@@ -769,10 +1117,8 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
     index: number,
     e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      // Retroceder al anterior si el campo está vacío
+    if (e.key === "Backspace" && !otp[index] && index > 0)
       inputRefs.current[index - 1]?.focus();
-    }
     if (e.key === "ArrowLeft" && index > 0)
       inputRefs.current[index - 1]?.focus();
     if (e.key === "ArrowRight" && index < OTP_LENGTH - 1)
@@ -791,13 +1137,12 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
       newOtp[i] = char;
     });
     setOtp(newOtp);
-    // Focus al último dígito pegado
     const lastIndex = Math.min(pasted.length, OTP_LENGTH - 1);
     inputRefs.current[lastIndex]?.focus();
-    // Auto-submit si se pegaron todos los dígitos
     if (pasted.length === OTP_LENGTH) handleVerify(pasted);
   };
 
+  // ── handleVerify — lógica intacta ─────────────────────────────────────────
   const handleVerify = async (code?: string) => {
     const otpCode = code ?? otp.join("");
     if (otpCode.length < OTP_LENGTH) {
@@ -810,8 +1155,6 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
 
     try {
       const supabase = createClient();
-
-      // Verificar OTP con Supabase
       const { data: verifyData, error: verifyError } =
         await supabase.auth.verifyOtp({
           email,
@@ -823,25 +1166,23 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
         setError(
           "Código incorrecto o expirado. Revisa tu correo e intenta de nuevo.",
         );
-        // Limpiar inputs para reintentar
         setOtp(Array(OTP_LENGTH).fill(""));
         inputRefs.current[0]?.focus();
         return;
       }
 
-      // ✅ OTP verificado — verificar si ya existe salón (protección contra reintentos)
+      // Protección contra reintentos — intacta
       const { data: existingSalon } = await supabase
         .from("salons")
         .select("id")
         .eq("owner_id", verifyData.user.id)
         .maybeSingle();
-
       if (existingSalon) {
         router.push("/dashboard?welcome=true");
         return;
       }
 
-      // ✅ OTP verificado — ahora sí creamos el salón con sesión activa
+      // Crear salón — intacto
       const slug = sanitizeText(step2Data.salon_name)
         .toLowerCase()
         .normalize("NFD")
@@ -867,14 +1208,13 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
         return;
       }
 
-      // Obtener el id del salón recién creado
       const { data: newSalon } = await supabase
         .from("salons")
         .select("id")
         .eq("owner_id", verifyData.user.id)
         .single();
 
-      // ✅ Activar trial de 14 días
+      // Trial 14 días — intacto
       try {
         await fetch("/api/onboarding/complete", {
           method: "POST",
@@ -893,11 +1233,11 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
     }
   };
 
+  // ── handleResend — intacto ────────────────────────────────────────────────
   const handleResend = async () => {
     if (resendCooldown > 0 || resending) return;
     setResending(true);
     setError(null);
-
     try {
       const supabase = createClient();
       await supabase.auth.resend({ type: "signup", email });
@@ -915,36 +1255,60 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
   const isComplete = otp.every((d) => d !== "");
 
   return (
-    <div className="flex flex-col gap-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* Header */}
-      <div className="flex flex-col items-center text-center gap-3">
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
+          gap: "12px",
+        }}
+      >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="w-16 h-16 rounded-2xl flex items-center justify-center"
           style={{
-            background: "rgba(255,45,85,0.12)",
-            border: "1px solid rgba(255,45,85,0.2)",
+            width: "60px",
+            height: "60px",
+            borderRadius: "14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: T.roseGhost,
+            border: `1px solid ${T.roseBorder}`,
           }}
         >
-          <Mail size={28} style={{ color: "#FF2D55" }} />
+          <Mail size={26} strokeWidth={1.5} style={{ color: T.rose }} />
         </motion.div>
         <div>
-          <h2 className="font-display text-3xl text-neutral-800 mb-1">
+          <h2
+            style={{
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+              fontSize: "1.8rem",
+              fontWeight: 300,
+              color: T.textPrimary,
+              letterSpacing: "-0.025em",
+              margin: "0 0 6px",
+            }}
+          >
             Revisa tu correo
           </h2>
-          <p className="text-sm text-neutral-500 leading-relaxed">
+          <p style={{ fontSize: "13px", color: T.textDim, lineHeight: 1.65 }}>
             Enviamos un código de {OTP_LENGTH} dígitos a{" "}
-            <span className="font-semibold text-neutral-700">
-              {maskedEmail}
-            </span>
+            <span style={{ color: T.textMid }}>{maskedEmail}</span>
           </p>
         </div>
       </div>
 
       {/* Inputs OTP */}
-      <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+      <div
+        style={{ display: "flex", gap: "8px", justifyContent: "center" }}
+        onPaste={handlePaste}
+      >
         {Array.from({ length: OTP_LENGTH }).map((_, i) => (
           <motion.input
             key={i}
@@ -961,65 +1325,55 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05, duration: 0.3 }}
-            className="w-12 h-14 text-center text-xl font-bold rounded-2xl border-2 outline-none transition-all duration-200 disabled:opacity-50"
             style={{
-              background: otp[i]
-                ? "rgba(255,45,85,0.08)"
-                : "rgba(255,255,255,0.05)",
-              borderColor: error
-                ? "#EF4444"
-                : otp[i]
-                  ? "#FF2D55"
-                  : "rgba(255,255,255,0.15)",
-              color: "#ffffff",
+              width: "46px",
+              height: "56px",
+              textAlign: "center",
+              fontSize: "20px",
+              fontWeight: 500,
+              borderRadius: "10px",
+              border: `1.5px solid ${error ? "rgba(255,80,80,0.5)" : otp[i] ? T.roseBorder : T.border}`,
+              outline: "none",
+              transition: "all 0.2s",
+              background: otp[i] ? T.roseGhost : "rgba(255,255,255,0.04)",
+              color: T.textPrimary,
               boxShadow:
-                otp[i] && !error ? "0 0 0 3px rgba(255,45,85,0.15)" : "none",
+                otp[i] && !error ? `0 0 0 3px rgba(255,45,85,0.12)` : "none",
+              opacity: loading ? 0.5 : 1,
+              fontFamily: "inherit",
+              cursor: loading ? "not-allowed" : "text",
             }}
           />
         ))}
       </div>
 
-      {/* Error */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600 text-center"
-          >
-            {error}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ErrorBanner msg={error} />
 
       {/* Botón verificar */}
-      <motion.button
+      <BtnPrimary
+        type="button"
         onClick={() => handleVerify()}
         disabled={!isComplete || loading}
-        whileHover={{ scale: !isComplete || loading ? 1 : 1.01 }}
-        whileTap={{ scale: !isComplete || loading ? 1 : 0.99 }}
-        className="btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? (
           <>
-            <Loader2 size={16} className="animate-spin" /> Verificando…
+            <Loader2 size={14} className="animate-spin" /> Verificando…
           </>
         ) : (
           <>
-            <CheckCircle size={16} /> Verificar código
+            <CheckCircle size={14} strokeWidth={1.75} /> Verificar código
           </>
         )}
-      </motion.button>
+      </BtnPrimary>
 
-      {/* Reenviar código */}
-      <div className="text-center">
-        <p className="text-sm text-neutral-500">
+      {/* Reenviar */}
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontSize: "12px", color: T.textDim }}>
           ¿No llegó el código?{" "}
           {resendCooldown > 0 ? (
-            <span className="text-neutral-400">
+            <span style={{ color: T.textDim }}>
               Reenviar en{" "}
-              <span className="font-semibold text-neutral-600">
+              <span style={{ color: T.textMid, fontWeight: 500 }}>
                 {resendCooldown}s
               </span>
             </span>
@@ -1027,22 +1381,40 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
             <button
               onClick={handleResend}
               disabled={resending}
-              className="font-semibold inline-flex items-center gap-1 transition-colors disabled:opacity-50"
-              style={{ color: "#FF2D55" }}
+              style={{
+                color: T.rose,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 500,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "12px",
+                opacity: resending ? 0.5 : 1,
+                fontFamily: "inherit",
+              }}
             >
               {resending ? (
                 <>
-                  <Loader2 size={12} className="animate-spin" /> Enviando…
+                  <Loader2 size={11} className="animate-spin" /> Enviando…
                 </>
               ) : (
                 <>
-                  <RefreshCw size={12} /> Reenviar
+                  <RefreshCw size={11} strokeWidth={1.75} /> Reenviar
                 </>
               )}
             </button>
           )}
         </p>
-        <p className="text-xs text-neutral-400 mt-2">
+        <p
+          style={{
+            fontSize: "11px",
+            color: T.textDim,
+            marginTop: "4px",
+            letterSpacing: "0.03em",
+          }}
+        >
           Revisa también tu carpeta de spam
         </p>
       </div>
@@ -1050,13 +1422,12 @@ function Step4({ email, step2Data }: { email: string; step2Data: Step2Data }) {
   );
 }
 
-// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
+// ─── COMPONENTE PRINCIPAL — intacto ───────────────────────────────────────────
 export default function RegisterStepper() {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [step1Data, setStep1Data] = useState<Step1Data | null>(null);
   const [step2Data, setStep2Data] = useState<Step2Data | null>(null);
-  // El email se guarda por separado para usarlo en el OTP sin exponer step1Data completo
   const [pendingEmail, setPendingEmail] = useState<string>("");
 
   const goNext = () => {
@@ -1068,14 +1439,13 @@ export default function RegisterStepper() {
     setStep((s) => s - 1);
   };
 
-  // Total de pasos en el indicador: 3 (el OTP es paso especial, no cuenta en el stepper visual)
   const showStepper = step < 3;
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div style={{ width: "100%", maxWidth: "420px", margin: "0 auto" }}>
       {showStepper && <StepIndicator current={step} total={3} />}
 
-      <div className="relative overflow-hidden">
+      <div style={{ position: "relative", overflow: "hidden" }}>
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={step}
@@ -1109,10 +1479,9 @@ export default function RegisterStepper() {
                 step2Data={step2Data}
                 onBack={goBack}
                 onOtpSent={(userId) => {
-                  // userId disponible por si se necesita más adelante
                   void userId;
                   setPendingEmail(step1Data.email);
-                  goNext(); // → Step4
+                  goNext();
                 }}
               />
             )}

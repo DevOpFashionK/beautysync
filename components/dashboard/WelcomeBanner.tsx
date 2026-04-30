@@ -1,8 +1,9 @@
 "use client";
 
+// components/dashboard/WelcomeBanner.tsx
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { X, Sparkles } from "lucide-react";
+import { X } from "lucide-react";
 
 interface WelcomeBannerProps {
   salonName: string;
@@ -20,68 +21,123 @@ export default function WelcomeBanner({ salonName }: WelcomeBannerProps) {
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -16 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8, scale: 0.98 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-2xl p-6"
           style={{
-            background: "linear-gradient(135deg, #2D2420 0%, #4A2E28 60%, #5C3020 100%)",
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: "12px",
+            padding: "20px 24px",
+            background: "#0E0C0B",
+            border: "1px solid rgba(255,255,255,0.055)", // ✅ fix: 0.06 → 0.055
           }}
         >
-          {/* Textura decorativa */}
+          {/* Acento esquina superior derecha */}
           <div
-            className="absolute inset-0 opacity-20"
+            aria-hidden="true"
             style={{
-              backgroundImage:
-                "radial-gradient(circle at 80% 20%, rgba(212,55,95,0.4) 0%, transparent 50%), radial-gradient(circle at 20% 80%, rgba(201,162,39,0.3) 0%, transparent 50%)",
+              position: "absolute",
+              top: 0,
+              right: 0,
+              width: "16px",
+              height: "16px",
+              borderTop: "1px solid rgba(255,45,85,0.22)", // ✅ fix: 0.35 → 0.22
+              borderRight: "1px solid rgba(255,45,85,0.22)", // ✅ fix: 0.35 → 0.22
+              borderTopRightRadius: "12px",
+              pointerEvents: "none",
             }}
           />
 
-          <div className="relative flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <motion.div
-                animate={{ rotate: [0, 8, -8, 8, 0] }}
-                transition={{ duration: 0.8, delay: 0.7 }}
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "rgba(255,255,255,0.1)" }}
-              >
-                <Sparkles size={18} style={{ color: "rgba(255,255,255,0.9)" }} />
-              </motion.div>
+          {/* Radial sutil */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(ellipse at top right, rgba(255,45,85,0.07) 0%, transparent 60%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          <div
+            style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: "16px",
+            }}
+          >
+            <div
+              style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}
+            >
+              {/* Icono — punto pulsante */}
+              <div
+                style={{
+                  marginTop: "3px",
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  background: "rgba(255,45,85,0.7)",
+                  flexShrink: 0,
+                  boxShadow: "0 0 0 3px rgba(255,45,85,0.12)",
+                }}
+              />
+
               <div>
                 <motion.p
-                  initial={{ opacity: 0, x: -8 }}
+                  initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="text-xs font-semibold tracking-widest uppercase mb-1"
-                  style={{ color: "rgba(212,55,95,0.9)", letterSpacing: "0.14em" }}
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 400,
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    color: "rgba(255,45,85,0.55)", // roseDim ✅
+                    marginBottom: "6px",
+                  }}
                 >
                   Bienvenida
                 </motion.p>
+
                 <motion.h2
-                  initial={{ opacity: 0, x: -8 }}
+                  initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
                   style={{
-                    fontFamily: "'Cormorant Garamond', Georgia, serif",
+                    fontFamily:
+                      "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
                     fontSize: "1.5rem",
-                    fontWeight: 500,
-                    color: "#FDFBF8",
-                    letterSpacing: "-0.01em",
+                    fontWeight: 300,
+                    color: "rgba(245,242,238,0.9)", // textPrimary ✅
+                    letterSpacing: "-0.02em",
                     lineHeight: 1.2,
+                    margin: 0,
                   }}
                 >
                   {salonName} está listo.
                 </motion.h2>
+
                 <motion.p
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.7 }}
+                  animate={{ opacity: 1 }}
                   transition={{ delay: 0.6 }}
-                  className="text-sm mt-1.5 leading-relaxed"
-                  style={{ color: "rgba(253,251,248,0.7)" }}
+                  style={{
+                    fontSize: "13px",
+                    marginTop: "6px",
+                    lineHeight: 1.65,
+                    color: "rgba(245,242,238,0.18)", // ✅ fix: 0.3 → textDim 0.18
+                    fontWeight: 300,
+                  }}
                 >
                   Tienes{" "}
-                  <span style={{ color: "#FDFBF8", fontWeight: 600 }}>
+                  <span style={{ color: "rgba(245,242,238,0.45)" }}>
+                    {" "}
+                    {/* ✅ fix: 0.65 → textMid 0.45 */}
                     14 días de prueba gratuita
                   </span>{" "}
                   para explorar BeautySync.
@@ -89,21 +145,31 @@ export default function WelcomeBanner({ salonName }: WelcomeBannerProps) {
               </div>
             </div>
 
+            {/* Cerrar */}
             <button
               onClick={() => setVisible(false)}
               aria-label="Cerrar"
-              className="shrink-0 p-1.5 rounded-lg transition-colors"
-              style={{ color: "rgba(255,255,255,0.4)" }}
+              style={{
+                flexShrink: 0,
+                padding: "4px",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "rgba(245,242,238,0.18)", // textDim ✅
+                display: "flex",
+                alignItems: "center",
+                transition: "color 0.2s",
+              }}
               onMouseEnter={(e) =>
                 ((e.currentTarget as HTMLElement).style.color =
-                  "rgba(255,255,255,0.8)")
+                  "rgba(245,242,238,0.5)")
               }
               onMouseLeave={(e) =>
                 ((e.currentTarget as HTMLElement).style.color =
-                  "rgba(255,255,255,0.4)")
+                  "rgba(245,242,238,0.18)")
               }
             >
-              <X size={16} strokeWidth={1.5} />
+              <X size={15} strokeWidth={1.5} />
             </button>
           </div>
         </motion.div>

@@ -19,9 +19,9 @@ import {
 import Link from "next/link";
 
 // ─── CONSTANTES DE SEGURIDAD ──────────────────────────────────────────────────
-const MAX_LOGIN_ATTEMPTS = 5; // intentos antes de bloqueo temporal
-const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutos
-const ATTEMPT_WINDOW_MS = 10 * 60 * 1000; // ventana de 10 minutos
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
+const ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
 
 // ─── SANITIZACIÓN ─────────────────────────────────────────────────────────────
 function sanitizeEmail(value: string): string {
@@ -41,12 +41,12 @@ const loginSchema = z.object({
   password: z
     .string()
     .min(1, "Ingresa tu contraseña")
-    .max(72, "Contraseña demasiado larga"), // bcrypt limit, evita DoS
+    .max(72, "Contraseña demasiado larga"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-// ─── HOOK RATE LIMITING / LOCKOUT ────────────────────────────────────────────
+// ─── HOOK RATE LIMITING / LOCKOUT ─────────────────────────────────────────────
 function useBruteForceProtection() {
   const attempts = useRef<number[]>([]);
   const lockedUntil = useRef<number>(0);
@@ -96,9 +96,8 @@ function useBruteForceProtection() {
   return { checkAttempt, resetAttempts };
 }
 
-// ─── TIMEOUT BANNER — Fase 7.5 ───────────────────────────────────────────────
-// Separado en su propio componente porque useSearchParams()
-// requiere Suspense boundary en Next.js 16 con static prerendering.
+// ─── TIMEOUT BANNER — Fase 7.5 ────────────────────────────────────────────────
+// Separado porque useSearchParams() requiere Suspense en Next.js 16
 function TimeoutBanner() {
   const searchParams = useSearchParams();
   const sessionExpired = searchParams.get("timeout") === "true";
@@ -109,9 +108,9 @@ function TimeoutBanner() {
     <motion.div
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="lf-timeout-banner"
+      className="la-timeout-banner"
     >
-      <Clock size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+      <Clock size={15} style={{ flexShrink: 0, marginTop: 1 }} />
       <span>
         Tu sesión se cerró por inactividad. Inicia sesión de nuevo para
         continuar.
@@ -129,7 +128,6 @@ export default function LoginPage() {
   const [attemptWarning, setAttemptWarning] = useState<string | null>(null);
   const { checkAttempt, resetAttempts } = useBruteForceProtection();
 
-  // Countdown del lockout
   const startCountdown = useCallback((seconds: number) => {
     setLockoutSeconds(seconds);
     const interval = setInterval(() => {
@@ -183,8 +181,7 @@ export default function LoginPage() {
       });
 
       if (error) {
-        // CRÍTICO: Mensaje genérico — no revelar si el email existe o no
-        // Evita "User Enumeration Attack"
+        // CRÍTICO: mensaje genérico — previene User Enumeration Attack
         setAuthError(
           "Credenciales incorrectas. Verifica tu email y contraseña.",
         );
@@ -195,7 +192,6 @@ export default function LoginPage() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      // Nunca exponer stack traces o detalles técnicos
       setAuthError(
         "No se pudo conectar. Verifica tu conexión e intenta de nuevo.",
       );
@@ -207,263 +203,485 @@ export default function LoginPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap');
 
-        :root {
-          --midnight: #0F0A1E;
-          --card-bg: rgba(26,20,45,0.85);
-          --electric-rose: #FF2D55;
-          --rose-deep: #D4003C;
-          --violet-neon: #7000FF;
-          --muted-lavender: #B3B0C2;
-          --font-display: 'Cormorant Garamond', Georgia, serif;
-          --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
-        }
-
-        .login-root {
-          min-height: 100vh; display: flex;
-          background: var(--midnight); font-family: var(--font-body);
-          position: relative; overflow: hidden;
-        }
-        .login-root::before {
-          content: ''; position: fixed; width: 600px; height: 600px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(112,0,255,0.14) 0%, transparent 65%);
-          top: -180px; left: -150px; pointer-events: none; z-index: 0;
-        }
-        .login-root::after {
-          content: ''; position: fixed; width: 450px; height: 450px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(255,45,85,0.08) 0%, transparent 65%);
-          bottom: -100px; right: -80px; pointer-events: none; z-index: 0;
+        /* ── TOKENS Dark Atelier ─────────────────────────────────── */
+        .la-root {
+          --bg:           #080706;
+          --surface:      #0E0C0B;
+          --surface2:     #131110;
+          --rose:         #FF2D55;
+          --rose-dim:     rgba(255,45,85,0.55);
+          --rose-ghost:   rgba(255,45,85,0.08);
+          --rose-border:  rgba(255,45,85,0.22);
+          --border:       rgba(255,255,255,0.055);
+          --border-mid:   rgba(255,255,255,0.09);
+          --text-primary: rgba(245,242,238,0.9);
+          --text-mid:     rgba(245,242,238,0.45);
+          --text-dim:     rgba(245,242,238,0.18);
+          --serif:        var(--font-cormorant, 'Cormorant Garamond', Georgia, serif);
+          --sans:         var(--font-jakarta, 'Plus Jakarta Sans', system-ui, sans-serif);
         }
 
-        /* Panel izquierdo */
-        .ll-panel {
-          display: none; width: 420px; flex-shrink: 0;
+        /* ── ROOT ────────────────────────────────────────────────── */
+        .la-root {
+          min-height: 100vh;
+          display: flex;
+          background: var(--bg);
+          font-family: var(--sans);
+          position: relative;
+          overflow: hidden;
+        }
+        .la-root::before {
+          content: '';
+          position: fixed;
+          width: 650px; height: 650px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,45,85,0.07) 0%, transparent 65%);
+          top: -220px; right: -180px;
+          pointer-events: none; z-index: 0;
+        }
+        .la-root::after {
+          content: '';
+          position: fixed;
+          width: 450px; height: 450px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,45,85,0.04) 0%, transparent 65%);
+          bottom: -160px; left: -80px;
+          pointer-events: none; z-index: 0;
+        }
+
+        /* ── PANEL IZQUIERDO ─────────────────────────────────────── */
+        .la-left {
+          display: none;
+          width: 400px; flex-shrink: 0;
           flex-direction: column; justify-content: space-between;
-          padding: 3.5rem 3rem; position: relative; z-index: 1;
-          border-right: 1px solid rgba(255,255,255,0.05);
+          padding: 3.5rem 3rem;
+          position: relative; z-index: 1;
+          border-right: 1px solid var(--border);
         }
-        @media (min-width: 1024px) { .ll-panel { display: flex; } }
-        .ll-panel::before {
-          content: ''; position: absolute; inset: 0;
-          background-image: linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
-          background-size: 48px 48px; pointer-events: none;
+        @media (min-width: 1024px) { .la-left { display: flex; } }
+
+        /* Grid sutil */
+        .la-left::before {
+          content: '';
+          position: absolute; inset: 0;
+          background-image:
+            linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+          background-size: 56px 56px;
+          pointer-events: none;
         }
-        .ll-top { position: relative; z-index: 1; }
-        .ll-logo { display: flex; align-items: center; gap: 0.875rem; }
-        .ll-gem {
-          width: 40px; height: 40px; border-radius: 12px;
-          background: linear-gradient(135deg, var(--electric-rose), var(--rose-deep));
+
+        .la-left-top { position: relative; z-index: 1; }
+        .la-logo-row {
+          display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+        }
+        .la-logo-box {
+          width: 30px; height: 30px;
+          border: 1px solid var(--rose-border); border-radius: 7px;
           display: flex; align-items: center; justify-content: center;
-          font-size: 1.1rem; color: #fff;
-          box-shadow: 0 4px 20px rgba(255,45,85,0.4), 0 0 0 1px rgba(255,45,85,0.2);
+          flex-shrink: 0;
         }
-        .ll-name { font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; color: #fff; letter-spacing: 0.03em; }
-        .ll-tagline { font-size: 0.6875rem; font-weight: 400; color: var(--muted-lavender); opacity: 0.5; margin-top: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; }
-        .ll-mid { position: relative; z-index: 1; }
-        .ll-welcome { font-family: var(--font-display); font-size: 3.25rem; font-weight: 400; line-height: 1.05; color: rgba(255,255,255,0.92); margin: 0 0 1rem; }
-        .ll-welcome em { font-style: italic; display: block; background: linear-gradient(135deg, var(--electric-rose), #ff8fab); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .ll-desc { font-size: 0.875rem; color: var(--muted-lavender); opacity: 0.6; line-height: 1.7; margin-bottom: 2.5rem; }
-        .ll-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-        .ll-stat { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 1.125rem 1.25rem; transition: border-color 0.2s; }
-        .ll-stat:hover { border-color: rgba(255,45,85,0.2); }
-        .ll-stat-val { font-family: var(--font-display); font-size: 2rem; font-weight: 500; color: #fff; line-height: 1; }
-        .ll-stat-val.rose { background: linear-gradient(135deg, var(--electric-rose), #ff8fab); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .ll-stat-label { font-size: 0.6875rem; font-weight: 500; color: var(--muted-lavender); opacity: 0.45; margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.06em; }
-        .ll-bottom { position: relative; z-index: 1; }
-        .ll-secure { display: flex; align-items: center; gap: 0.625rem; font-size: 0.75rem; color: var(--muted-lavender); opacity: 0.3; }
-        .ll-dot { width: 6px; height: 6px; border-radius: 50%; background: #22C55E; flex-shrink: 0; opacity: 1; }
+        .la-logo-box span {
+          font-size: 9px; font-weight: 500;
+          color: var(--rose); letter-spacing: -0.03em;
+        }
+        .la-logo-name {
+          font-size: 13px; color: rgba(245,242,238,0.55);
+          letter-spacing: 0.08em; font-weight: 400; text-transform: uppercase;
+        }
+        .la-tagline {
+          font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+          color: var(--text-dim); margin-left: 40px;
+        }
 
-        /* Panel derecho */
-        .ll-right { flex: 1; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; position: relative; z-index: 1; }
-        .ll-right-inner { width: 100%; max-width: 420px; }
-        .ll-mobile-logo { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 2rem; }
-        .ll-mobile-gem { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, var(--electric-rose), var(--rose-deep)); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: #fff; }
-        .ll-mobile-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 500; color: #fff; }
-        @media (min-width: 1024px) { .ll-mobile-logo { display: none; } }
+        .la-left-mid { position: relative; z-index: 1; }
 
-        .ll-header { margin-bottom: 1.75rem; }
-        .ll-eyebrow { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--electric-rose); margin-bottom: 0.5rem; }
-        .ll-title { font-size: 1.875rem; font-weight: 700; color: #fff; line-height: 1.1; font-family: var(--font-body); margin: 0 0 0.375rem; }
-        .ll-sub { font-size: 0.875rem; color: var(--muted-lavender); opacity: 0.6; }
+        .la-eyebrow-row {
+          display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+        }
+        .la-eyebrow-line {
+          width: 18px; height: 1px; background: var(--rose-dim); display: inline-block;
+        }
+        .la-eyebrow-text {
+          font-size: 10px; letter-spacing: 0.16em;
+          text-transform: uppercase; color: var(--rose-dim);
+        }
 
-        /* Glass card */
-        .ll-glass {
-          background: var(--card-bg); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-          border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; padding: 2.5rem;
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 32px 80px rgba(0,0,0,0.55), 0 8px 24px rgba(112,0,255,0.06);
+        .la-welcome {
+          font-family: var(--serif);
+          font-size: 3.2rem; font-weight: 300;
+          line-height: 1.06; letter-spacing: -0.03em;
+          color: var(--text-primary);
+          margin: 0 0 12px;
+        }
+        .la-welcome em {
+          font-style: normal; display: block; color: var(--rose);
+        }
+        .la-desc {
+          font-size: 13px; color: var(--text-mid);
+          line-height: 1.75; margin: 0 0 36px; font-weight: 300;
+        }
+
+        /* Stats grid */
+        .la-stats {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        }
+        .la-stat {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 10px; padding: 18px 16px;
+          transition: border-color 0.2s; position: relative; overflow: hidden;
+        }
+        .la-stat::after {
+          content: '';
+          position: absolute; bottom: 0; left: 0;
+          width: 0; height: 1px;
+          background: var(--rose-border);
+          transition: width 0.35s ease;
+        }
+        .la-stat:hover::after { width: 100%; }
+        .la-stat:hover { border-color: rgba(255,255,255,0.09); }
+        .la-stat-val {
+          font-family: var(--serif);
+          font-size: 2.2rem; font-weight: 300;
+          color: var(--text-primary); line-height: 1;
+          letter-spacing: -0.03em; margin-bottom: 6px;
+        }
+        .la-stat-val.rose { color: var(--rose); }
+        .la-stat-label {
+          font-size: 9px; font-weight: 400;
+          color: var(--text-dim); text-transform: uppercase;
+          letter-spacing: 0.1em; line-height: 1.4;
+        }
+
+        .la-left-bottom { position: relative; z-index: 1; }
+        .la-secure {
+          display: flex; align-items: center; gap: 8px;
+          font-size: 10px; color: var(--text-dim); letter-spacing: 0.06em;
+        }
+        .la-secure-dot {
+          width: 6px; height: 6px; border-radius: 50%;
+          background: #22c55e; flex-shrink: 0;
+        }
+
+        /* ── PANEL DERECHO ───────────────────────────────────────── */
+        .la-right {
+          flex: 1; display: flex; align-items: center; justify-content: center;
+          padding: 3rem 2rem; position: relative; z-index: 1;
+        }
+        .la-right-inner { width: 100%; max-width: 420px; }
+
+        /* Mobile logo */
+        .la-mobile-logo {
+          display: flex; align-items: center; justify-content: center;
+          gap: 10px; margin-bottom: 2rem;
+        }
+        @media (min-width: 1024px) { .la-mobile-logo { display: none; } }
+
+        /* Header */
+        .la-header { margin-bottom: 28px; }
+        .la-header-eyebrow {
+          display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+        }
+        .la-header-eyebrow span:first-child {
+          display: inline-block; width: 16px; height: 1px; background: var(--rose-dim);
+        }
+        .la-header-eyebrow span:last-child {
+          font-size: 10px; letter-spacing: 0.16em;
+          text-transform: uppercase; color: var(--rose-dim);
+        }
+        .la-header-h1 {
+          font-family: var(--serif);
+          font-size: 2.4rem; font-weight: 300;
+          color: var(--text-primary); line-height: 1.1;
+          letter-spacing: -0.025em; margin: 0 0 8px;
+        }
+        .la-header-h1 em { font-style: normal; color: var(--rose); }
+        .la-header-sub {
+          font-size: 13px; color: var(--text-dim); letter-spacing: 0.02em; margin: 0;
+        }
+
+        /* ── FORM CARD ───────────────────────────────────────────── */
+        .la-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 2rem;
           position: relative; overflow: hidden;
         }
-        .ll-glass::before {
-          content: ''; position: absolute; width: 180px; height: 180px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(255,45,85,0.07) 0%, transparent 70%);
-          top: -50px; right: -30px; pointer-events: none;
+        /* Acento esquina superior derecha */
+        .la-card::before {
+          content: '';
+          position: absolute; top: 0; right: 0;
+          width: 16px; height: 16px;
+          border-top: 1px solid var(--rose-border);
+          border-right: 1px solid var(--rose-border);
+          border-top-right-radius: 16px;
+          pointer-events: none;
+        }
+        /* Radial interior sutil */
+        .la-card::after {
+          content: '';
+          position: absolute; top: -40px; right: -40px;
+          width: 180px; height: 180px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,45,85,0.05) 0%, transparent 70%);
+          pointer-events: none;
         }
 
-        /* Campos */
-        .lf-field { display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 1.25rem; }
-        .lf-label-row { display: flex; align-items: center; justify-content: space-between; }
-        .lf-label { font-size: 0.8rem; font-weight: 500; color: var(--muted-lavender); opacity: 0.85; }
-        .lf-forgot { font-size: 0.75rem; font-weight: 500; color: var(--electric-rose); text-decoration: none; opacity: 0.8; }
-        .lf-forgot:hover { opacity: 1; text-decoration: underline; }
-        .lf-input-wrap { position: relative; }
-        .lf-input {
-          width: 100%; padding: 0.875rem 1rem;
-          background: rgba(255,255,255,0.05); border: 1.5px solid rgba(255,255,255,0.08);
-          border-radius: 10px; font-size: 0.9375rem; color: #fff;
-          outline: none; font-family: var(--font-body);
+        /* ── CAMPOS ──────────────────────────────────────────────── */
+        .la-field {
+          display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px;
+        }
+        .la-label-row {
+          display: flex; align-items: center; justify-content: space-between;
+        }
+        .la-label {
+          font-size: 10px; font-weight: 400;
+          color: var(--text-mid); letter-spacing: 0.1em; text-transform: uppercase;
+        }
+        .la-forgot {
+          font-size: 10px; color: var(--rose-dim);
+          text-decoration: none; letter-spacing: 0.06em;
+          transition: color 0.2s;
+        }
+        .la-forgot:hover { color: var(--rose); }
+
+        .la-input-wrap { position: relative; }
+        .la-input {
+          width: 100%; padding: 12px 14px;
+          background: var(--surface2);
+          border: 1px solid var(--border-mid);
+          border-radius: 8px;
+          font-size: 14px; color: var(--text-primary);
+          outline: none; font-family: var(--sans);
           transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
         }
-        .lf-input::placeholder { color: rgba(255,255,255,0.2); }
-        .lf-input:focus { border-color: rgba(112,0,255,0.55); background: rgba(255,255,255,0.07); box-shadow: 0 0 0 3px rgba(112,0,255,0.1); }
-        .lf-input.pw { padding-right: 3rem; }
-        .lf-input.err { border-color: rgba(255,80,80,0.45); }
-        .lf-input:disabled { opacity: 0.4; cursor: not-allowed; }
-        .lf-toggle { position: absolute; right: 0.875rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.25); padding: 0; display: flex; align-items: center; transition: color 0.2s; }
-        .lf-toggle:hover { color: var(--electric-rose); }
-        .lf-err-msg { font-size: 0.75rem; color: #ff8080; margin-top: 0.25rem; }
+        .la-input::placeholder { color: var(--text-dim); }
+        .la-input:focus {
+          border-color: var(--rose-border);
+          background: rgba(255,45,85,0.04);
+          box-shadow: 0 0 0 3px rgba(255,45,85,0.08);
+        }
+        .la-input.pw { padding-right: 42px; }
+        .la-input.err { border-color: rgba(255,80,80,0.45); }
+        .la-input:disabled { opacity: 0.35; cursor: not-allowed; }
 
-        /* Banners de alerta */
-        .lf-err-banner {
-          background: rgba(255,45,85,0.08); border: 1px solid rgba(255,45,85,0.2);
-          border-radius: 10px; padding: 0.875rem 1rem;
-          font-size: 0.875rem; color: #ff8080; margin-bottom: 1.25rem;
+        .la-toggle {
+          position: absolute; right: 12px; top: 50%;
+          transform: translateY(-50%);
+          background: none; border: none; cursor: pointer;
+          color: var(--text-dim); padding: 0;
+          display: flex; align-items: center;
+          transition: color 0.2s;
         }
-        .lf-warn-banner {
-          background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.2);
-          border-radius: 10px; padding: 0.75rem 1rem;
-          font-size: 0.8125rem; color: #fbbf24; margin-bottom: 1.25rem;
-          display: flex; align-items: center; gap: 0.5rem;
-        }
-        .lf-lockout-banner {
-          background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
-          border-radius: 10px; padding: 1rem;
-          font-size: 0.875rem; color: #fca5a5; margin-bottom: 1.25rem;
-          display: flex; align-items: flex-start; gap: 0.75rem;
-        }
-        .lf-lockout-countdown {
-          font-family: var(--font-display); font-size: 1.5rem; font-weight: 600;
-          color: #fca5a5; text-align: center; display: block; margin-top: 0.25rem;
+        .la-toggle:hover { color: var(--rose-dim); }
+        .la-toggle:disabled { cursor: not-allowed; }
+
+        .la-err-msg {
+          font-size: 11px; color: rgba(255,110,110,0.85); margin-top: 2px;
         }
 
-        /* Timeout banner — Fase 7.5 */
-        .lf-timeout-banner {
-          background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2);
-          border-radius: 10px; padding: 0.875rem 1rem;
-          font-size: 0.875rem; color: #93c5fd; margin-bottom: 1.25rem;
-          display: flex; align-items: flex-start; gap: 0.625rem; line-height: 1.5;
+        /* ── BANNERS ─────────────────────────────────────────────── */
+        .la-timeout-banner {
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.09);
+          border-radius: 8px; padding: 12px 14px;
+          font-size: 12px; color: rgba(245,242,238,0.45);
+          margin-bottom: 18px;
+          display: flex; align-items: flex-start; gap: 8px; line-height: 1.55;
+        }
+        .la-err-banner {
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          border-radius: 8px; padding: 12px 14px;
+          font-size: 12px; color: rgba(255,120,120,0.9);
+          margin-bottom: 18px; line-height: 1.55;
+        }
+        .la-warn-banner {
+          background: rgba(234,179,8,0.07);
+          border: 1px solid rgba(234,179,8,0.18);
+          border-radius: 8px; padding: 10px 14px;
+          font-size: 12px; color: rgba(251,191,36,0.8);
+          margin-bottom: 18px;
+          display: flex; align-items: center; gap: 8px; line-height: 1.5;
+        }
+        .la-lockout-banner {
+          background: rgba(239,68,68,0.07);
+          border: 1px solid rgba(239,68,68,0.2);
+          border-radius: 8px; padding: 14px;
+          font-size: 12px; color: rgba(252,165,165,0.85);
+          margin-bottom: 18px;
+          display: flex; align-items: flex-start; gap: 10px; line-height: 1.55;
+        }
+        .la-lockout-countdown {
+          font-family: var(--serif);
+          font-size: 1.8rem; font-weight: 300;
+          color: rgba(252,165,165,0.9);
+          display: block; margin-top: 4px; letter-spacing: -0.02em;
         }
 
-        /* CTA */
-        .lf-cta {
-          width: 100%; padding: 0.9375rem 1.5rem;
-          background: linear-gradient(135deg, var(--electric-rose) 0%, var(--rose-deep) 100%);
-          border: none; border-radius: 10px; font-family: var(--font-body);
-          font-size: 0.9375rem; font-weight: 700; color: #fff; cursor: pointer;
-          display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        /* ── CTA ─────────────────────────────────────────────────── */
+        .la-cta {
+          width: 100%; margin-top: 6px;
+          padding: 13px 20px;
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          border-radius: 8px;
+          font-family: var(--sans);
+          font-size: 12px; font-weight: 400;
+          color: var(--rose-dim);
+          letter-spacing: 0.1em; text-transform: uppercase;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
           transition: all 0.2s;
-          box-shadow: 0 4px 20px rgba(255,45,85,0.35), 0 1px 0 rgba(255,255,255,0.12) inset;
-          letter-spacing: 0.01em; margin-top: 0.5rem;
         }
-        .lf-cta:hover:not(:disabled) { background: linear-gradient(135deg, #ff4d6d 0%, #e8003f 100%); box-shadow: 0 6px 28px rgba(255,45,85,0.5), 0 1px 0 rgba(255,255,255,0.12) inset; transform: translateY(-1px); }
-        .lf-cta:active:not(:disabled) { transform: translateY(0); }
-        .lf-cta:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .la-cta:hover:not(:disabled) {
+          background: rgba(255,45,85,0.16);
+          border-color: rgba(255,45,85,0.42);
+          color: var(--rose);
+        }
+        .la-cta:active:not(:disabled) { opacity: 0.85; }
+        .la-cta:disabled {
+          opacity: 0.35; cursor: not-allowed;
+        }
 
-        /* Divider y registro */
-        .lf-divider { display: flex; align-items: center; gap: 0.875rem; margin: 1.75rem 0 1.25rem; font-size: 0.75rem; color: rgba(255,255,255,0.18); }
-        .lf-divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
-        .lf-register { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 1rem 1.25rem; text-align: center; font-size: 0.875rem; color: var(--muted-lavender); opacity: 0.6; }
-        .lf-register a { color: var(--electric-rose); font-weight: 600; text-decoration: none; opacity: 1; }
-        .lf-register a:hover { text-decoration: underline; }
+        /* ── DIVIDER + REGISTRO ──────────────────────────────────── */
+        .la-divider {
+          display: flex; align-items: center; gap: 12px;
+          margin: 22px 0 16px;
+          font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em;
+        }
+        .la-divider-line {
+          flex: 1; height: 1px; background: var(--border);
+        }
+        .la-register-block {
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-radius: 8px; padding: 14px 16px;
+          text-align: center;
+          font-size: 12px; color: var(--text-dim); letter-spacing: 0.03em;
+        }
+        .la-register-block a {
+          color: var(--rose-dim); font-weight: 400;
+          text-decoration: none; transition: color 0.2s;
+        }
+        .la-register-block a:hover { color: var(--rose); }
+
       `}</style>
 
-      <div className="login-root">
-        {/* Panel izquierdo */}
-        <aside className="ll-panel">
-          <div className="ll-top">
-            <div className="ll-logo">
-              <div className="ll-gem">✦</div>
-              <span className="ll-name">BeautySync</span>
+      <div className="la-root">
+        {/* ── Panel izquierdo ─────────────────────────────────────── */}
+        <aside className="la-left">
+          <div className="la-left-top">
+            <div className="la-logo-row">
+              <div className="la-logo-box">
+                <span>BS</span>
+              </div>
+              <span className="la-logo-name">BeautySync</span>
             </div>
-            <p className="ll-tagline">El salón que trabaja solo</p>
+            <p className="la-tagline">El salón que trabaja solo</p>
           </div>
-          <div className="ll-mid">
-            <h1 className="ll-welcome">
-              Bienvenida<em>de vuelta</em>
-            </h1>
-            <p className="ll-desc">
-              Tu dashboard te está esperando.
+
+          <div className="la-left-mid">
+            <div className="la-eyebrow-row">
+              <span className="la-eyebrow-line" />
+              <span className="la-eyebrow-text">Tu dashboard te espera</span>
+            </div>
+
+            <h2 className="la-welcome">
+              Bienvenida<em>de vuelta.</em>
+            </h2>
+            <p className="la-desc">
+              Todas tus citas, métricas y clientas,
               <br />
-              Todas tus citas, en tiempo real.
+              exactamente donde las dejaste.
             </p>
-            <div className="ll-stats">
+
+            <div className="la-stats">
               {[
                 { val: "24/7", label: "Agenda activa", rose: false },
                 { val: "14", label: "Días de prueba", rose: true },
                 { val: "0", label: "Config. técnica", rose: false },
                 { val: "∞", label: "Citas disponibles", rose: true },
               ].map((s) => (
-                <div key={s.label} className="ll-stat">
-                  <p className={`ll-stat-val${s.rose ? " rose" : ""}`}>
+                <div key={s.label} className="la-stat">
+                  <p className={`la-stat-val${s.rose ? " rose" : ""}`}>
                     {s.val}
                   </p>
-                  <p className="ll-stat-label">{s.label}</p>
+                  <p className="la-stat-label">{s.label}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="ll-bottom">
-            <div className="ll-secure">
-              <div className="ll-dot" />
+
+          <div className="la-left-bottom">
+            <div className="la-secure">
+              <span className="la-secure-dot" />
               Conexión segura y encriptada
             </div>
           </div>
         </aside>
 
-        {/* Panel derecho */}
-        <main className="ll-right">
-          <div className="ll-right-inner">
-            <div className="ll-mobile-logo">
-              <div className="ll-mobile-gem">✦</div>
-              <span className="ll-mobile-name">BeautySync</span>
+        {/* ── Panel derecho ────────────────────────────────────────── */}
+        <main className="la-right">
+          <div className="la-right-inner">
+            {/* Mobile logo */}
+            <div className="la-mobile-logo">
+              <div className="la-logo-box">
+                <span>BS</span>
+              </div>
+              <span className="la-logo-name">BeautySync</span>
             </div>
 
-            <div className="ll-header">
-              <p className="ll-eyebrow">Acceso seguro</p>
-              <h2 className="ll-title">Inicia sesión</h2>
-              <p className="ll-sub">Entra a tu dashboard de BeautySync</p>
+            {/* Header */}
+            <div className="la-header">
+              <div className="la-header-eyebrow">
+                <span />
+                <span>Acceso seguro</span>
+              </div>
+              <h1 className="la-header-h1">
+                Inicia
+                <br />
+                <em>sesión.</em>
+              </h1>
+              <p className="la-header-sub">
+                Entra a tu dashboard de BeautySync
+              </p>
             </div>
 
+            {/* Form card */}
             <motion.div
-              className="ll-glass"
-              initial={{ opacity: 0, y: 24 }}
+              className="la-card"
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
               <form
                 onSubmit={handleSubmit(onSubmit)}
                 noValidate
                 autoComplete="on"
               >
-                {/* Banner de session timeout — Fase 7.5 */}
+                {/* Banner timeout — Fase 7.5 */}
                 <Suspense fallback={null}>
                   <TimeoutBanner />
                 </Suspense>
 
-                {/* Banner de lockout */}
+                {/* Banner lockout */}
                 {isLocked && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="lf-lockout-banner"
+                    className="la-lockout-banner"
                   >
-                    <ShieldAlert size={20} className="shrink-0 mt-0.5" />
+                    <ShieldAlert
+                      size={18}
+                      style={{ flexShrink: 0, marginTop: 1 }}
+                    />
                     <div>
                       <p>
                         Cuenta bloqueada temporalmente por múltiples intentos
                         fallidos.
                       </p>
-                      <span className="lf-lockout-countdown">
+                      <span className="la-lockout-countdown">
                         {Math.floor(lockoutSeconds / 60)}:
                         {String(lockoutSeconds % 60).padStart(2, "0")}
                       </span>
@@ -476,52 +694,52 @@ export default function LoginPage() {
                   <motion.div
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="lf-warn-banner"
+                    className="la-warn-banner"
                   >
-                    ⚠ {attemptWarning}
+                    <span>⚠</span> {attemptWarning}
                   </motion.div>
                 )}
 
                 {/* Email */}
-                <div className="lf-field">
-                  <div className="lf-label-row">
-                    <label className="lf-label">Email</label>
+                <div className="la-field">
+                  <div className="la-label-row">
+                    <label className="la-label">Email</label>
                   </div>
                   <input
                     type="email"
                     placeholder="maria@misalon.com"
                     maxLength={254}
                     autoComplete="email"
-                    className={`lf-input${errors.email ? " err" : ""}`}
+                    className={`la-input${errors.email ? " err" : ""}`}
                     disabled={isLocked}
                     {...register("email")}
                   />
                   {errors.email && (
-                    <p className="lf-err-msg">{errors.email.message}</p>
+                    <p className="la-err-msg">{errors.email.message}</p>
                   )}
                 </div>
 
                 {/* Contraseña */}
-                <div className="lf-field">
-                  <div className="lf-label-row">
-                    <label className="lf-label">Contraseña</label>
-                    <Link href="/forgot-password" className="lf-forgot">
+                <div className="la-field">
+                  <div className="la-label-row">
+                    <label className="la-label">Contraseña</label>
+                    <Link href="/forgot-password" className="la-forgot">
                       ¿La olvidaste?
                     </Link>
                   </div>
-                  <div className="lf-input-wrap">
+                  <div className="la-input-wrap">
                     <input
                       type={showPassword ? "text" : "password"}
                       placeholder="Tu contraseña"
                       maxLength={72}
                       autoComplete="current-password"
-                      className={`lf-input pw${errors.password ? " err" : ""}`}
+                      className={`la-input pw${errors.password ? " err" : ""}`}
                       disabled={isLocked}
                       {...register("password")}
                     />
                     <button
                       type="button"
-                      className="lf-toggle"
+                      className="la-toggle"
                       onClick={() => setShowPassword((v) => !v)}
                       disabled={isLocked}
                       aria-label={
@@ -530,22 +748,22 @@ export default function LoginPage() {
                           : "Mostrar contraseña"
                       }
                     >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="lf-err-msg">{errors.password.message}</p>
+                    <p className="la-err-msg">{errors.password.message}</p>
                   )}
                 </div>
 
-                {/* Error de autenticación — genérico, sin detallar */}
+                {/* Error de auth — genérico, sin detallar (previene user enumeration) */}
                 {authError && !isLocked && (
                   <motion.div
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="lf-err-banner"
+                    className="la-err-banner"
                   >
-                    ⚠ {authError}
+                    {authError}
                   </motion.div>
                 )}
 
@@ -553,32 +771,32 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting || isLocked}
-                  className="lf-cta"
+                  className="la-cta"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" />{" "}
+                      <Loader2 size={14} className="animate-spin" />{" "}
                       Verificando…
                     </>
                   ) : isLocked ? (
                     <>
-                      <ShieldAlert size={16} /> Bloqueado temporalmente
+                      <ShieldAlert size={14} /> Bloqueado temporalmente
                     </>
                   ) : (
                     <>
-                      Entrar al dashboard <ArrowRight size={16} />
+                      Entrar al dashboard <ArrowRight size={14} />
                     </>
                   )}
                 </button>
               </form>
 
-              <div className="lf-divider">
-                <div className="lf-divider-line" />
+              <div className="la-divider">
+                <div className="la-divider-line" />
                 <span>¿Primera vez en BeautySync?</span>
-                <div className="lf-divider-line" />
+                <div className="la-divider-line" />
               </div>
 
-              <div className="lf-register">
+              <div className="la-register-block">
                 Crea tu cuenta gratis —{" "}
                 <Link href="/register">Registrarse</Link>
               </div>

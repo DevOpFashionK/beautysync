@@ -2,7 +2,7 @@
 
 /**
  * components/dashboard/billing/PaymentMethod.tsx
- * Muestra el método de pago guardado — BeautySync Fase 4
+ * Método de pago guardado — BeautySync Fase 4
  */
 
 import { CreditCard, RefreshCw } from "lucide-react";
@@ -19,7 +19,7 @@ interface PaymentMethodProps {
 
 export function PaymentMethod({
   subscription,
-  primaryColor = "#D4375F",
+  primaryColor = "#FF2D55",
 }: PaymentMethodProps) {
   const [loading, setLoading] = useState(false);
 
@@ -43,51 +43,181 @@ export function PaymentMethod({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-[#EDE8E3] p-5 shadow-sm">
-      <h3 className="text-sm font-semibold text-[#2D2420] mb-4 flex items-center gap-2">
-        <CreditCard className="w-4 h-4" style={{ color: primaryColor }} />
-        Método de pago
-      </h3>
+    <div
+      style={{
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+        borderRadius: "10px",
+        padding: "18px 20px",
+      }}
+    >
+      {/* Título */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "16px",
+        }}
+      >
+        <CreditCard
+          size={14}
+          strokeWidth={1.75}
+          style={{ color: `${primaryColor}99` }}
+        />
+        <p
+          style={{
+            fontSize: "12px",
+            fontWeight: 400,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "rgba(245,242,238,0.3)",
+            margin: 0,
+          }}
+        >
+          Método de pago
+        </p>
+      </div>
 
       {last4 ? (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Card icon genérico */}
-            <div className="w-10 h-7 bg-gradient-to-br from-[#2D2420] to-[#9C8E85] rounded-md flex items-center justify-center">
-              <span className="text-white text-xs font-bold">••••</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+          }}
+        >
+          {/* Card info */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                width: "44px",
+                height: "28px",
+                borderRadius: "5px",
+                background:
+                  "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
+                border: "1px solid rgba(255,255,255,0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "9px",
+                  color: "rgba(245,242,238,0.3)",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                ••••
+              </span>
             </div>
             <div>
-              <p className="text-sm font-medium text-[#2D2420]">
+              <p
+                style={{
+                  fontSize: "13px",
+                  color: "rgba(245,242,238,0.7)",
+                  margin: 0,
+                  letterSpacing: "0.04em",
+                }}
+              >
                 •••• •••• •••• {last4}
               </p>
-              <p className="text-xs text-[#9C8E85]">Tarjeta guardada</p>
+              <p
+                style={{
+                  fontSize: "10px",
+                  color: "rgba(245,242,238,0.2)",
+                  margin: "2px 0 0",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                Tarjeta guardada
+              </p>
             </div>
           </div>
 
+          {/* Actualizar */}
           <button
             onClick={handleUpdatePayment}
             disabled={loading}
-            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg
-              border border-[#EDE8E3] text-[#9C8E85] hover:border-[#C4B8B0] 
-              hover:text-[#2D2420] transition-colors disabled:opacity-50"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              fontSize: "11px",
+              letterSpacing: "0.06em",
+              padding: "6px 12px",
+              borderRadius: "7px",
+              border: "1px solid rgba(255,255,255,0.07)",
+              background: "transparent",
+              color: "rgba(245,242,238,0.28)",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.5 : 1,
+              transition: "all 0.2s",
+              fontFamily: "inherit",
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                (e.currentTarget as HTMLElement).style.borderColor =
+                  "rgba(255,255,255,0.12)";
+                (e.currentTarget as HTMLElement).style.color =
+                  "rgba(245,242,238,0.55)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor =
+                "rgba(255,255,255,0.07)";
+              (e.currentTarget as HTMLElement).style.color =
+                "rgba(245,242,238,0.28)";
+            }}
           >
-            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              size={11}
+              strokeWidth={1.75}
+              className={loading ? "animate-spin" : ""}
+            />
             Actualizar
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-3">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <div
-            className="w-10 h-7 rounded-md flex items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}15` }}
+            style={{
+              width: "44px",
+              height: "28px",
+              borderRadius: "5px",
+              background: `${primaryColor}10`,
+              border: `1px solid ${primaryColor}18`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <CreditCard className="w-4 h-4" style={{ color: primaryColor }} />
+            <CreditCard
+              size={12}
+              strokeWidth={1.75}
+              style={{ color: `${primaryColor}88` }}
+            />
           </div>
           <div>
-            <p className="text-sm text-[#9C8E85]">
+            <p
+              style={{
+                fontSize: "13px",
+                color: "rgba(245,242,238,0.35)",
+                margin: 0,
+              }}
+            >
               No hay método de pago guardado
             </p>
-            <p className="text-xs text-[#C4B8B0]">
+            <p
+              style={{
+                fontSize: "10px",
+                color: "rgba(245,242,238,0.18)",
+                margin: "2px 0 0",
+                letterSpacing: "0.03em",
+              }}
+            >
               Se guardará automáticamente al completar tu primer pago
             </p>
           </div>

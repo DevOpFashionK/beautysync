@@ -1,5 +1,6 @@
 // app/book/[slug]/page.tsx
-// Fase 8.1 v2 — Diseño premium: fondo oscuro cálido, glassmorphism, color de marca como acento
+// Widget público — diseño único premium. Shell visual completamente rediseñado.
+// Lógica de datos y validación de suscripción 100% intacta.
 
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
@@ -11,7 +12,7 @@ interface BookPageProps {
   params: Promise<{ slug: string }>;
 }
 
-// ─── Metadata dinámica ────────────────────────────────────────────────────────
+// ─── Metadata dinámica — intacta ──────────────────────────────────────────────
 export async function generateMetadata({
   params,
 }: BookPageProps): Promise<Metadata> {
@@ -80,9 +81,8 @@ export default async function BookPage({ params }: BookPageProps) {
     console.error("[BookPage] Error fetching services:", servicesError);
   }
 
-  const primaryColor = salon.primary_color || "#D4375F";
+  const primaryColor = salon.primary_color || "#FF2D55";
 
-  // Iniciales para el avatar fallback
   const initials = salon.name
     .split(" ")
     .slice(0, 2)
@@ -93,42 +93,34 @@ export default async function BookPage({ params }: BookPageProps) {
   return (
     <>
       <style>{`
-        /* ─── Reset y variables ──────────────────────────────── */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-          --color-brand: ${primaryColor};
-          --font-display: var(--font-cormorant), 'Georgia', serif;
-          --font-body: var(--font-jakarta), var(--font-inter), -apple-system, sans-serif;
-
-          /* Paleta oscura cálida */
-          --bg-base:    #0D0C0B;
-          --bg-surface: #151311;
-          --bg-card:    rgba(255, 255, 255, 0.04);
-          --border:     rgba(255, 255, 255, 0.08);
-          --border-accent: rgba(255, 255, 255, 0.14);
-          --text-primary:   #F5F2EE;
-          --text-secondary: rgba(245, 242, 238, 0.55);
-          --text-muted:     rgba(245, 242, 238, 0.3);
+          --brand:          ${primaryColor};
+          --brand-glow:     ${primaryColor}40;
+          --brand-subtle:   ${primaryColor}12;
+          --brand-border:   ${primaryColor}28;
+          --font-display:   var(--font-cormorant), 'Georgia', serif;
+          --font-body:      var(--font-jakarta), -apple-system, sans-serif;
+          --bg:             #080706;
+          --surface:        #0E0C0B;
+          --surface2:       #131110;
+          --border:         rgba(255,255,255,0.055);
+          --border-hi:      rgba(255,255,255,0.12);
+          --text:           rgba(245,242,238,0.9);
+          --text-mid:       rgba(245,242,238,0.45);
+          --text-dim:       rgba(245,242,238,0.18);
+          --text-ghost:     rgba(245,242,238,0.18);
         }
 
-        body {
-          background: var(--bg-base);
+        html, body {
+          background: var(--bg);
           font-family: var(--font-body);
           -webkit-font-smoothing: antialiased;
           min-height: 100vh;
         }
 
-        /* ─── Layout raíz ───────────────────────────────────── */
-        .bk-root {
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          position: relative;
-          overflow-x: hidden;
-        }
-
-        /* ─── Fondo con orbs de color de marca ──────────────── */
+        /* ── Fondo ─────────────────────────────────────────────── */
         .bk-bg {
           position: fixed;
           inset: 0;
@@ -137,117 +129,152 @@ export default async function BookPage({ params }: BookPageProps) {
           overflow: hidden;
         }
 
-        .bk-orb-1 {
-          position: absolute;
-          width: 600px;
-          height: 600px;
-          border-radius: 50%;
-          top: -200px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: radial-gradient(
-            circle,
-            color-mix(in srgb, var(--color-brand) 28%, transparent) 0%,
-            transparent 70%
-          );
-          filter: blur(1px);
-        }
-
-        .bk-orb-2 {
-          position: absolute;
-          width: 400px;
-          height: 400px;
-          border-radius: 50%;
-          bottom: -100px;
-          right: -100px;
-          background: radial-gradient(
-            circle,
-            color-mix(in srgb, var(--color-brand) 12%, transparent) 0%,
-            transparent 70%
-          );
-        }
-
-        /* Patrón de ruido sutil sobre el fondo */
-        .bk-noise {
+        /* Gradiente de malla radial — el primaryColor tiñe el fondo */
+        .bk-mesh {
           position: absolute;
           inset: 0;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-          opacity: 0.4;
+          background:
+            radial-gradient(ellipse 80% 60% at 50% -10%, ${primaryColor}22 0%, transparent 70%),
+            radial-gradient(ellipse 50% 40% at 80% 100%, ${primaryColor}0E 0%, transparent 60%),
+            radial-gradient(ellipse 30% 30% at 10% 60%, ${primaryColor}08 0%, transparent 50%);
         }
 
-        /* ─── Contenido principal ───────────────────────────── */
-        .bk-content {
+        /* Línea horizontal de luz */
+        .bk-lightline {
+          position: absolute;
+          top: 38%;
+          left: -10%;
+          right: -10%;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            transparent 0%,
+            ${primaryColor}15 25%,
+            ${primaryColor}35 50%,
+            ${primaryColor}15 75%,
+            transparent 100%
+          );
+          pointer-events: none;
+        }
+
+        /* Grain texture */
+        .bk-grain {
+          position: absolute;
+          inset: 0;
+          opacity: 0.025;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+          background-size: 200px 200px;
+        }
+
+        /* ── Layout ─────────────────────────────────────────────── */
+        .bk-root {
           position: relative;
           z-index: 1;
+          min-height: 100vh;
           display: flex;
           flex-direction: column;
           align-items: center;
-          padding: 48px 20px 64px;
+          padding: 56px 20px 72px;
           width: 100%;
-          max-width: 480px;
-          margin: 0 auto;
-          gap: 32px;
         }
 
-        /* ─── Cabecera del salón ────────────────────────────── */
-        .bk-salon-header {
+        .bk-inner {
+          width: 100%;
+          max-width: 460px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 16px;
+          gap: 0;
+        }
+
+        /* ── Header ─────────────────────────────────────────────── */
+        .bk-header {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           text-align: center;
           width: 100%;
+          margin-bottom: 36px;
+          gap: 20px;
         }
 
-        /* Badge superior */
-        .bk-live-badge {
+        /* Badge "Reservas abiertas" */
+        .bk-badge {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid var(--border-accent);
+          gap: 8px;
+          background: var(--surface2);
+          border: 1px solid var(--brand-border);
           border-radius: 100px;
-          padding: 5px 14px 5px 10px;
-          font-size: 11px;
-          font-weight: 600;
-          color: var(--text-secondary);
-          letter-spacing: 0.04em;
+          padding: 6px 16px 6px 10px;
+          font-size: 10px;
+          font-weight: 500;
+          color: var(--text-mid);
+          letter-spacing: 0.12em;
           text-transform: uppercase;
         }
 
-        .bk-live-dot {
-          width: 7px;
-          height: 7px;
+        .bk-badge-dot {
+          width: 6px;
+          height: 6px;
           border-radius: 50%;
-          background: var(--color-brand);
-          box-shadow: 0 0 8px var(--color-brand);
-          animation: pulse-dot 2s ease-in-out infinite;
+          background: var(--brand);
+          box-shadow: 0 0 8px var(--brand-glow);
+          animation: bk-pulse 2.5s ease-in-out infinite;
+          flex-shrink: 0;
         }
 
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50%       { opacity: 0.6; transform: scale(0.85); }
+        @keyframes bk-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px var(--brand-glow); }
+          50%       { opacity: 0.7; transform: scale(0.85); box-shadow: 0 0 12px var(--brand-glow); }
         }
 
         /* Avatar del salón */
         .bk-avatar-wrap {
           position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        /* Anillo exterior giratorio */
+        .bk-avatar-ring-outer {
+          position: absolute;
+          inset: -10px;
+          border-radius: 50%;
+          border: 1px dashed ${primaryColor}30;
+          animation: bk-spin 20s linear infinite;
+        }
+
+        @keyframes bk-spin {
+          to { transform: rotate(360deg); }
+        }
+
+        /* Anillo interior */
+        .bk-avatar-ring-inner {
+          position: absolute;
+          inset: -4px;
+          border-radius: 28px;
+          border: 1px solid ${primaryColor}22;
+          pointer-events: none;
         }
 
         .bk-avatar {
-          width: 88px;
-          height: 88px;
-          border-radius: 26px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid var(--border-accent);
+          width: 96px;
+          height: 96px;
+          border-radius: 24px;
+          background: var(--surface2);
+          border: 1px solid var(--border-hi);
           display: flex;
           align-items: center;
           justify-content: center;
           overflow: hidden;
           box-shadow:
-            0 0 0 6px rgba(255, 255, 255, 0.03),
-            0 20px 60px rgba(0, 0, 0, 0.5);
+            0 0 0 6px ${primaryColor}08,
+            0 24px 64px rgba(0,0,0,0.55);
           backdrop-filter: blur(12px);
+          position: relative;
+          z-index: 1;
         }
 
         .bk-avatar img {
@@ -259,154 +286,156 @@ export default async function BookPage({ params }: BookPageProps) {
 
         .bk-avatar-initials {
           font-family: var(--font-display);
-          font-size: 32px;
-          font-weight: 600;
-          color: var(--color-brand);
-          letter-spacing: 0.02em;
-        }
-
-        /* Anillo de color de marca alrededor del avatar */
-        .bk-avatar-ring {
-          position: absolute;
-          inset: -4px;
-          border-radius: 30px;
-          border: 1.5px solid color-mix(in srgb, var(--color-brand) 40%, transparent);
-          pointer-events: none;
+          font-size: 34px;
+          font-weight: 300;
+          color: var(--brand);
+          letter-spacing: -0.02em;
+          line-height: 1;
         }
 
         /* Nombre del salón */
         .bk-salon-name {
           font-family: var(--font-display);
-          font-size: 2.25rem;
-          font-weight: 600;
-          color: var(--text-primary);
-          line-height: 1.1;
-          letter-spacing: -0.01em;
+          font-size: clamp(2rem, 6vw, 2.75rem);
+          font-weight: 300;
+          color: var(--text);
+          line-height: 1.05;
+          letter-spacing: -0.03em;
         }
 
         /* Dirección */
-        .bk-salon-address {
+        .bk-address {
           display: flex;
           align-items: center;
           gap: 5px;
-          font-size: 12px;
-          color: var(--text-muted);
-          font-weight: 400;
+          font-size: 11px;
+          color: var(--text-dim);
+          letter-spacing: 0.04em;
         }
 
-        /* Divider decorativo */
+        /* Divisor decorativo */
         .bk-divider {
           width: 100%;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 14px;
+          margin-bottom: 28px;
         }
 
-        .bk-divider-line {
+        .bk-div-line {
           flex: 1;
           height: 1px;
-          background: linear-gradient(
-            90deg,
-            transparent,
-            var(--border-accent),
-            transparent
-          );
+          background: linear-gradient(90deg, transparent, ${primaryColor}25, transparent);
         }
 
-        .bk-divider-gem {
+        .bk-div-gem {
           font-size: 10px;
-          color: var(--color-brand);
-          opacity: 0.6;
+          color: var(--brand);
+          opacity: 0.5;
+          letter-spacing: 0.1em;
         }
 
-        /* ─── Card del widget ───────────────────────────────── */
+        /* ── Card del widget ─────────────────────────────────────── */
         .bk-card {
           width: 100%;
-          background: rgba(255, 255, 255, 0.035);
-          border: 1px solid var(--border-accent);
-          border-radius: 28px;
+          background: rgba(14,12,11,0.7);
+          border: 1px solid var(--border-hi);
+          border-radius: 24px;
           padding: 32px 28px;
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
           box-shadow:
-            0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-            0 32px 80px rgba(0, 0, 0, 0.4),
-            0 8px 32px rgba(0, 0, 0, 0.3);
+            0 0 0 1px rgba(255,255,255,0.03) inset,
+            0 0 60px ${primaryColor}08 inset,
+            0 40px 100px rgba(0,0,0,0.5);
           position: relative;
           overflow: hidden;
         }
 
-        /* Brillo sutil en la esquina superior */
+        /* Brillo superior */
         .bk-card::before {
           content: '';
           position: absolute;
           top: 0;
-          left: 20%;
-          right: 20%;
+          left: 15%;
+          right: 15%;
           height: 1px;
           background: linear-gradient(
             90deg,
             transparent,
-            rgba(255, 255, 255, 0.18),
+            rgba(255,255,255,0.14),
             transparent
           );
           pointer-events: none;
         }
 
-        /* ─── Footer ────────────────────────────────────────── */
+        /* Acento esquina */
+        .bk-card::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 18px;
+          height: 18px;
+          border-top: 1px solid ${primaryColor}40;
+          border-right: 1px solid ${primaryColor}40;
+          border-top-right-radius: 24px;
+          pointer-events: none;
+        }
+
+        /* ── Footer ─────────────────────────────────────────────── */
         .bk-footer {
+          margin-top: 28px;
           display: flex;
           align-items: center;
           gap: 6px;
-          font-size: 11px;
-          color: var(--text-muted);
-          font-weight: 400;
+          font-size: 10px;
+          color: var(--text-ghost);
+          letter-spacing: 0.06em;
         }
 
         .bk-footer a {
-          color: var(--text-secondary);
-          font-weight: 600;
+          color: var(--text-dim);
           text-decoration: none;
+          font-weight: 500;
+          letter-spacing: 0.04em;
           transition: color 0.15s;
         }
 
-        .bk-footer a:hover {
-          color: var(--color-brand);
-        }
+        .bk-footer a:hover { color: var(--brand); }
 
-        /* ─── Responsive ────────────────────────────────────── */
+        /* ── Responsive ─────────────────────────────────────────── */
         @media (max-width: 480px) {
-          .bk-content { padding: 36px 16px 48px; }
-          .bk-card { padding: 24px 20px; border-radius: 22px; }
-          .bk-salon-name { font-size: 1.875rem; }
+          .bk-root  { padding: 40px 16px 56px; }
+          .bk-card  { padding: 24px 20px; border-radius: 20px; }
         }
 
         @media (min-width: 640px) {
-          .bk-salon-name { font-size: 2.5rem; }
-          .bk-avatar { width: 96px; height: 96px; border-radius: 28px; }
+          .bk-avatar { width: 104px; height: 104px; border-radius: 26px; }
         }
       `}</style>
 
-      <div className="bk-root">
-        {/* Fondo con orbs */}
-        <div className="bk-bg">
-          <div className="bk-orb-1" />
-          <div className="bk-orb-2" />
-          <div className="bk-noise" />
-        </div>
+      {/* ── Fondo ── */}
+      <div className="bk-bg">
+        <div className="bk-mesh" />
+        <div className="bk-lightline" />
+        <div className="bk-grain" />
+      </div>
 
-        {/* Contenido */}
-        <div className="bk-content">
-          {/* ── Cabecera del salón ── */}
-          <header className="bk-salon-header">
+      {/* ── Contenido ── */}
+      <div className="bk-root">
+        <div className="bk-inner">
+          {/* Header del salón */}
+          <header className="bk-header">
             {/* Badge live */}
-            <div className="bk-live-badge">
-              <div className="bk-live-dot" />
+            <div className="bk-badge">
+              <div className="bk-badge-dot" />
               Reservas abiertas
             </div>
 
             {/* Avatar */}
             <div className="bk-avatar-wrap">
+              <div className="bk-avatar-ring-outer" />
               <div className="bk-avatar">
                 {salon.logo_url ? (
                   <img src={salon.logo_url} alt={`Logo de ${salon.name}`} />
@@ -414,29 +443,29 @@ export default async function BookPage({ params }: BookPageProps) {
                   <span className="bk-avatar-initials">{initials}</span>
                 )}
               </div>
-              <div className="bk-avatar-ring" />
+              <div className="bk-avatar-ring-inner" />
             </div>
 
             {/* Nombre */}
             <h1 className="bk-salon-name">{salon.name}</h1>
 
-            {/* Dirección si existe */}
+            {/* Dirección */}
             {salon.address && (
-              <p className="bk-salon-address">
+              <p className="bk-address">
                 <span>📍</span>
                 <span>{salon.address}</span>
               </p>
             )}
           </header>
 
-          {/* Divider decorativo */}
+          {/* Divisor */}
           <div className="bk-divider">
-            <div className="bk-divider-line" />
-            <span className="bk-divider-gem">✦</span>
-            <div className="bk-divider-line" />
+            <div className="bk-div-line" />
+            <span className="bk-div-gem">✦</span>
+            <div className="bk-div-line" />
           </div>
 
-          {/* ── Card del widget ── */}
+          {/* Card con el widget */}
           <div className="bk-card">
             <BookingWidget
               salon={salon as SalonPublicData}
@@ -446,7 +475,7 @@ export default async function BookPage({ params }: BookPageProps) {
 
           {/* Footer */}
           <footer className="bk-footer">
-            <span>Reservas gestionadas por</span>
+            <span>Reservas por</span>
             <a
               href="https://beautysyncsv.com"
               target="_blank"
@@ -477,41 +506,66 @@ function SalonInactivePage({
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #0D0C0B;
+          background: #080706;
           padding: 24px;
-          font-family: var(--font-jakarta), var(--font-inter), sans-serif;
+          font-family: var(--font-jakarta), sans-serif;
         }
         .si-card {
           text-align: center;
-          max-width: 320px;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 24px;
-          padding: 40px 32px;
+          max-width: 300px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 20px;
+          padding: 40px 28px;
           backdrop-filter: blur(20px);
         }
         .si-icon {
-          font-size: 40px;
-          margin-bottom: 20px;
-          display: block;
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: rgba(255,45,85,0.08);
+          border: 1px solid rgba(255,45,85,0.22);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 20px;
+          flex-shrink: 0;
         }
         .si-title {
           font-family: var(--font-cormorant), Georgia, serif;
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: #F5F2EE;
+          font-size: 1.4rem;
+          font-weight: 300;
+          color: rgba(245,242,238,0.9);
           margin-bottom: 10px;
           line-height: 1.2;
+          letter-spacing: -0.02em;
         }
         .si-desc {
-          font-size: 0.875rem;
-          color: rgba(245, 242, 238, 0.45);
-          line-height: 1.6;
+          font-size: 13px;
+          color: rgba(245,242,238,0.45);
+          line-height: 1.65;
+          letter-spacing: 0.02em;
         }
       `}</style>
       <div className="si-root">
         <div className="si-card">
-          <span className="si-icon">💇‍♀️</span>
+          <div className="si-icon">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 22 22"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M11 7v5M11 15h.01M9.27 3.5L1.5 17a2 2 0 001.73 3h15.54a2 2 0 001.73-3L12.73 3.5a2 2 0 00-3.46 0z"
+                stroke="rgba(255,45,85,0.55)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
           <h1 className="si-title">
             {reason === "subscription"
               ? "Reservas temporalmente no disponibles"

@@ -4,255 +4,290 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "BeautySync — El salón que trabaja solo",
   description:
-    "Automatiza la agenda de tu salón de belleza. Citas online 24/7, recordatorios automáticos y un dashboard premium para que tú solo te encargues de lo que amas.",
+    "Automatiza la agenda de tu salón de belleza. Citas online 24/7, recordatorios automáticos y métricas reales para que tú te enfoques en lo que amas.",
 };
 
 export default function LandingPage() {
   return (
-    <main className="landing">
-      {/* ── NAV ──────────────────────────────────────────────────────── */}
-      <nav className="nav">
-        <span className="nav-logo">BeautySync</span>
-        <div className="nav-links">
+    <main className="bs-landing">
+      {/* ── NAV ─────────────────────────────────────────────────────── */}
+      <nav className="bs-nav">
+        <div className="bs-nav-logo">
+          <div className="bs-logo-box">
+            <span>BS</span>
+          </div>
+          <span className="bs-logo-name">BeautySync</span>
+        </div>
+        <div className="bs-nav-links">
           <a href="#features">Funciones</a>
           <a href="#how">Cómo funciona</a>
           <a href="#pricing">Precios</a>
         </div>
-        <Link href="/register" className="nav-cta">
-          Comenzar gratis
-        </Link>
+        <div className="bs-nav-right">
+          <Link href="/login" className="bs-nav-login">
+            Iniciar sesión
+          </Link>
+          <Link href="/register" className="bs-btn-nav">
+            Prueba gratis
+          </Link>
+        </div>
       </nav>
 
-      {/* ── HERO ─────────────────────────────────────────────────────── */}
-      <section className="hero">
-        <div className="hero-bg">
-          <div className="orb orb-1" />
-          <div className="orb orb-2" />
-          <div className="orb orb-3" />
-          <div className="grid-lines" />
+      {/* ── HERO ────────────────────────────────────────────────────── */}
+      <section className="bs-hero">
+        {/* Fondo con ruido y acento radial */}
+        <div className="bs-hero-bg" aria-hidden="true">
+          <div className="bs-radial-1" />
+          <div className="bs-radial-2" />
+          <div className="bs-noise" />
+          <div className="bs-grid" />
         </div>
 
-        <div className="hero-content">
-          <div className="hero-badge">
-            <span className="badge-dot" />
-            14 días gratis · Sin tarjeta de crédito
-          </div>
-
-          <h1 className="hero-title">
-            El salón que
-            <br />
-            <em>trabaja solo</em>
-          </h1>
-
-          <p className="hero-sub">
-            Agenda online 24/7, recordatorios automáticos y un dashboard
-            <br className="hide-sm" />
-            elegante para que tú te enfoque en lo que realmente importa.
-          </p>
-
-          <div className="hero-actions">
-            <Link href="/register" className="btn-hero-primary">
-              Empieza tu prueba gratuita
-              <span className="btn-arrow">→</span>
-            </Link>
-            <a href="#how" className="btn-hero-ghost">
-              Ver cómo funciona
-            </a>
-          </div>
-
-          {/* Social proof */}
-          <div className="social-proof">
-            <div className="avatars">
-              {["M", "S", "L", "A", "K"].map((l) => (
-                <div key={l} className="avatar">
-                  {l}
-                </div>
-              ))}
+        <div className="bs-hero-inner">
+          {/* Columna izquierda */}
+          <div className="bs-hero-left">
+            <div className="bs-hero-eyebrow">
+              <span className="bs-eyebrow-line" />
+              Para salones en El Salvador
             </div>
-            <p>
-              <strong>+500 salones</strong> ya automatizaron su agenda
+
+            <h1 className="bs-hero-h1">
+              Tu salón,
+              <br />
+              en{" "}
+              <em>
+                piloto
+                <br />
+                automático.
+              </em>
+            </h1>
+
+            <p className="bs-hero-p">
+              Citas agendadas solas. Recordatorios que llegan solos. Clientas
+              que vuelven. Tú, enfocada en lo que haces mejor — no en el
+              teléfono.
             </p>
-          </div>
-        </div>
 
-        {/* Dashboard mockup */}
-        <div className="hero-mockup">
-          <div className="mockup-window">
-            <div className="mockup-bar">
-              <span className="dot r" />
-              <span className="dot y" />
-              <span className="dot g" />
-              <span className="mockup-url">beautysync.app/dashboard</span>
+            <div className="bs-hero-actions">
+              <Link href="/register" className="bs-btn-primary">
+                Empezar gratis — 14 días
+              </Link>
+              <a href="#how" className="bs-btn-ghost">
+                Ver cómo funciona <span className="bs-arrow">→</span>
+              </a>
             </div>
-            <div className="mockup-body">
-              <div className="mock-sidebar">
-                <div className="mock-logo-sm" />
-                {["Inicio", "Servicios", "Clientas", "Config"].map((l) => (
-                  <div key={l} className={`mock-nav-item ${l === "Inicio" ? "active" : ""}`}>
-                    <div className="mock-nav-dot" />
-                    <span>{l}</span>
+
+            <div className="bs-social-proof">
+              <div className="bs-avatars">
+                {["V", "S", "A", "L", "K"].map((l) => (
+                  <div key={l} className="bs-avatar-bubble">
+                    {l}
                   </div>
                 ))}
               </div>
-              <div className="mock-main">
-                <p className="mock-greeting">Citas de hoy</p>
-                <div className="mock-stats">
+              <p>+500 salones ya automatizaron su agenda</p>
+            </div>
+          </div>
+
+          {/* Columna derecha — widget mockup */}
+          <div className="bs-hero-right">
+            <div className="bs-mockup-wrap">
+              <div className="bs-mockup-corner" aria-hidden="true" />
+              <div className="bs-mockup-topbar">
+                <span className="bs-mock-dot" />
+                <span className="bs-mock-dot" />
+                <span className="bs-mock-dot" />
+              </div>
+              <div className="bs-mockup-body">
+                <div className="bs-mock-label">
+                  Salón Lumière — Agendar cita
+                </div>
+
+                {/* Selector de días */}
+                <div className="bs-mock-days">
                   {[
-                    { label: "Total", val: "8" },
-                    { label: "Pendientes", val: "3" },
-                    { label: "Completadas", val: "5" },
-                    { label: "Ingresos", val: "$240" },
-                  ].map((s) => (
-                    <div key={s.label} className="mock-stat">
-                      <span className="mock-stat-val">{s.val}</span>
-                      <span className="mock-stat-label">{s.label}</span>
+                    { n: "28", d: "Lun" },
+                    { n: "29", d: "Mar" },
+                    { n: "30", d: "Mié", active: true },
+                    { n: "01", d: "Jue" },
+                    { n: "02", d: "Vie" },
+                    { n: "03", d: "Sáb" },
+                  ].map((day) => (
+                    <div
+                      key={day.n}
+                      className={`bs-mock-day${day.active ? " active" : ""}`}
+                    >
+                      <span className="bs-mock-day-n">{day.n}</span>
+                      <span className="bs-mock-day-d">{day.d}</span>
                     </div>
                   ))}
                 </div>
-                {[
-                  { name: "María García", time: "10:00 AM", service: "Corte + Tinte", status: "confirmed" },
-                  { name: "Sofía Ramos", time: "11:30 AM", service: "Manicure", status: "in_progress" },
-                  { name: "Laura Pérez", time: "1:00 PM", service: "Peinado", status: "scheduled" },
-                ].map((a) => (
-                  <div key={a.name} className={`mock-appt mock-appt-${a.status}`}>
-                    <div className="mock-avatar">{a.name[0]}</div>
-                    <div className="mock-appt-info">
-                      <span className="mock-appt-name">{a.name}</span>
-                      <span className="mock-appt-detail">
-                        {a.time} · {a.service}
-                      </span>
+
+                {/* Slots de hora */}
+                <div className="bs-mock-slots">
+                  {[
+                    { t: "9:00", s: "taken" },
+                    { t: "9:30", s: "taken" },
+                    { t: "10:00", s: "active" },
+                    { t: "10:30", s: "" },
+                    { t: "11:00", s: "" },
+                    { t: "11:30", s: "taken" },
+                  ].map((slot) => (
+                    <div
+                      key={slot.t}
+                      className={`bs-mock-slot${slot.s ? ` ${slot.s}` : ""}`}
+                    >
+                      {slot.t}
                     </div>
-                    <div className={`mock-badge mock-badge-${a.status}`}>
-                      {a.status === "confirmed" ? "Confirmada" : a.status === "in_progress" ? "En curso" : "Agendada"}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+
+                {/* Servicio seleccionado */}
+                <div className="bs-mock-service">
+                  <span className="bs-mock-svc-name">Corte + tinte</span>
+                  <span className="bs-mock-svc-price">$35.00</span>
+                </div>
+
+                {/* Botón confirmar */}
+                <div className="bs-mock-confirm">Confirmar cita</div>
+              </div>
+
+              {/* Live indicator */}
+              <div className="bs-live-pill">
+                <span className="bs-live-dot" />
+                Disponible 24h
               </div>
             </div>
           </div>
-          {/* Realtime indicator */}
-          <div className="realtime-pill">
-            <span className="live-dot" />
-            Actualización en tiempo real
-          </div>
         </div>
       </section>
 
-      {/* ── LOGOS / TRUST ────────────────────────────────────────────── */}
-      <section className="trust">
-        <p className="trust-label">Integra con las herramientas que ya usas</p>
-        <div className="trust-logos">
-          {["WhatsApp", "Gmail", "Stripe", "Wompi", "Instagram"].map((b) => (
-            <div key={b} className="trust-logo">
-              {b}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── FEATURES ─────────────────────────────────────────────────── */}
-      <section className="features" id="features">
-        <div className="section-label">Funciones</div>
-        <h2 className="section-title">
-          Todo lo que tu salón
-          <br />
-          <em>necesita, y nada más</em>
-        </h2>
-
-        <div className="features-grid">
+      {/* ── STATS BELT ──────────────────────────────────────────────── */}
+      <section className="bs-stats">
+        <div className="bs-stats-inner">
           {[
+            { n: "80", u: "%", desc: "Menos tiempo gestionando citas a mano" },
+            { n: "0", u: "", desc: "Citas perdidas por falta de recordatorio" },
             {
-              icon: "◈",
-              title: "Agenda online 24/7",
-              desc: "Tus clientas reservan cuando quieren, desde su teléfono. Sin llamadas, sin mensajes de WhatsApp a las 11pm.",
-              accent: "blush",
+              n: "24",
+              u: "h",
+              desc: "Tu salón acepta citas incluso cuando cierras",
             },
-            {
-              icon: "◉",
-              title: "Recordatorios automáticos",
-              desc: "El sistema envía recordatorios por email o WhatsApp 24 horas antes. Cero no-shows, cero estrés.",
-              accent: "gold",
-            },
-            {
-              icon: "◎",
-              title: "Dashboard en tiempo real",
-              desc: "Ve el estado de cada cita al instante. Confirma, inicia o completa con un clic desde cualquier dispositivo.",
-              accent: "blush",
-            },
-            {
-              icon: "◇",
-              title: "Widget de reservas",
-              desc: "Un link único para tu salón. Compártelo en Instagram, WhatsApp o donde quieras. Funciona sin cuenta.",
-              accent: "gold",
-            },
-            {
-              icon: "◈",
-              title: "Control de servicios",
-              desc: "Define tus servicios, duración y precio. El sistema calcula los horarios disponibles automáticamente.",
-              accent: "gold",
-            },
-            {
-              icon: "◉",
-              title: "Sin interrupciones por pago",
-              desc: "Si tu suscripción expira, el sistema te avisa con elegancia. Sin cortes abruptos, siempre con estilo.",
-              accent: "blush",
-            },
-          ].map((f) => (
-            <div key={f.title} className={`feature-card feature-card-${f.accent}`}>
-              <div className={`feature-icon feature-icon-${f.accent}`}>{f.icon}</div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
+          ].map((s) => (
+            <div key={s.n} className="bs-stat-block">
+              <div className="bs-stat-number">
+                <span className="bs-stat-n">{s.n}</span>
+                {s.u && <span className="bs-stat-u">{s.u}</span>}
+              </div>
+              <p className="bs-stat-desc">{s.desc}</p>
+              <div className="bs-stat-line" />
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ─────────────────────────────────────────────── */}
-      <section className="how" id="how">
-        <div className="how-inner">
-          <div className="how-text">
-            <div className="section-label">Cómo funciona</div>
-            <h2 className="section-title left">
-              De la reserva a la
-              <br />
-              <em>cita completada</em>
-            </h2>
-            <p className="how-desc">
-              Un flujo completamente automatizado. Tu clienta reserva, el sistema confirma, recuerda y notifica. Tú solo apareces y haces lo que amas.
-            </p>
-            <Link href="/register" className="btn-primary-landing">
-              Pruébalo gratis 14 días →
-            </Link>
+      {/* ── HOW IT WORKS ────────────────────────────────────────────── */}
+      <section className="bs-how" id="how">
+        <div className="bs-section-inner">
+          <div className="bs-section-eyebrow">
+            <span className="bs-eyebrow-line" />
+            Cómo funciona
           </div>
+          <h2 className="bs-section-h2">
+            Listo en <em>minutos.</em>
+            <br />
+            Funcionando para siempre.
+          </h2>
+          <p className="bs-section-p">
+            Sin configuraciones complicadas. Sin tecnicismos. Solo tu salón
+            digitalizado y corriendo desde el primer día.
+          </p>
 
-          <div className="how-steps">
+          <div className="bs-how-grid">
             {[
               {
                 n: "01",
-                title: "Clienta elige su cita",
-                desc: "Entra al widget, selecciona servicio, fecha y hora disponible.",
+                title: "Crea tu cuenta",
+                body: "Regístrate con tu email. En 2 minutos tienes tu panel listo. No necesitas tarjeta de crédito para empezar.",
               },
               {
                 n: "02",
-                title: "Confirmación automática",
-                desc: "Recibe un email de confirmación al instante. Sin intervención tuya.",
+                title: "Configura tus servicios",
+                body: "Agrega los servicios que ofreces, precios y duración. Tu horario de atención. Listo.",
               },
               {
                 n: "03",
-                title: "Recordatorio 24h antes",
-                desc: "El sistema envía recordatorio automático. Drasticamente menos cancelaciones.",
+                title: "Comparte tu link",
+                body: "Tu salón recibe un link único. Ponlo en tu bio de Instagram, WhatsApp o donde tus clientas te encuentren.",
               },
               {
                 n: "04",
-                title: "Tú ves todo en vivo",
-                desc: "Tu dashboard se actualiza en tiempo real. Gestiona el día con un vistazo.",
+                title: "Las citas llegan solas",
+                body: "Tus clientas agendan, reciben confirmación y recordatorio automático. Tú solo apareces a trabajar.",
               },
-            ].map((s, i) => (
-              <div key={s.n} className={`step ${i % 2 === 0 ? "step-right" : ""}`}>
-                <div className="step-number">{s.n}</div>
-                <div className="step-content">
-                  <h4>{s.title}</h4>
-                  <p>{s.desc}</p>
+            ].map((step) => (
+              <div key={step.n} className="bs-how-cell">
+                <div className="bs-how-n">{step.n}</div>
+                <div className="bs-how-title">{step.title}</div>
+                <div className="bs-how-body">{step.body}</div>
+                <div className="bs-how-bar" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── DIVIDER ─────────────────────────────────────────────────── */}
+      <div className="bs-divider" />
+
+      {/* ── FEATURES ────────────────────────────────────────────────── */}
+      <section className="bs-features" id="features">
+        <div className="bs-section-inner">
+          <div className="bs-section-eyebrow">
+            <span className="bs-eyebrow-line" />
+            Lo que incluye
+          </div>
+          <h2 className="bs-section-h2">
+            Todo lo que tu salón
+            <br />
+            necesita. <em>Nada más.</em>
+          </h2>
+
+          <div className="bs-feat-list">
+            {[
+              {
+                n: "01",
+                name: "Widget de reserva pública",
+                desc: "Tus clientas eligen servicio, día y hora desde tu link personalizado. Sin llamadas. Sin mensajes de WhatsApp preguntando disponibilidad. El sistema valida en tiempo real que el horario esté libre.",
+                tag: "Disponible 24h",
+              },
+              {
+                n: "02",
+                name: "Recordatorios automáticos",
+                desc: "24 horas antes de cada cita, tu clienta recibe un email de recordatorio. Menos no-shows. Menos tiempo persiguiendo confirmaciones.",
+                tag: "Email automático",
+              },
+              {
+                n: "03",
+                name: "Dashboard de métricas",
+                desc: "Cuántas citas tuviste este mes, cuánto ingresaste, cuáles son tus servicios más solicitados, qué clientas volvieron. Tu negocio en números reales.",
+                tag: "Solo Plan Pro",
+              },
+              {
+                n: "04",
+                name: "Tu marca, tu identidad",
+                desc: "Logo propio, color de marca, nombre del salón. Tus clientas ven un sistema profesional que parece tuyo — no una app genérica de terceros.",
+                tag: "Solo Plan Pro",
+              },
+            ].map((feat) => (
+              <div key={feat.n} className="bs-feat-item">
+                <div className="bs-feat-left">
+                  <div className="bs-feat-n">{feat.n}</div>
+                  <div className="bs-feat-name">{feat.name}</div>
+                </div>
+                <div className="bs-feat-right">
+                  <p className="bs-feat-desc">{feat.desc}</p>
+                  <span className="bs-feat-tag">{feat.tag}</span>
                 </div>
               </div>
             ))}
@@ -260,329 +295,1291 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ─────────────────────────────────────────────── */}
-      <section className="testimonials">
-        <div className="section-label center">Testimonios</div>
-        <h2 className="section-title center">
-          Lo que dicen las
-          <br />
-          <em>dueñas de salón</em>
-        </h2>
+      {/* ── DIVIDER ─────────────────────────────────────────────────── */}
+      <div className="bs-divider" />
 
-        <div className="testimonials-grid">
-          {[
-            {
-              quote: "Antes perdía horas coordinando citas por WhatsApp. Ahora mis clientas reservan solas y yo solo llego a trabajar.",
-              name: "Valentina M.",
-              role: "Salón Valentina Beauty, San Salvador",
-            },
-            {
-              quote: "El diseño es precioso. Mis clientas me preguntan cómo hice el sistema de reservas tan elegante. BeautySync lo hizo por mí.",
-              name: "Sofía R.",
-              role: "Studio Sofía, Santa Tecla",
-            },
-            {
-              quote: "Los recordatorios automáticos redujeron mis cancelaciones a casi cero. Ya no tengo que perseguir a nadie.",
-              name: "Andrea L.",
-              role: "Nails & Co., San Miguel",
-            },
-          ].map((t) => (
-            <div key={t.name} className="testimonial-card">
-              <div className="quote-mark">&ldquo;</div>
-              <p className="quote-text">{t.quote}</p>
-              <div className="quote-author">
-                <div className="quote-avatar">{t.name[0]}</div>
-                <div>
-                  <strong>{t.name}</strong>
-                  <span>{t.role}</span>
+      {/* ── TESTIMONIALS ────────────────────────────────────────────── */}
+      <section className="bs-testimonials">
+        <div className="bs-section-inner">
+          <div className="bs-section-eyebrow">
+            <span className="bs-eyebrow-line" />
+            Salones que ya usan BeautySync
+          </div>
+          <h2 className="bs-section-h2">
+            Lo que dicen
+            <br />
+            las que ya <em>automatizaron.</em>
+          </h2>
+
+          <div className="bs-t-grid">
+            {[
+              {
+                quote:
+                  "Antes pasaba media hora al día confirmando citas por WhatsApp. Ahora mis clientas llegan y ya saben su hora. Yo no hice nada.",
+                name: "María González",
+                salon: "Salón Lumière, San Salvador",
+              },
+              {
+                quote:
+                  "El widget en mi bio de Instagram cambió todo. Mis clientas agendan a las 10 de la noche cuando yo ya estoy dormida.",
+                name: "Sofía Castro",
+                salon: "Studio SC, Santa Tecla",
+              },
+              {
+                quote:
+                  "Los recordatorios automáticos redujeron mis cancelaciones a casi cero. Ya no tengo que perseguir a nadie por WhatsApp.",
+                name: "Andrea López",
+                salon: "Nails & Co., San Miguel",
+              },
+            ].map((t) => (
+              <div key={t.name} className="bs-t-card">
+                <div className="bs-t-quote-mark">&ldquo;</div>
+                <p className="bs-t-quote">{t.quote}</p>
+                <div className="bs-t-bottom">
+                  <div className="bs-t-avatar">{t.name[0]}</div>
+                  <div>
+                    <div className="bs-t-name">{t.name}</div>
+                    <div className="bs-t-salon">{t.salon}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── PRICING ──────────────────────────────────────────────────── */}
-      <section className="pricing" id="pricing">
-        <div className="section-label center">Precios</div>
-        <h2 className="section-title center">
-          Simple, transparente,
-          <br />
-          <em>sin sorpresas</em>
-        </h2>
+      {/* ── DIVIDER ─────────────────────────────────────────────────── */}
+      <div className="bs-divider" />
 
-        <div className="pricing-grid">
-          {[
-            {
-              name: "Starter",
-              price: "$19",
-              period: "/mes",
-              desc: "Para salones que están comenzando",
-              features: ["Agenda online 24/7", "Recordatorios automáticos", "Dashboard en tiempo real", "1 usuario", "Soporte por email"],
-              cta: "Comenzar gratis",
-              highlighted: false,
-            },
-            {
-              name: "Pro",
-              price: "$39",
-              period: "/mes",
-              desc: "El favorito de las dueñas de salón",
-              features: ["Todo de Starter", "Múltiples usuarios", "Widget personalizable", "Reportes avanzados", "Soporte prioritario", "Integración WhatsApp"],
-              cta: "Comenzar gratis",
-              highlighted: true,
-            },
-          ].map((p) => (
-            <div key={p.name} className={`pricing-card ${p.highlighted ? "pricing-card-featured" : ""}`}>
-              {p.highlighted && <div className="pricing-badge">Más popular</div>}
-              <div className="pricing-header">
-                <h3>{p.name}</h3>
-                <p className="pricing-desc">{p.desc}</p>
-                <div className="pricing-price">
-                  <span className="price-amount">{p.price}</span>
-                  <span className="price-period">{p.period}</span>
-                </div>
+      {/* ── PRICING ─────────────────────────────────────────────────── */}
+      <section className="bs-pricing" id="pricing">
+        <div className="bs-section-inner">
+          <div className="bs-section-eyebrow">
+            <span className="bs-eyebrow-line" />
+            Precios
+          </div>
+          <h2 className="bs-section-h2">
+            Simple.
+            <br />
+            <em>Sin sorpresas.</em>
+          </h2>
+          <p className="bs-section-p">
+            14 días de prueba gratuita en cualquier plan. Sin tarjeta de crédito
+            para empezar.
+          </p>
+
+          <div className="bs-pricing-grid">
+            {/* Plan Basic */}
+            <div className="bs-plan-card">
+              <div className="bs-plan-name">Basic</div>
+              <div className="bs-plan-price">
+                <span className="bs-plan-currency">$</span>
+                <span className="bs-plan-amount">19</span>
               </div>
-              <ul className="pricing-features">
-                {p.features.map((f) => (
-                  <li key={f}>
-                    <span className="check">✓</span>
+              <div className="bs-plan-period">por mes</div>
+              <div className="bs-plan-divider" />
+              <ul className="bs-plan-features">
+                {[
+                  "Widget de reserva pública",
+                  "Recordatorios automáticos",
+                  "Configuración de horarios",
+                  "Hasta 5 servicios",
+                  "Soporte por email",
+                ].map((f) => (
+                  <li key={f} className="bs-plan-feat">
+                    <span className="bs-feat-dot" />
+                    {f}
+                  </li>
+                ))}
+                {["Dashboard de métricas", "Personalización de marca"].map(
+                  (f) => (
+                    <li key={f} className="bs-plan-feat dim">
+                      <span className="bs-feat-dot" />
+                      {f}
+                    </li>
+                  ),
+                )}
+              </ul>
+              <Link href="/register" className="bs-plan-cta ghost">
+                Empezar prueba gratis
+              </Link>
+              <p className="bs-plan-trial">14 días gratis, sin tarjeta</p>
+            </div>
+
+            {/* Plan Pro */}
+            <div className="bs-plan-card featured">
+              <div className="bs-plan-corner" aria-hidden="true" />
+              <div className="bs-plan-badge">Más popular</div>
+              <div className="bs-plan-name">Pro</div>
+              <div className="bs-plan-price">
+                <span className="bs-plan-currency">$</span>
+                <span className="bs-plan-amount">39</span>
+              </div>
+              <div className="bs-plan-period">por mes</div>
+              <div className="bs-plan-divider" />
+              <ul className="bs-plan-features">
+                {[
+                  "Widget de reserva pública",
+                  "Recordatorios automáticos",
+                  "Configuración de horarios",
+                  "Servicios ilimitados",
+                  "Dashboard de métricas completo",
+                  "Logo y color de marca",
+                  "Exportación de reportes PDF",
+                ].map((f) => (
+                  <li key={f} className="bs-plan-feat">
+                    <span className="bs-feat-dot" />
                     {f}
                   </li>
                 ))}
               </ul>
-              <Link href="/register" className={`pricing-cta ${p.highlighted ? "pricing-cta-featured" : ""}`}>
-                {p.cta}
+              <Link href="/register" className="bs-plan-cta">
+                Empezar prueba gratis
               </Link>
-              <p className="pricing-trial">14 días gratis incluidos</p>
+              <p className="bs-plan-trial">14 días gratis, sin tarjeta</p>
             </div>
-          ))}
+          </div>
         </div>
       </section>
 
-      {/* ── CTA FINAL ────────────────────────────────────────────────── */}
-      <section className="cta-final">
-        <div className="cta-bg">
-          <div className="orb orb-cta-1" />
-          <div className="orb orb-cta-2" />
+      {/* ── CTA FINAL ───────────────────────────────────────────────── */}
+      <section className="bs-cta-final">
+        <div className="bs-cta-bg" aria-hidden="true">
+          <div className="bs-cta-radial" />
+          <div className="bs-noise" />
         </div>
-        <div className="cta-content">
-          <h2 className="cta-title">
+        <div className="bs-cta-inner">
+          <h2 className="bs-cta-h2">
             Tu salón merece
             <br />
-            <em>trabajar solo</em>
+            trabajar <em>por ti.</em>
           </h2>
-          <p className="cta-sub">
-            Únete a más de 500 salones que ya automatizaron su agenda.
-            <br />
-            14 días gratis, sin tarjeta de crédito.
+          <p className="bs-cta-p">
+            14 días gratis. Sin tarjeta de crédito. Sin compromiso. Solo tu
+            salón funcionando mejor desde el primer día.
           </p>
-          <Link href="/register" className="btn-cta">
-            Empieza hoy mismo →
-          </Link>
+          <div className="bs-cta-actions">
+            <Link href="/register" className="bs-btn-primary large">
+              Empezar gratis ahora
+            </Link>
+            <a href="#how" className="bs-btn-ghost">
+              Ver cómo funciona <span className="bs-arrow">→</span>
+            </a>
+          </div>
+          <p className="bs-cta-note">
+            beautysyncsv.com · Hecho para El Salvador
+          </p>
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────────────── */}
-      <footer className="footer">
-        <div className="footer-inner">
-          <div className="footer-brand">
-            <span className="footer-logo">BeautySync</span>
-            <p>El salón que trabaja solo.</p>
+      {/* ── FOOTER ──────────────────────────────────────────────────── */}
+      <footer className="bs-footer">
+        <div className="bs-footer-inner">
+          <div className="bs-footer-brand">
+            <div className="bs-footer-logo-wrap">
+              <div className="bs-logo-box sm">
+                <span>BS</span>
+              </div>
+              <span className="bs-footer-logo-name">BeautySync</span>
+            </div>
+            <p className="bs-footer-tagline">El salón que trabaja solo.</p>
           </div>
-          <div className="footer-links">
+          <div className="bs-footer-links">
             <a href="#features">Funciones</a>
             <a href="#pricing">Precios</a>
             <Link href="/login">Iniciar sesión</Link>
             <Link href="/register">Registro</Link>
           </div>
         </div>
-        <div className="footer-bottom">
+        <div className="bs-footer-bottom">
           <p>© 2026 BeautySync · Todos los derechos reservados</p>
         </div>
       </footer>
 
-      {/* ── STYLES ───────────────────────────────────────────────────── */}
+      {/* ── ESTILOS ─────────────────────────────────────────────────── */}
       <style>{`
-        /* ── Reset & base ── */
-        .landing { font-family: var(--font-inter, 'Inter', sans-serif); background: #FEFCF8; color: #1A1A2E; overflow-x: hidden; }
-        .hide-sm { display: block; }
-        @media (max-width: 640px) { .hide-sm { display: none; } }
 
-        /* ── NAV ── */
-        .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 4vw; background: rgba(254,252,248,0.85); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(212,55,95,.08); }
-        .nav-logo { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: 1.5rem; font-weight: 500; color: #D4375F; letter-spacing: .02em; }
-        .nav-links { display: flex; gap: 2rem; }
-        .nav-links a { font-size: .875rem; color: #6B7280; text-decoration: none; transition: color .2s; }
-        .nav-links a:hover { color: #D4375F; }
-        .nav-cta { background: #D4375F; color: #fff; font-size: .875rem; font-weight: 600; padding: .55rem 1.25rem; border-radius: 999px; text-decoration: none; transition: background .2s, transform .15s; }
-        .nav-cta:hover { background: #C1304F; transform: scale(1.02); }
-        @media (max-width: 640px) { .nav-links { display: none; } }
+        /* ── Reset & base ─────────────────────────────────────────── */
+        .bs-landing {
+          font-family: var(--font-jakarta, 'Plus Jakarta Sans', sans-serif);
+          background: #080706;
+          color: rgba(245,242,238,0.9);
+          overflow-x: hidden;
+        }
 
-        /* ── HERO ── */
-        .hero { position: relative; min-height: 100vh; display: flex; align-items: center; gap: 5vw; padding: 7rem 6vw 4rem; overflow: hidden; }
-        .hero-bg { position: absolute; inset: 0; pointer-events: none; }
-        .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .35; }
-        .orb-1 { width: 500px; height: 500px; background: #D4375F; top: -120px; right: -100px; }
-        .orb-2 { width: 300px; height: 300px; background: #C9A227; bottom: 0; left: 10%; }
-        .orb-3 { width: 200px; height: 200px; background: #D4375F; top: 40%; left: 30%; opacity: .15; }
-        .grid-lines { position: absolute; inset: 0; background-image: linear-gradient(rgba(212,55,95,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(212,55,95,.04) 1px, transparent 1px); background-size: 60px 60px; }
-        .hero-content { position: relative; flex: 1; max-width: 540px; z-index: 1; }
-        .hero-badge { display: inline-flex; align-items: center; gap: .5rem; background: rgba(212,55,95,.08); color: #D4375F; font-size: .8125rem; font-weight: 600; padding: .4rem 1rem; border-radius: 999px; border: 1px solid rgba(212,55,95,.15); margin-bottom: 1.75rem; letter-spacing: .02em; }
-        .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #D4375F; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .5; transform: scale(1.5); } }
-        .hero-title { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: clamp(3rem, 6vw, 5.5rem); font-weight: 500; line-height: 1.05; color: #1A1A2E; margin: 0 0 1.5rem; letter-spacing: -.01em; }
-        .hero-title em { color: #D4375F; font-style: italic; }
-        .hero-sub { font-size: 1.0625rem; line-height: 1.7; color: #4B5563; margin: 0 0 2.5rem; }
-        .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2.5rem; }
-        .btn-hero-primary { display: inline-flex; align-items: center; gap: .5rem; background: #D4375F; color: #fff; font-weight: 700; font-size: 1rem; padding: .9rem 1.75rem; border-radius: 999px; text-decoration: none; transition: background .2s, transform .15s, box-shadow .2s; box-shadow: 0 4px 20px rgba(212,55,95,.3); }
-        .btn-hero-primary:hover { background: #C1304F; transform: translateY(-1px); box-shadow: 0 8px 28px rgba(212,55,95,.4); }
-        .btn-arrow { font-size: 1.1rem; transition: transform .2s; }
-        .btn-hero-primary:hover .btn-arrow { transform: translateX(3px); }
-        .btn-hero-ghost { display: inline-flex; align-items: center; color: #6B7280; font-weight: 500; font-size: .9375rem; text-decoration: none; border-bottom: 1px solid transparent; transition: color .2s, border-color .2s; padding-bottom: 2px; }
-        .btn-hero-ghost:hover { color: #D4375F; border-color: #D4375F; }
-        .social-proof { display: flex; align-items: center; gap: 1rem; }
-        .avatars { display: flex; }
-        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #F9D0DB; border: 2px solid #FEFCF8; color: #D4375F; font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-left: -8px; }
-        .avatar:first-child { margin-left: 0; }
-        .social-proof p { font-size: .875rem; color: #6B7280; }
-        .social-proof strong { color: #1A1A2E; }
+        /* ── Variables ────────────────────────────────────────────── */
+        .bs-landing {
+          --rose: #FF2D55;
+          --rose-dim: rgba(255,45,85,0.55);
+          --rose-ghost: rgba(255,45,85,0.08);
+          --rose-border: rgba(255,45,85,0.22);
+          --bg: #080706;
+          --surface: #0E0C0B;
+          --surface2: #131110;
+          --border: rgba(255,255,255,0.055);
+          --text-primary: rgba(245,242,238,0.9);
+          --text-mid: rgba(245,242,238,0.45);
+          --text-dim: rgba(245,242,238,0.18);
+          --serif: var(--font-cormorant, 'Cormorant Garamond', Georgia, serif);
+          --sans: var(--font-jakarta, 'Plus Jakarta Sans', sans-serif);
+        }
 
-        /* ── MOCKUP ── */
-        .hero-mockup { position: relative; flex: 1; max-width: 520px; z-index: 1; }
-        .mockup-window { background: #fff; border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,.12), 0 4px 20px rgba(212,55,95,.08); border: 1px solid rgba(0,0,0,.06); overflow: hidden; animation: float 4s ease-in-out infinite; }
-        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .mockup-bar { background: #F9FAFB; padding: .7rem 1rem; display: flex; align-items: center; gap: .5rem; border-bottom: 1px solid #F3F4F6; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; }
-        .dot.r { background: #FF5F57; } .dot.y { background: #FEBC2E; } .dot.g { background: #28C840; }
-        .mockup-url { font-size: .7rem; color: #9CA3AF; margin-left: .5rem; background: #F3F4F6; padding: .25rem .75rem; border-radius: 999px; }
-        .mockup-body { display: flex; min-height: 340px; }
-        .mock-sidebar { width: 120px; background: #FEFCF8; border-right: 1px solid #F3F4F6; padding: 1rem .75rem; display: flex; flex-direction: column; gap: .25rem; }
-        .mock-logo-sm { width: 28px; height: 28px; border-radius: 8px; background: #D4375F; margin-bottom: 1rem; }
-        .mock-nav-item { display: flex; align-items: center; gap: .5rem; padding: .4rem .5rem; border-radius: 8px; font-size: .7rem; color: #9CA3AF; }
-        .mock-nav-item.active { background: #D4375F; color: #fff; }
-        .mock-nav-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .6; }
-        .mock-main { flex: 1; padding: 1rem; }
-        .mock-greeting { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: 1rem; font-weight: 500; color: #1A1A2E; margin: 0 0 .75rem; }
-        .mock-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .375rem; margin-bottom: .75rem; }
-        .mock-stat { background: #F9FAFB; border-radius: 8px; padding: .4rem .3rem; text-align: center; }
-        .mock-stat-val { display: block; font-size: .8rem; font-weight: 700; color: #1A1A2E; }
-        .mock-stat-label { display: block; font-size: .55rem; color: #9CA3AF; }
-        .mock-appt { display: flex; align-items: center; gap: .5rem; padding: .5rem; border-radius: 8px; background: #F9FAFB; margin-bottom: .375rem; border-left: 3px solid transparent; }
-        .mock-appt-confirmed { border-left-color: #3B82F6; }
-        .mock-appt-in_progress { border-left-color: #8B5CF6; }
-        .mock-appt-scheduled { border-left-color: #F59E0B; }
-        .mock-avatar { width: 22px; height: 22px; border-radius: 50%; background: #F9D0DB; color: #D4375F; font-size: .6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .mock-appt-info { flex: 1; min-width: 0; }
-        .mock-appt-name { display: block; font-size: .68rem; font-weight: 600; color: #1A1A2E; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .mock-appt-detail { display: block; font-size: .6rem; color: #9CA3AF; }
-        .mock-badge { font-size: .55rem; font-weight: 600; padding: .15rem .4rem; border-radius: 999px; white-space: nowrap; }
-        .mock-badge-confirmed { background: #EFF6FF; color: #3B82F6; }
-        .mock-badge-in_progress { background: #F5F3FF; color: #8B5CF6; }
-        .mock-badge-scheduled { background: #FFFBEB; color: #F59E0B; }
-        .realtime-pill { position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%); background: #1A1A2E; color: #fff; font-size: .75rem; font-weight: 500; padding: .4rem 1rem; border-radius: 999px; display: flex; align-items: center; gap: .5rem; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
-        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22C55E; animation: pulse 1.5s infinite; }
-        @media (max-width: 900px) { .hero { flex-direction: column; padding-top: 6rem; } .hero-mockup { display: none; } .hero-content { max-width: 100%; } }
+        /* ── NAV ──────────────────────────────────────────────────── */
+        .bs-nav {
+          display: flex;
+          align-items: center;
+          padding: 18px 5vw;
+          border-bottom: 1px solid var(--border);
+          position: sticky;
+          top: 0;
+          background: rgba(8,7,6,0.88);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          z-index: 100;
+        }
+        .bs-nav-logo {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
+        }
+        .bs-logo-box {
+          width: 28px;
+          height: 28px;
+          border: 1px solid var(--rose-border);
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .bs-logo-box.sm {
+          width: 22px;
+          height: 22px;
+          border-radius: 5px;
+        }
+        .bs-logo-box span {
+          font-size: 9px;
+          font-weight: 700;
+          color: var(--rose);
+          letter-spacing: -0.03em;
+          font-family: var(--sans);
+        }
+        .bs-logo-name {
+          font-size: 13px;
+          color: rgba(245,242,238,0.6);
+          letter-spacing: 0.07em;
+          font-weight: 400;
+          text-transform: uppercase;
+        }
+        .bs-nav-links {
+          display: flex;
+          gap: 28px;
+          margin-left: 40px;
+        }
+        .bs-nav-links a {
+          font-size: 11px;
+          color: var(--text-dim);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .bs-nav-links a:hover { color: var(--text-mid); }
+        .bs-nav-right {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin-left: auto;
+        }
+        .bs-nav-login {
+          font-size: 11px;
+          color: var(--text-dim);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .bs-nav-login:hover { color: var(--text-mid); }
+        .bs-btn-nav {
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          border-radius: 7px;
+          padding: 8px 18px;
+          font-size: 11px;
+          color: var(--rose-dim);
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          text-decoration: none;
+          transition: all 0.2s;
+          font-family: var(--sans);
+        }
+        .bs-btn-nav:hover {
+          background: rgba(255,45,85,0.15);
+          border-color: rgba(255,45,85,0.42);
+          color: var(--rose);
+        }
 
-        /* ── TRUST ── */
-        .trust { padding: 3rem 6vw; text-align: center; border-top: 1px solid rgba(0,0,0,.06); border-bottom: 1px solid rgba(0,0,0,.06); background: #fff; }
-        .trust-label { font-size: .8125rem; color: #9CA3AF; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 1.5rem; }
-        .trust-logos { display: flex; align-items: center; justify-content: center; gap: 2.5rem; flex-wrap: wrap; }
-        .trust-logo { font-size: .9375rem; font-weight: 600; color: #D1D5DB; letter-spacing: .04em; }
+        @media (max-width: 680px) {
+          .bs-nav-links { display: none; }
+          .bs-nav-login { display: none; }
+        }
 
-        /* ── SECTION COMMONS ── */
-        .section-label { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #D4375F; margin-bottom: .75rem; }
-        .section-label.center { text-align: center; }
-        .section-title { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: clamp(2.25rem, 4vw, 3.5rem); font-weight: 500; line-height: 1.1; color: #1A1A2E; margin: 0 0 3rem; letter-spacing: -.01em; text-align: center; }
-        .section-title.left { text-align: left; }
-        .section-title em { color: #D4375F; font-style: italic; }
+        /* ── HERO ─────────────────────────────────────────────────── */
+        .bs-hero {
+          position: relative;
+          overflow: hidden;
+          padding: 90px 5vw 80px;
+        }
+        .bs-hero-bg {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+        }
+        .bs-radial-1 {
+          position: absolute;
+          width: 600px;
+          height: 600px;
+          top: -200px;
+          right: -100px;
+          background: radial-gradient(circle, rgba(255,45,85,0.12) 0%, transparent 70%);
+          border-radius: 50%;
+        }
+        .bs-radial-2 {
+          position: absolute;
+          width: 400px;
+          height: 400px;
+          bottom: -100px;
+          left: 5%;
+          background: radial-gradient(circle, rgba(255,45,85,0.05) 0%, transparent 70%);
+          border-radius: 50%;
+        }
+        .bs-noise {
+          position: absolute;
+          inset: 0;
+          opacity: 0.025;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+          background-repeat: repeat;
+          background-size: 200px 200px;
+        }
+        .bs-grid {
+          position: absolute;
+          inset: 0;
+          background-image:
+            linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+          background-size: 64px 64px;
+        }
+        .bs-hero-inner {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          grid-template-columns: 1.5fr 1fr;
+          gap: 60px;
+          align-items: start;
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+        .bs-hero-eyebrow {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 10px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: var(--rose-dim);
+          margin-bottom: 28px;
+        }
+        .bs-eyebrow-line {
+          display: inline-block;
+          width: 18px;
+          height: 1px;
+          background: var(--rose-dim);
+          flex-shrink: 0;
+        }
+        .bs-hero-h1 {
+          font-family: var(--serif);
+          font-size: clamp(3rem, 5.5vw, 5.5rem);
+          font-weight: 300;
+          line-height: 1.04;
+          letter-spacing: -0.035em;
+          color: var(--text-primary);
+          margin: 0 0 22px;
+        }
+        .bs-hero-h1 em {
+          font-style: normal;
+          color: var(--rose);
+        }
+        .bs-hero-p {
+          font-size: 15px;
+          color: var(--text-mid);
+          line-height: 1.78;
+          max-width: 440px;
+          margin: 0 0 36px;
+          font-weight: 300;
+        }
+        .bs-hero-actions {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          flex-wrap: wrap;
+          margin-bottom: 40px;
+        }
+        .bs-btn-primary {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          border-radius: 8px;
+          padding: 13px 26px;
+          font-size: 12px;
+          color: var(--rose-dim);
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          text-decoration: none;
+          transition: all 0.25s;
+          font-family: var(--sans);
+          white-space: nowrap;
+        }
+        .bs-btn-primary:hover {
+          background: rgba(255,45,85,0.16);
+          color: var(--rose);
+          border-color: rgba(255,45,85,0.45);
+        }
+        .bs-btn-primary.large {
+          padding: 15px 32px;
+          font-size: 13px;
+        }
+        .bs-btn-ghost {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          color: var(--text-dim);
+          letter-spacing: 0.06em;
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .bs-btn-ghost:hover { color: var(--text-mid); }
+        .bs-arrow { transition: transform 0.2s; }
+        .bs-btn-ghost:hover .bs-arrow { transform: translateX(3px); }
+        .bs-social-proof {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .bs-social-proof p {
+          font-size: 11px;
+          color: var(--text-dim);
+          letter-spacing: 0.04em;
+        }
+        .bs-avatars {
+          display: flex;
+        }
+        .bs-avatar-bubble {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: var(--rose-ghost);
+          border: 1.5px solid var(--surface);
+          color: var(--rose-dim);
+          font-size: 10px;
+          font-weight: 400;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: -8px;
+          outline: 1.5px solid var(--rose-border);
+        }
+        .bs-avatar-bubble:first-child { margin-left: 0; }
 
-        /* ── FEATURES ── */
-        .features { padding: 6rem 6vw; }
-        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
-        .feature-card { background: #fff; border-radius: 20px; padding: 2rem; border: 1px solid rgba(0,0,0,.06); transition: transform .25s, box-shadow .25s, border-color .25s; }
-        .feature-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,.08); }
-        .feature-card-blush:hover { border-color: rgba(212,55,95,.2); }
-        .feature-card-gold:hover { border-color: rgba(201,162,39,.2); }
-        .feature-icon { font-size: 1.75rem; margin-bottom: 1.25rem; }
-        .feature-icon-blush { color: #D4375F; }
-        .feature-icon-gold { color: #C9A227; }
-        .feature-card h3 { font-size: 1.0625rem; font-weight: 700; color: #1A1A2E; margin: 0 0 .625rem; }
-        .feature-card p { font-size: .9375rem; line-height: 1.65; color: #6B7280; margin: 0; }
+        /* ── HERO MOCKUP ──────────────────────────────────────────── */
+        .bs-hero-right {
+          padding-top: 10px;
+        }
+        .bs-mockup-wrap {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          overflow: visible;
+          position: relative;
+          animation: bs-float 5s ease-in-out infinite;
+        }
+        @keyframes bs-float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
+        }
+        .bs-mockup-corner {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 16px;
+          height: 16px;
+          border-top: 1px solid var(--rose-border);
+          border-right: 1px solid var(--rose-border);
+          border-top-right-radius: 14px;
+          pointer-events: none;
+        }
+        .bs-mockup-topbar {
+          background: var(--surface2);
+          border-bottom: 1px solid var(--border);
+          padding: 11px 14px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          border-radius: 14px 14px 0 0;
+        }
+        .bs-mock-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.08);
+          display: inline-block;
+        }
+        .bs-mockup-body {
+          padding: 18px;
+        }
+        .bs-mock-label {
+          font-size: 9px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--text-dim);
+          margin-bottom: 14px;
+        }
+        .bs-mock-days {
+          display: flex;
+          gap: 5px;
+          margin-bottom: 14px;
+        }
+        .bs-mock-day {
+          flex: 1;
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          padding: 7px 4px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .bs-mock-day.active {
+          border-color: var(--rose-border);
+          background: var(--rose-ghost);
+        }
+        .bs-mock-day-n {
+          font-size: 11px;
+          color: var(--text-mid);
+          font-family: var(--serif);
+        }
+        .bs-mock-day.active .bs-mock-day-n { color: var(--rose); }
+        .bs-mock-day-d {
+          font-size: 7px;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: var(--text-dim);
+        }
+        .bs-mock-slots {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 5px;
+          margin-bottom: 14px;
+        }
+        .bs-mock-slot {
+          border: 1px solid var(--border);
+          border-radius: 5px;
+          padding: 7px 8px;
+          font-size: 10px;
+          color: var(--text-dim);
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .bs-mock-slot.taken {
+          opacity: 0.3;
+          cursor: default;
+          text-decoration: line-through;
+        }
+        .bs-mock-slot.active {
+          border-color: var(--rose-border);
+          background: var(--rose-ghost);
+          color: var(--rose);
+        }
+        .bs-mock-service {
+          border: 1px solid var(--rose-border);
+          border-radius: 7px;
+          padding: 9px 11px;
+          background: var(--rose-ghost);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+        }
+        .bs-mock-svc-name {
+          font-size: 11px;
+          color: rgba(255,45,85,0.75);
+        }
+        .bs-mock-svc-price {
+          font-size: 11px;
+          color: var(--rose);
+          font-family: var(--serif);
+        }
+        .bs-mock-confirm {
+          background: rgba(255,45,85,0.14);
+          border: 1px solid var(--rose-border);
+          border-radius: 6px;
+          padding: 9px;
+          font-size: 10px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--rose-dim);
+          text-align: center;
+          cursor: pointer;
+        }
+        .bs-live-pill {
+          position: absolute;
+          bottom: -16px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 5px 14px;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 10px;
+          color: var(--text-dim);
+          letter-spacing: 0.08em;
+          white-space: nowrap;
+        }
+        .bs-live-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #22c55e;
+          display: inline-block;
+          animation: bs-pulse 1.8s infinite;
+        }
+        @keyframes bs-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.4); }
+        }
 
-        /* ── HOW ── */
-        .how { padding: 6rem 6vw; background: #fff; }
-        .how-inner { display: flex; gap: 6vw; align-items: flex-start; max-width: 1100px; margin: 0 auto; }
-        .how-text { flex: 1; position: sticky; top: 6rem; }
-        .how-desc { font-size: 1rem; line-height: 1.7; color: #6B7280; margin: 0 0 2rem; max-width: 400px; }
-        .btn-primary-landing { display: inline-flex; align-items: center; background: #D4375F; color: #fff; font-weight: 700; font-size: .9375rem; padding: .875rem 1.75rem; border-radius: 999px; text-decoration: none; transition: background .2s, transform .15s; }
-        .btn-primary-landing:hover { background: #C1304F; transform: translateY(-1px); }
-        .how-steps { flex: 1; display: flex; flex-direction: column; gap: 0; }
-        .step { display: flex; gap: 1.5rem; padding: 1.75rem; border-radius: 16px; transition: background .2s; }
-        .step:hover { background: #FEFCF8; }
-        .step-number { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: 2.5rem; font-weight: 500; color: rgba(212,55,95,.15); line-height: 1; min-width: 56px; }
-        .step-right .step-number { color: rgba(201,162,39,.2); }
-        .step:hover .step-number { color: #D4375F; }
-        .step-right:hover .step-number { color: #C9A227; }
-        .step-content h4 { font-size: 1.0625rem; font-weight: 700; color: #1A1A2E; margin: 0 0 .375rem; }
-        .step-content p { font-size: .9375rem; line-height: 1.65; color: #6B7280; margin: 0; }
-        @media (max-width: 860px) { .how-inner { flex-direction: column; } .how-text { position: static; } }
+        @media (max-width: 860px) {
+          .bs-hero-inner {
+            grid-template-columns: 1fr;
+          }
+          .bs-hero-right { display: none; }
+        }
 
-        /* ── TESTIMONIALS ── */
-        .testimonials { padding: 6rem 6vw; }
-        .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
-        .testimonial-card { background: #fff; border-radius: 20px; padding: 2rem; border: 1px solid rgba(0,0,0,.06); display: flex; flex-direction: column; gap: 1.25rem; transition: transform .25s, box-shadow .25s; }
-        .testimonial-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,.08); }
-        .quote-mark { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: 4rem; line-height: .8; color: rgba(212,55,95,.2); }
-        .quote-text { font-size: .9375rem; line-height: 1.7; color: #374151; margin: 0; flex: 1; }
-        .quote-author { display: flex; align-items: center; gap: .875rem; }
-        .quote-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #F9D0DB, #D4375F); color: #fff; font-size: .875rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .quote-author strong { display: block; font-size: .9375rem; color: #1A1A2E; }
-        .quote-author span { font-size: .8125rem; color: #9CA3AF; }
+        /* ── STATS ────────────────────────────────────────────────── */
+        .bs-stats {
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          border-bottom: 1px solid var(--border);
+          margin-top: 32px;
+        }
+        .bs-stats-inner {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+        .bs-stat-block {
+          padding: 44px 40px;
+          border-right: 1px solid var(--border);
+          position: relative;
+        }
+        .bs-stat-block:last-child { border-right: none; }
+        .bs-stat-number {
+          display: flex;
+          align-items: baseline;
+          gap: 4px;
+          margin-bottom: 10px;
+        }
+        .bs-stat-n {
+          font-size: 56px;
+          font-weight: 300;
+          font-family: var(--serif);
+          color: var(--text-primary);
+          line-height: 1;
+          letter-spacing: -0.04em;
+        }
+        .bs-stat-u {
+          font-size: 28px;
+          color: var(--rose);
+          font-family: var(--serif);
+          line-height: 1;
+        }
+        .bs-stat-desc {
+          font-size: 11px;
+          color: var(--text-dim);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          line-height: 1.6;
+          max-width: 180px;
+          margin: 0;
+        }
+        .bs-stat-line {
+          position: absolute;
+          bottom: 0;
+          left: 40px;
+          width: 32px;
+          height: 1px;
+          background: var(--rose-border);
+        }
 
-        /* ── PRICING ── */
-        .pricing { padding: 6rem 6vw; background: #fff; }
-        .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; max-width: 780px; margin: 0 auto; }
-        .pricing-card { background: #FEFCF8; border-radius: 24px; padding: 2.25rem; border: 1.5px solid rgba(0,0,0,.08); display: flex; flex-direction: column; gap: 1.5rem; position: relative; }
-        .pricing-card-featured { background: #1A1A2E; border-color: #1A1A2E; }
-        .pricing-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: #D4375F; color: #fff; font-size: .75rem; font-weight: 700; padding: .3rem 1rem; border-radius: 999px; letter-spacing: .04em; white-space: nowrap; }
-        .pricing-header h3 { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: 1.75rem; font-weight: 500; margin: 0 0 .25rem; color: #1A1A2E; }
-        .pricing-card-featured .pricing-header h3 { color: #fff; }
-        .pricing-desc { font-size: .875rem; color: #9CA3AF; margin: 0 0 1rem; }
-        .pricing-price { display: flex; align-items: baseline; gap: .25rem; }
-        .price-amount { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: 3rem; font-weight: 600; color: #D4375F; }
-        .price-period { font-size: .9375rem; color: #9CA3AF; }
-        .pricing-features { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .75rem; flex: 1; }
-        .pricing-features li { display: flex; align-items: center; gap: .75rem; font-size: .9375rem; color: #374151; }
-        .pricing-card-featured .pricing-features li { color: rgba(255,255,255,.8); }
-        .check { color: #D4375F; font-weight: 700; font-size: .9375rem; flex-shrink: 0; }
-        .pricing-cta { display: block; text-align: center; padding: .875rem; border-radius: 999px; font-weight: 700; font-size: .9375rem; text-decoration: none; border: 1.5px solid #D4375F; color: #D4375F; transition: background .2s, color .2s; }
-        .pricing-cta:hover { background: #D4375F; color: #fff; }
-        .pricing-cta-featured { background: #D4375F; color: #fff; border-color: #D4375F; }
-        .pricing-cta-featured:hover { background: #C1304F; border-color: #C1304F; }
-        .pricing-trial { text-align: center; font-size: .8125rem; color: #9CA3AF; margin: 0; }
+        @media (max-width: 640px) {
+          .bs-stats-inner {
+            grid-template-columns: 1fr;
+          }
+          .bs-stat-block {
+            border-right: none;
+            border-bottom: 1px solid var(--border);
+            padding: 32px 24px;
+          }
+          .bs-stat-block:last-child { border-bottom: none; }
+        }
 
-        /* ── CTA FINAL ── */
-        .cta-final { position: relative; padding: 8rem 6vw; text-align: center; overflow: hidden; background: #FEFCF8; }
-        .cta-bg { position: absolute; inset: 0; pointer-events: none; }
-        .orb-cta-1 { width: 600px; height: 600px; background: #D4375F; top: -200px; left: -200px; border-radius: 50%; filter: blur(100px); opacity: .12; position: absolute; }
-        .orb-cta-2 { width: 400px; height: 400px; background: #C9A227; bottom: -150px; right: -100px; border-radius: 50%; filter: blur(80px); opacity: .12; position: absolute; }
-        .cta-content { position: relative; z-index: 1; }
-        .cta-title { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: clamp(2.75rem, 5vw, 5rem); font-weight: 500; line-height: 1.05; color: #1A1A2E; margin: 0 0 1.5rem; }
-        .cta-title em { color: #D4375F; font-style: italic; }
-        .cta-sub { font-size: 1.0625rem; line-height: 1.7; color: #6B7280; margin: 0 auto 2.5rem; max-width: 480px; }
-        .btn-cta { display: inline-flex; align-items: center; gap: .5rem; background: #D4375F; color: #fff; font-weight: 700; font-size: 1.0625rem; padding: 1rem 2.25rem; border-radius: 999px; text-decoration: none; transition: background .2s, transform .15s, box-shadow .2s; box-shadow: 0 8px 28px rgba(212,55,95,.35); letter-spacing: .01em; }
-        .btn-cta:hover { background: #C1304F; transform: translateY(-2px); box-shadow: 0 12px 36px rgba(212,55,95,.45); }
+        /* ── SECTION COMMONS ──────────────────────────────────────── */
+        .bs-section-inner {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 80px 5vw;
+        }
+        .bs-section-eyebrow {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 10px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: var(--rose-dim);
+          margin-bottom: 18px;
+        }
+        .bs-section-h2 {
+          font-family: var(--serif);
+          font-size: clamp(2rem, 4vw, 3.5rem);
+          font-weight: 300;
+          line-height: 1.1;
+          letter-spacing: -0.025em;
+          color: var(--text-primary);
+          margin: 0 0 16px;
+        }
+        .bs-section-h2 em {
+          font-style: normal;
+          color: var(--rose);
+        }
+        .bs-section-p {
+          font-size: 14px;
+          color: var(--text-mid);
+          line-height: 1.78;
+          max-width: 500px;
+          margin: 0 0 48px;
+          font-weight: 300;
+        }
 
-        /* ── FOOTER ── */
-        .footer { background: #1A1A2E; padding: 3rem 6vw 1.5rem; }
-        .footer-inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
-        .footer-brand .footer-logo { font-family: var(--font-cormorant, 'Cormorant Garamond', serif); font-size: 1.5rem; font-weight: 500; color: #fff; display: block; margin-bottom: .25rem; }
-        .footer-brand p { font-size: .875rem; color: rgba(255,255,255,.4); margin: 0; }
-        .footer-links { display: flex; gap: 2rem; flex-wrap: wrap; }
-        .footer-links a { font-size: .875rem; color: rgba(255,255,255,.5); text-decoration: none; transition: color .2s; }
-        .footer-links a:hover { color: #D4375F; }
-        .footer-bottom { border-top: 1px solid rgba(255,255,255,.08); padding-top: 1.5rem; }
-        .footer-bottom p { font-size: .8125rem; color: rgba(255,255,255,.3); margin: 0; text-align: center; }
+        /* ── HOW IT WORKS ─────────────────────────────────────────── */
+        .bs-how {
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          border-bottom: 1px solid var(--border);
+        }
+        .bs-how-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1px;
+          background: var(--border);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          overflow: hidden;
+        }
+        .bs-how-cell {
+          background: var(--surface);
+          padding: 34px 30px;
+          position: relative;
+          overflow: hidden;
+          transition: background 0.2s;
+        }
+        .bs-how-cell:hover { background: var(--surface2); }
+        .bs-how-n {
+          font-size: 11px;
+          color: var(--rose-dim);
+          letter-spacing: 0.12em;
+          margin-bottom: 16px;
+          font-weight: 400;
+        }
+        .bs-how-title {
+          font-size: 17px;
+          font-weight: 400;
+          font-family: var(--serif);
+          color: var(--text-primary);
+          margin-bottom: 8px;
+          letter-spacing: -0.01em;
+        }
+        .bs-how-body {
+          font-size: 13px;
+          color: var(--text-mid);
+          line-height: 1.72;
+          font-weight: 300;
+        }
+        .bs-how-bar {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          height: 1px;
+          background: rgba(255,45,85,0.45);
+          width: 0;
+          transition: width 0.4s ease;
+        }
+        .bs-how-cell:hover .bs-how-bar { width: 100%; }
+
+        @media (max-width: 640px) {
+          .bs-how-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── DIVIDER ──────────────────────────────────────────────── */
+        .bs-divider {
+          height: 1px;
+          background: var(--border);
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+
+        /* ── FEATURES ─────────────────────────────────────────────── */
+        .bs-feat-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          overflow: hidden;
+        }
+        .bs-feat-item {
+          background: var(--surface);
+          padding: 30px 34px;
+          display: grid;
+          grid-template-columns: 220px 1fr;
+          gap: 48px;
+          align-items: start;
+          border-bottom: 1px solid var(--border);
+          transition: background 0.2s;
+        }
+        .bs-feat-item:last-child { border-bottom: none; }
+        .bs-feat-item:hover { background: var(--surface2); }
+        .bs-feat-n {
+          font-size: 10px;
+          color: var(--rose-dim);
+          letter-spacing: 0.12em;
+          margin-bottom: 10px;
+          font-weight: 400;
+        }
+        .bs-feat-name {
+          font-size: 16px;
+          font-family: var(--serif);
+          font-weight: 400;
+          color: var(--text-primary);
+          letter-spacing: -0.01em;
+          line-height: 1.3;
+        }
+        .bs-feat-desc {
+          font-size: 13px;
+          color: var(--text-mid);
+          line-height: 1.75;
+          font-weight: 300;
+          margin: 0 0 12px;
+        }
+        .bs-feat-tag {
+          display: inline-block;
+          font-size: 9px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--rose-dim);
+          border: 1px solid var(--rose-border);
+          border-radius: 20px;
+          padding: 3px 10px;
+        }
+
+        @media (max-width: 680px) {
+          .bs-feat-item {
+            grid-template-columns: 1fr;
+            gap: 16px;
+            padding: 24px;
+          }
+        }
+
+        /* ── TESTIMONIALS ─────────────────────────────────────────── */
+        .bs-testimonials {
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          border-bottom: 1px solid var(--border);
+        }
+        .bs-t-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 14px;
+        }
+        .bs-t-card {
+          background: var(--bg);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 28px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          transition: border-color 0.2s;
+        }
+        .bs-t-card:hover { border-color: rgba(255,255,255,0.1); }
+        .bs-t-quote-mark {
+          font-family: var(--serif);
+          font-size: 40px;
+          line-height: 0.8;
+          color: var(--rose-dim);
+        }
+        .bs-t-quote {
+          font-size: 14px;
+          font-family: var(--serif);
+          font-weight: 300;
+          color: var(--text-primary);
+          line-height: 1.65;
+          flex: 1;
+          margin: 0;
+        }
+        .bs-t-bottom {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border-top: 1px solid var(--border);
+          padding-top: 16px;
+        }
+        .bs-t-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-weight: 400;
+          color: var(--rose-dim);
+          flex-shrink: 0;
+        }
+        .bs-t-name {
+          font-size: 12px;
+          color: var(--text-mid);
+          font-weight: 400;
+        }
+        .bs-t-salon {
+          font-size: 10px;
+          color: var(--text-dim);
+          letter-spacing: 0.04em;
+        }
+
+        @media (max-width: 860px) {
+          .bs-t-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── PRICING ──────────────────────────────────────────────── */
+        .bs-pricing .bs-section-inner {
+          padding-bottom: 100px;
+        }
+        .bs-pricing-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
+          max-width: 740px;
+        }
+        .bs-plan-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 32px 28px;
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          position: relative;
+          overflow: hidden;
+          transition: border-color 0.2s;
+        }
+        .bs-plan-card.featured {
+          border-color: var(--rose-border);
+        }
+        .bs-plan-card.featured::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 100px;
+          height: 100px;
+          background: radial-gradient(circle at top right, rgba(255,45,85,0.07), transparent 70%);
+          pointer-events: none;
+        }
+        .bs-plan-corner {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 16px;
+          height: 16px;
+          border-top: 1px solid var(--rose-border);
+          border-right: 1px solid var(--rose-border);
+          border-top-right-radius: 14px;
+        }
+        .bs-plan-badge {
+          display: inline-block;
+          font-size: 9px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--rose-dim);
+          border: 1px solid var(--rose-border);
+          border-radius: 20px;
+          padding: 3px 10px;
+          background: var(--rose-ghost);
+          margin-bottom: 20px;
+          width: fit-content;
+        }
+        .bs-plan-name {
+          font-size: 12px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--text-mid);
+          margin-bottom: 8px;
+          font-weight: 400;
+        }
+        .bs-plan-price {
+          display: flex;
+          align-items: baseline;
+          gap: 2px;
+          margin-bottom: 2px;
+        }
+        .bs-plan-currency {
+          font-size: 20px;
+          font-family: var(--serif);
+          color: var(--text-mid);
+          line-height: 2;
+        }
+        .bs-plan-amount {
+          font-size: 52px;
+          font-weight: 300;
+          font-family: var(--serif);
+          color: var(--text-primary);
+          letter-spacing: -0.04em;
+          line-height: 1;
+        }
+        .bs-plan-period {
+          font-size: 11px;
+          color: var(--text-dim);
+          margin-bottom: 24px;
+        }
+        .bs-plan-divider {
+          height: 1px;
+          background: var(--border);
+          margin-bottom: 20px;
+        }
+        .bs-plan-features {
+          list-style: none;
+          padding: 0;
+          margin: 0 0 28px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          flex: 1;
+        }
+        .bs-plan-feat {
+          font-size: 12px;
+          color: var(--text-mid);
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          line-height: 1.4;
+        }
+        .bs-plan-feat.dim {
+          color: var(--text-dim);
+          text-decoration: line-through;
+          text-decoration-color: rgba(255,255,255,0.1);
+        }
+        .bs-feat-dot {
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: var(--rose-border);
+          flex-shrink: 0;
+        }
+        .bs-plan-feat.dim .bs-feat-dot {
+          background: var(--border);
+        }
+        .bs-plan-cta {
+          display: block;
+          text-align: center;
+          padding: 12px;
+          border-radius: 8px;
+          font-size: 11px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          text-decoration: none;
+          transition: all 0.2s;
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          color: var(--rose-dim);
+          font-family: var(--sans);
+        }
+        .bs-plan-cta:hover {
+          background: rgba(255,45,85,0.16);
+          color: var(--rose);
+        }
+        .bs-plan-cta.ghost {
+          background: transparent;
+          border-color: var(--border);
+          color: var(--text-dim);
+        }
+        .bs-plan-cta.ghost:hover {
+          border-color: var(--text-dim);
+          color: var(--text-mid);
+        }
+        .bs-plan-trial {
+          font-size: 10px;
+          color: var(--text-dim);
+          text-align: center;
+          margin: 10px 0 0;
+          letter-spacing: 0.05em;
+        }
+
+        @media (max-width: 580px) {
+          .bs-pricing-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── CTA FINAL ────────────────────────────────────────────── */
+        .bs-cta-final {
+          position: relative;
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          border-bottom: 1px solid var(--border);
+          padding: 100px 5vw;
+          text-align: center;
+          overflow: hidden;
+        }
+        .bs-cta-bg {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+        }
+        .bs-cta-radial {
+          position: absolute;
+          width: 700px;
+          height: 700px;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: radial-gradient(circle, rgba(255,45,85,0.08) 0%, transparent 65%);
+          border-radius: 50%;
+        }
+        .bs-cta-inner {
+          position: relative;
+          z-index: 1;
+          max-width: 600px;
+          margin: 0 auto;
+        }
+        .bs-cta-h2 {
+          font-family: var(--serif);
+          font-size: clamp(2.5rem, 5vw, 5rem);
+          font-weight: 300;
+          line-height: 1.07;
+          letter-spacing: -0.03em;
+          color: var(--text-primary);
+          margin: 0 0 18px;
+        }
+        .bs-cta-h2 em {
+          font-style: normal;
+          color: var(--rose);
+        }
+        .bs-cta-p {
+          font-size: 14px;
+          color: var(--text-mid);
+          line-height: 1.75;
+          margin: 0 0 36px;
+          font-weight: 300;
+        }
+        .bs-cta-actions {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+        .bs-cta-note {
+          font-size: 10px;
+          color: var(--text-dim);
+          margin: 18px 0 0;
+          letter-spacing: 0.08em;
+        }
+
+        /* ── FOOTER ───────────────────────────────────────────────── */
+        .bs-footer {
+          background: var(--bg);
+          border-top: 1px solid var(--border);
+          padding: 0 5vw;
+        }
+        .bs-footer-inner {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 40px 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 24px;
+        }
+        .bs-footer-brand {}
+        .bs-footer-logo-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 6px;
+        }
+        .bs-footer-logo-name {
+          font-size: 11px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--text-dim);
+        }
+        .bs-footer-tagline {
+          font-size: 11px;
+          color: rgba(255,255,255,0.1);
+          letter-spacing: 0.04em;
+          margin: 0;
+        }
+        .bs-footer-links {
+          display: flex;
+          gap: 24px;
+          flex-wrap: wrap;
+        }
+        .bs-footer-links a {
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--text-dim);
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .bs-footer-links a:hover { color: var(--text-mid); }
+        .bs-footer-bottom {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 20px 0;
+          border-top: 1px solid var(--border);
+        }
+        .bs-footer-bottom p {
+          font-size: 10px;
+          color: rgba(255,255,255,0.1);
+          letter-spacing: 0.06em;
+          margin: 0;
+          text-align: center;
+        }
+
       `}</style>
     </main>
   );

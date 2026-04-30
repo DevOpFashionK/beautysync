@@ -1,22 +1,7 @@
 "use client";
 
 // components/dashboard/metrics/RetentionMetrics.tsx
-//
-// Métricas de retención de clientas — dos cards lado a lado:
-//
-//   1. Tasa de Rebooking   — % de clientas que volvieron en los últimos 60 días
-//   2. Frecuencia de Visita — promedio de días entre visitas por clienta
-//
-// Visualización: anillo SVG con porcentaje/valor en el centro.
-// Sin recharts — SVG puro para control total y rendimiento óptimo.
-//
-// Props:
-//   rebookingRate    — porcentaje 0–100 de clientas que reagendaron
-//   rebookingCount   — número absoluto de clientas que volvieron
-//   visitFrequency   — promedio de días entre visitas (número)
-//   totalClients     — total de clientas únicas en los últimos 60 días
-//   primaryColor     — color de acento del salón
-//   loading          — muestra skeleton si true
+// Anillos SVG de rebooking y frecuencia de visita. Lógica intacta.
 
 import { motion } from "framer-motion";
 import { RefreshCw, Clock } from "lucide-react";
@@ -24,10 +9,10 @@ import { RefreshCw, Clock } from "lucide-react";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface RetentionData {
-  rebookingRate: number; // 0–100
-  rebookingCount: number; // clientas que volvieron
-  visitFrequency: number; // días promedio entre visitas
-  totalClients: number; // clientas únicas en 60 días
+  rebookingRate: number;
+  rebookingCount: number;
+  visitFrequency: number;
+  totalClients: number;
 }
 
 interface RetentionMetricsProps {
@@ -36,10 +21,7 @@ interface RetentionMetricsProps {
   loading?: boolean;
 }
 
-// ─── Anillo SVG ───────────────────────────────────────────────────────────────
-//
-// Radio = 36, circunferencia = 2π×36 ≈ 226.2
-// strokeDasharray controla el arco lleno vs vacío.
+// ─── Anillo SVG Dark ──────────────────────────────────────────────────────────
 
 const RADIUS = 36;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -49,30 +31,40 @@ function RingChart({
   primaryColor,
   children,
 }: {
-  pct: number; // 0–100
+  pct: number;
   primaryColor: string;
   children: React.ReactNode;
 }) {
-  const clampedPct = Math.min(Math.max(pct, 0), 100);
-  const filled = (clampedPct / 100) * CIRCUMFERENCE;
+  const clamped = Math.min(Math.max(pct, 0), 100);
+  const filled = (clamped / 100) * CIRCUMFERENCE;
   const gap = CIRCUMFERENCE - filled;
 
   return (
-    <div className="relative w-24 h-24 flex items-center justify-center">
+    <div
+      style={{
+        position: "relative",
+        width: "96px",
+        height: "96px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
       <svg
         width="96"
         height="96"
         viewBox="0 0 96 96"
         style={{ transform: "rotate(-90deg)" }}
       >
-        {/* Track */}
+        {/* Track dark */}
         <circle
           cx="48"
           cy="48"
           r={RADIUS}
           fill="none"
-          stroke="#F3EDE8"
-          strokeWidth="8"
+          stroke="rgba(255,255,255,0.05)"
+          strokeWidth="7"
         />
         {/* Arco animado */}
         <motion.circle
@@ -81,23 +73,82 @@ function RingChart({
           r={RADIUS}
           fill="none"
           stroke={primaryColor}
-          strokeWidth="8"
+          strokeWidth="7"
           strokeLinecap="round"
+          strokeOpacity={0.75}
           strokeDasharray={`${filled} ${gap}`}
           initial={{ strokeDasharray: `0 ${CIRCUMFERENCE}` }}
           animate={{ strokeDasharray: `${filled} ${gap}` }}
           transition={{ duration: 0.9, ease: "easeOut", delay: 0.3 }}
         />
       </svg>
-      {/* Contenido central */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         {children}
       </div>
     </div>
   );
 }
 
-// ─── Card de Rebooking ────────────────────────────────────────────────────────
+// ─── Badge cualitativo Dark ───────────────────────────────────────────────────
+
+function QualityBadge({
+  label,
+  level,
+}: {
+  label: string;
+  level: "good" | "ok" | "warn" | "bad";
+}) {
+  const styles = {
+    good: {
+      bg: "rgba(16,185,129,0.1)",
+      color: "rgba(52,211,153,0.85)",
+      border: "rgba(16,185,129,0.2)",
+    },
+    ok: {
+      bg: "rgba(234,179,8,0.1)",
+      color: "rgba(251,191,36,0.85)",
+      border: "rgba(234,179,8,0.2)",
+    },
+    warn: {
+      bg: "rgba(255,255,255,0.04)",
+      color: "rgba(245,242,238,0.3)",
+      border: "rgba(255,255,255,0.07)",
+    },
+    bad: {
+      bg: "rgba(239,68,68,0.1)",
+      color: "rgba(252,165,165,0.85)",
+      border: "rgba(239,68,68,0.2)",
+    },
+  };
+  const s = styles[level];
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        fontSize: "10px",
+        padding: "2px 9px",
+        borderRadius: "20px",
+        background: s.bg,
+        color: s.color,
+        border: `1px solid ${s.border}`,
+        letterSpacing: "0.05em",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+// ─── Card Rebooking Dark ──────────────────────────────────────────────────────
 
 function RebookingCard({
   rate,
@@ -110,7 +161,6 @@ function RebookingCard({
   total: number;
   primaryColor: string;
 }) {
-  // Clasificación cualitativa de la tasa
   const label =
     rate >= 60
       ? "Excelente"
@@ -119,95 +169,119 @@ function RebookingCard({
         : rate >= 20
           ? "Regular"
           : "Por mejorar";
-
-  const labelColor =
-    rate >= 60
-      ? "#065F46"
-      : rate >= 40
-        ? "#92400E"
-        : rate >= 20
-          ? "#9C8E85"
-          : "#B91C1C";
-
-  const labelBg =
-    rate >= 60
-      ? "#D1FAE5"
-      : rate >= 40
-        ? "#FEF3C7"
-        : rate >= 20
-          ? "#F3EDE8"
-          : "#FEE2E2";
+  const level =
+    rate >= 60 ? "good" : rate >= 40 ? "ok" : rate >= 20 ? "warn" : "bad";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.12 }}
-      className="flex-1 rounded-2xl p-5"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        flex: 1,
+        borderRadius: "10px",
+        padding: "20px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "16px",
+        }}
+      >
         <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: `${primaryColor}14` }}
+          style={{
+            width: "26px",
+            height: "26px",
+            borderRadius: "6px",
+            background: `${primaryColor}12`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
           <RefreshCw
-            size={13}
-            strokeWidth={2}
-            style={{ color: primaryColor }}
+            size={12}
+            strokeWidth={1.75}
+            style={{ color: `${primaryColor}CC` }}
           />
         </div>
         <p
-          className="text-xs font-medium uppercase tracking-wider"
-          style={{ color: "#9C8E85", letterSpacing: "0.08em" }}
+          style={{
+            fontSize: "10px",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "rgba(245,242,238,0.22)",
+            margin: 0,
+          }}
         >
           Rebooking
         </p>
       </div>
 
       {/* Anillo + stats */}
-      <div className="flex items-center gap-4">
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
         <RingChart pct={rate} primaryColor={primaryColor}>
           <p
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              fontSize: "1.25rem",
-              fontWeight: 600,
-              color: "#2D2420",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+              fontSize: "1.2rem",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.85)",
               lineHeight: 1,
+              margin: 0,
             }}
           >
             {rate}%
           </p>
         </RingChart>
 
-        <div className="flex flex-col gap-2 min-w-0">
-          {/* Badge cualitativo */}
-          <span
-            className="text-xs font-semibold px-2 py-0.5 rounded-full self-start"
-            style={{ background: labelBg, color: labelColor }}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+            minWidth: 0,
+          }}
+        >
+          <QualityBadge label={label} level={level} />
+          <p
+            style={{
+              fontSize: "12px",
+              lineHeight: 1.5,
+              color: "rgba(245,242,238,0.35)",
+              margin: 0,
+            }}
           >
-            {label}
-          </span>
-
-          <p className="text-xs leading-relaxed" style={{ color: "#9C8E85" }}>
             <span
               style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontFamily:
+                  "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
                 fontSize: "1.1rem",
-                fontWeight: 600,
-                color: "#2D2420",
+                fontWeight: 300,
+                color: "rgba(245,242,238,0.75)",
               }}
             >
               {count}
             </span>{" "}
-            de{" "}
-            <span style={{ color: "#5C4F48", fontWeight: 600 }}>{total}</span>{" "}
+            de <span style={{ color: "rgba(245,242,238,0.5)" }}>{total}</span>{" "}
             clientas volvieron
           </p>
-
-          <p className="text-xs" style={{ color: "#C4B8B0" }}>
+          <p
+            style={{
+              fontSize: "10px",
+              color: "rgba(245,242,238,0.15)",
+              margin: 0,
+              letterSpacing: "0.03em",
+            }}
+          >
             en los últimos 60 días
           </p>
         </div>
@@ -216,7 +290,7 @@ function RebookingCard({
   );
 }
 
-// ─── Card de Frecuencia de Visita ─────────────────────────────────────────────
+// ─── Card Frecuencia Dark ─────────────────────────────────────────────────────
 
 function VisitFrequencyCard({
   frequency,
@@ -225,12 +299,9 @@ function VisitFrequencyCard({
   frequency: number;
   primaryColor: string;
 }) {
-  // Convertir días a porcentaje para el anillo
-  // Referencia: 7 días = visita semanal (100%), 60 días = visita muy esporádica (0%)
   const pct = Math.max(0, Math.round(((60 - frequency) / 53) * 100));
   const rounded = Math.round(frequency);
 
-  // Clasificación
   const label =
     frequency <= 14
       ? "Muy frecuente"
@@ -238,87 +309,129 @@ function VisitFrequencyCard({
         ? "Frecuente"
         : frequency <= 45
           ? "Ocasional"
-          : "Esporádica";
-
-  const labelColor =
+          : "Esporadica";
+  const level =
     frequency <= 14
-      ? "#065F46"
+      ? "good"
       : frequency <= 30
-        ? "#92400E"
+        ? "ok"
         : frequency <= 45
-          ? "#9C8E85"
-          : "#B91C1C";
-
-  const labelBg =
-    frequency <= 14
-      ? "#D1FAE5"
-      : frequency <= 30
-        ? "#FEF3C7"
-        : frequency <= 45
-          ? "#F3EDE8"
-          : "#FEE2E2";
+          ? "warn"
+          : "bad";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.16 }}
-      className="flex-1 rounded-2xl p-5"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        flex: 1,
+        borderRadius: "10px",
+        padding: "20px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "16px",
+        }}
+      >
         <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: `${primaryColor}14` }}
+          style={{
+            width: "26px",
+            height: "26px",
+            borderRadius: "6px",
+            background: `${primaryColor}12`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <Clock size={13} strokeWidth={2} style={{ color: primaryColor }} />
+          <Clock
+            size={12}
+            strokeWidth={1.75}
+            style={{ color: `${primaryColor}CC` }}
+          />
         </div>
         <p
-          className="text-xs font-medium uppercase tracking-wider"
-          style={{ color: "#9C8E85", letterSpacing: "0.08em" }}
+          style={{
+            fontSize: "10px",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "rgba(245,242,238,0.22)",
+            margin: 0,
+          }}
         >
           Frecuencia de visita
         </p>
       </div>
 
       {/* Anillo + stats */}
-      <div className="flex items-center gap-4">
+      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
         <RingChart pct={pct} primaryColor={primaryColor}>
           <p
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              fontSize: "1.25rem",
-              fontWeight: 600,
-              color: "#2D2420",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+              fontSize: "1.2rem",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.85)",
               lineHeight: 1,
+              margin: 0,
             }}
           >
             {rounded}
           </p>
-          <p style={{ fontSize: "0.6rem", color: "#B5A99F", lineHeight: 1 }}>
+          <p
+            style={{
+              fontSize: "9px",
+              color: "rgba(245,242,238,0.2)",
+              lineHeight: 1,
+              letterSpacing: "0.06em",
+              margin: 0,
+            }}
+          >
             días
           </p>
         </RingChart>
 
-        <div className="flex flex-col gap-2 min-w-0">
-          {/* Badge cualitativo */}
-          <span
-            className="text-xs font-semibold px-2 py-0.5 rounded-full self-start"
-            style={{ background: labelBg, color: labelColor }}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+            minWidth: 0,
+          }}
+        >
+          <QualityBadge label={label} level={level} />
+          <p
+            style={{
+              fontSize: "12px",
+              lineHeight: 1.5,
+              color: "rgba(245,242,238,0.35)",
+              margin: 0,
+            }}
           >
-            {label}
-          </span>
-
-          <p className="text-xs leading-relaxed" style={{ color: "#9C8E85" }}>
-            Tus clientas regresan cada{" "}
-            <span style={{ color: "#5C4F48", fontWeight: 600 }}>
+            Regresan cada{" "}
+            <span style={{ color: "rgba(245,242,238,0.65)" }}>
               {rounded} días
             </span>{" "}
             en promedio
           </p>
-
-          <p className="text-xs" style={{ color: "#C4B8B0" }}>
+          <p
+            style={{
+              fontSize: "10px",
+              color: "rgba(245,242,238,0.15)",
+              margin: 0,
+              letterSpacing: "0.03em",
+            }}
+          >
             basado en últimos 90 días
           </p>
         </div>
@@ -327,7 +440,7 @@ function VisitFrequencyCard({
   );
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
+// ─── Skeleton Dark ────────────────────────────────────────────────────────────
 
 function RetentionSkeleton() {
   return (
@@ -338,38 +451,80 @@ function RetentionSkeleton() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay }}
-          className="flex-1 rounded-2xl p-5 animate-pulse"
-          style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+          className="animate-pulse"
+          style={{
+            flex: 1,
+            borderRadius: "10px",
+            padding: "20px",
+            background: "#0E0C0B",
+            border: "1px solid rgba(255,255,255,0.055)",
+          }}
         >
-          {/* Header */}
-          <div className="flex items-center gap-2 mb-4">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "16px",
+            }}
+          >
             <div
-              className="w-7 h-7 rounded-lg"
-              style={{ background: "#F3EDE8" }}
+              style={{
+                width: "26px",
+                height: "26px",
+                borderRadius: "6px",
+                background: "rgba(255,255,255,0.04)",
+              }}
             />
             <div
-              className="h-3 rounded-lg w-20"
-              style={{ background: "#F3EDE8" }}
+              style={{
+                height: "10px",
+                width: "60px",
+                borderRadius: "4px",
+                background: "rgba(255,255,255,0.04)",
+              }}
             />
           </div>
-          {/* Anillo + texto */}
-          <div className="flex items-center gap-4">
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <div
-              className="w-24 h-24 rounded-full"
-              style={{ background: "#F3EDE8" }}
+              style={{
+                width: "96px",
+                height: "96px",
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.04)",
+                flexShrink: 0,
+              }}
             />
-            <div className="flex flex-col gap-2 flex-1">
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                flex: 1,
+              }}
+            >
               <div
-                className="h-5 rounded-full w-20"
-                style={{ background: "#F3EDE8" }}
+                style={{
+                  height: "20px",
+                  width: "70px",
+                  borderRadius: "20px",
+                  background: "rgba(255,255,255,0.04)",
+                }}
               />
               <div
-                className="h-3 rounded-lg w-full"
-                style={{ background: "#F3EDE8" }}
+                style={{
+                  height: "11px",
+                  borderRadius: "4px",
+                  background: "rgba(255,255,255,0.04)",
+                }}
               />
               <div
-                className="h-3 rounded-lg w-3/4"
-                style={{ background: "#F3EDE8" }}
+                style={{
+                  height: "10px",
+                  width: "75%",
+                  borderRadius: "4px",
+                  background: "rgba(255,255,255,0.03)",
+                }}
               />
             </div>
           </div>
@@ -379,7 +534,7 @@ function RetentionSkeleton() {
   );
 }
 
-// ─── Empty state ─────────────────────────────────────────────────────────────
+// ─── Empty Dark ───────────────────────────────────────────────────────────────
 
 function RetentionEmpty({ primaryColor }: { primaryColor: string }) {
   return (
@@ -390,34 +545,59 @@ function RetentionEmpty({ primaryColor }: { primaryColor: string }) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.12 + i * 0.04 }}
-          className="flex-1 rounded-2xl p-6 flex flex-col items-center justify-center py-12"
-          style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+          style={{
+            flex: 1,
+            borderRadius: "10px",
+            padding: "24px",
+            background: "#0E0C0B",
+            border: "1px solid rgba(255,255,255,0.055)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            paddingTop: "48px",
+            paddingBottom: "48px",
+          }}
         >
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-            style={{ background: `${primaryColor}14` }}
+            style={{
+              width: "36px",
+              height: "36px",
+              borderRadius: "8px",
+              background: `${primaryColor}12`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "12px",
+            }}
           >
             <Icon
-              size={18}
+              size={16}
               strokeWidth={1.75}
-              style={{ color: primaryColor }}
+              style={{ color: `${primaryColor}99` }}
             />
           </div>
           <p
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
               fontSize: "1.1rem",
-              fontWeight: 500,
-              color: "#9C8E85",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.35)",
+              marginBottom: "4px",
             }}
           >
             Sin datos aún
           </p>
           <p
-            className="text-xs mt-1 text-center"
-            style={{ color: "#C4B8B0", maxWidth: "14rem" }}
+            style={{
+              fontSize: "11px",
+              color: "rgba(245,242,238,0.15)",
+              textAlign: "center",
+              maxWidth: "14rem",
+            }}
           >
-            Necesita al menos 2 citas registradas para calcular retención.
+            Necesita al menos 2 citas para calcular retención.
           </p>
         </motion.div>
       ))}

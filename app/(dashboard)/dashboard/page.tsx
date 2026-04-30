@@ -1,10 +1,7 @@
 // app/(dashboard)/dashboard/page.tsx
 //
 // Fase 8.3 — Dashboard completo con métricas por categorías + exportación PDF
-//
-// CAMBIO vs versión anterior:
-//   ExportReportButton ahora recibe data: ReportData con todos los valores
-//   calculados en el servidor. El PDF se construye con jsPDF puro (sin html2canvas).
+// Dark Atelier redesign — solo cambia el shell visual, lógica intacta.
 //
 // Secciones:
 //   - Actividad   : Citas, No-Shows, Cancelaciones
@@ -369,16 +366,48 @@ function calcRetention(appts90Days: AppointmentRow[]): RetentionData {
   };
 }
 
-// ─── Subcomponente: Section Label ─────────────────────────────────────────────
+// ─── Subcomponente: Section Label — Dark Atelier ──────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p
-      className="text-xs font-semibold uppercase tracking-widest mb-4"
-      style={{ color: "#C4B8B0", letterSpacing: "0.12em" }}
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        marginBottom: "16px",
+      }}
     >
-      {children}
-    </p>
+      <span
+        style={{
+          display: "inline-block",
+          width: "16px",
+          height: "1px",
+          background: "rgba(255,45,85,0.55)",
+          flexShrink: 0,
+        }}
+      />
+      <p
+        style={{
+          fontSize: "10px",
+          fontWeight: 400,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+          color: "rgba(255,45,85,0.55)",
+          margin: 0,
+        }}
+      >
+        {children}
+      </p>
+      <span
+        style={{
+          flex: 1,
+          height: "1px",
+          background:
+            "linear-gradient(90deg, rgba(255,255,255,0.05) 0%, transparent 100%)",
+        }}
+      />
+    </div>
   );
 }
 
@@ -521,18 +550,16 @@ export default async function DashboardPage({
   // UI
   const isWelcome = params.welcome === "true";
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
-  const primaryColor = salon.primary_color ?? "#D4375F";
+  const primaryColor = salon.primary_color ?? "#FF2D55";
 
-  // ── ReportData para ExportReportButton ────────────────────────────────────
+  // ── ReportData para ExportReportButton ──────────────────────────────────────
   const reportData: ReportData = {
-    // Actividad
     citasDelMes: citasCurrentMonth,
     citasDelta,
     noShowRate,
     noShowDelta,
     cancellationRate,
     cancellationDelta,
-    // Finanzas
     ingresos: revenueCurrentMonth,
     ingresosDelta: revenueDelta,
     ticketPromedio,
@@ -542,18 +569,15 @@ export default async function DashboardPage({
     clientasNuevas: newClients,
     clientasVolvieron: retentionData.rebookingCount,
     totalClients: retentionData.totalClients,
-    // Retención
     rebookingRate: retentionData.rebookingRate,
     rebookingCount: retentionData.rebookingCount,
     visitFrequency: retentionData.visitFrequency,
-    // Servicios
     topServices: topServices.map((s) => ({
       name: s.name,
       count: s.count,
       revenue: s.revenue,
       isTop: s.isTop,
     })),
-    // Meta
     salonName: salon.name,
     primaryColor,
     currentMonth: currentMonthLabel,
@@ -562,9 +586,32 @@ export default async function DashboardPage({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#FAF8F5]">
-      <div className="max-w-5xl mx-auto px-6 pt-8 pb-16 md:px-10 flex flex-col gap-10">
-        {/* Banners */}
+    <div className="min-h-screen" style={{ background: "#080706" }}>
+      {/* Radial de fondo — sutil, no distrae */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          width: "500px",
+          height: "500px",
+          background:
+            "radial-gradient(circle at top right, rgba(255,45,85,0.05) 0%, transparent 65%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+
+      <div
+        className="relative max-w-5xl mx-auto flex flex-col"
+        style={{
+          padding: "40px 32px 80px",
+          gap: "48px",
+          zIndex: 1,
+        }}
+      >
+        {/* ── Banners ───────────────────────────────────────────────── */}
         {isWelcome && <WelcomeBanner salonName={salon.name} />}
         {subscription && (
           <SubscriptionStatus
@@ -574,7 +621,7 @@ export default async function DashboardPage({
           />
         )}
 
-        {/* Header + botón exportar */}
+        {/* ── Header + exportar ─────────────────────────────────────── */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <DashboardHeaderWrapper
             salonName={salon.name}
@@ -584,12 +631,12 @@ export default async function DashboardPage({
           <ExportReportButton data={reportData} />
         </div>
 
-        {/* Agenda del día */}
+        {/* ── Agenda del día ────────────────────────────────────────── */}
         <section>
           <TodayAppointments salonId={salon.id} />
         </section>
 
-        {/* ── ACTIVIDAD ─────────────────────────────────────────────────── */}
+        {/* ── ACTIVIDAD ─────────────────────────────────────────────── */}
         <section>
           <SectionLabel>Actividad · {currentMonthLabel}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -625,7 +672,7 @@ export default async function DashboardPage({
           </div>
         </section>
 
-        {/* ── FINANZAS ──────────────────────────────────────────────────── */}
+        {/* ── FINANZAS ──────────────────────────────────────────────── */}
         <section>
           <SectionLabel>Finanzas · {currentMonthLabel}</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -682,7 +729,7 @@ export default async function DashboardPage({
           </div>
         </section>
 
-        {/* ── TENDENCIAS ────────────────────────────────────────────────── */}
+        {/* ── TENDENCIAS ────────────────────────────────────────────── */}
         <section>
           <SectionLabel>Tendencias</SectionLabel>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
@@ -703,13 +750,13 @@ export default async function DashboardPage({
           />
         </section>
 
-        {/* ── RETENCIÓN ─────────────────────────────────────────────────── */}
+        {/* ── RETENCIÓN ─────────────────────────────────────────────── */}
         <section>
           <SectionLabel>Retención de clientas</SectionLabel>
           <RetentionMetrics data={retentionData} primaryColor={primaryColor} />
         </section>
 
-        {/* ── SERVICIOS ─────────────────────────────────────────────────── */}
+        {/* ── SERVICIOS ─────────────────────────────────────────────── */}
         <section>
           <SectionLabel>Servicios · {currentMonthLabel}</SectionLabel>
           <TopServices services={topServices} primaryColor={primaryColor} />

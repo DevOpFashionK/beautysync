@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 export default async function AppointmentsPage() {
   const supabase = await createServerSupabaseClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const { data: salon } = await supabase
@@ -22,7 +24,6 @@ export default async function AppointmentsPage() {
   if (!salon) redirect("/dashboard");
 
   // Auto no_show server-side — antes de cargar las citas
-  // Así las citas ya llegan con el status correcto al cliente
   await markPastAppointmentsAsNoShow(salon.id);
 
   const thirtyDaysAgo = new Date();
@@ -30,20 +31,28 @@ export default async function AppointmentsPage() {
 
   const { data: appointments } = await supabase
     .from("appointments")
-    .select(`
+    .select(
+      `
       id, client_name, client_email, client_phone, client_notes,
       scheduled_at, ends_at, status, cancellation_reason, cancelled_at, created_at,
       services(id, name, duration_minutes, price)
-    `)
+    `,
+    )
     .eq("salon_id", salon.id)
     .gte("scheduled_at", thirtyDaysAgo.toISOString())
     .order("scheduled_at", { ascending: false });
 
   return (
-    <AppointmentsClient
-      salonId={salon.id}
-      primaryColor={salon.primary_color || "#D4375F"}
-      initialAppointments={appointments as Parameters<typeof AppointmentsClient>[0]["initialAppointments"] || []}
-    />
+    <div style={{ minHeight: "100vh", background: "#080706" }}>
+      <AppointmentsClient
+        salonId={salon.id}
+        primaryColor={salon.primary_color || "#FF2D55"}
+        initialAppointments={
+          (appointments as Parameters<
+            typeof AppointmentsClient
+          >[0]["initialAppointments"]) || []
+        }
+      />
+    </div>
   );
 }

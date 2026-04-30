@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type { ServiceItem } from "./ServicesClient";
 
-// ─── Sugerencias por categoría ────────────────────────────────────────────────
+// ─── Sugerencias por categoría — datos intactos ───────────────────────────────
 const SERVICE_SUGGESTIONS = [
   {
     category: "🤨 Cejas & Pestañas",
@@ -34,7 +34,6 @@ const SERVICE_SUGGESTIONS = [
       { name: "Extensiones de pestañas volumen", duration: 120, price: 65 },
     ],
   },
-
   {
     category: "✂️ Cabello",
     items: [
@@ -79,6 +78,7 @@ const SERVICE_SUGGESTIONS = [
   },
 ];
 
+// ─── Schema — intacto ─────────────────────────────────────────────────────────
 const schema = z.object({
   name: z.string().min(2, "Mínimo 2 caracteres").max(80),
   duration_minutes: z
@@ -105,6 +105,20 @@ interface ServiceModalProps {
 }
 
 const DURATION_PRESETS = [15, 30, 45, 60, 90, 120, 150, 180];
+
+// ─── Tokens ───────────────────────────────────────────────────────────────────
+const T = {
+  surface: "#0E0C0B",
+  surface2: "#131110",
+  border: "rgba(255,255,255,0.055)",
+  borderMid: "rgba(255,255,255,0.09)",
+  textPrimary: "rgba(245,242,238,0.9)",
+  textMid: "rgba(245,242,238,0.45)",
+  textDim: "rgba(245,242,238,0.18)",
+  roseDim: "rgba(255,45,85,0.55)",
+  roseGhost: "rgba(255,45,85,0.08)",
+  roseBorder: "rgba(255,45,85,0.22)",
+};
 
 export default function ServiceModal({
   open,
@@ -142,6 +156,7 @@ export default function ServiceModal({
 
   const watchedDuration = watch("duration_minutes");
 
+  // ── Reset al abrir — lógica intacta ───────────────────────────────────────
   useEffect(() => {
     if (open) {
       setApiError(null);
@@ -170,10 +185,10 @@ export default function ServiceModal({
     setShowSuggestions(false);
   };
 
+  // ── onSubmit — lógica intacta ─────────────────────────────────────────────
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     setApiError(null);
-
     try {
       const payload = isEditing
         ? { id: editingService!.id, ...data }
@@ -184,14 +199,11 @@ export default function ServiceModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const body = await res.json();
-
       if (!res.ok) {
         setApiError(body.error || "Error al guardar");
         return;
       }
-
       onSaved(body.service);
     } catch {
       setApiError("Error de conexión. Intenta nuevamente.");
@@ -200,12 +212,70 @@ export default function ServiceModal({
     }
   };
 
-  const inputBase = `
-    w-full px-4 py-3 rounded-xl border border-[#EDE8E3] bg-white
-    text-sm text-[#2D2420] placeholder:text-[#C4B8B0]
-    outline-none transition-all duration-150
-    focus:border-transparent focus:ring-2
-  `;
+  const FieldLabel = ({
+    children,
+    required,
+  }: {
+    children: React.ReactNode;
+    required?: boolean;
+  }) => (
+    <label
+      style={{
+        fontSize: "10px",
+        fontWeight: 400,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        color: T.textDim,
+        display: "block",
+        marginBottom: "8px",
+      }}
+    >
+      {children}
+      {required && (
+        <span style={{ color: "rgba(255,45,85,0.55)", marginLeft: "3px" }}>
+          *
+        </span>
+      )}
+    </label>
+  );
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "11px 14px",
+    borderRadius: "8px",
+    border: `1px solid ${T.borderMid}`,
+    background: T.surface2,
+    fontSize: "14px",
+    color: T.textPrimary,
+    outline: "none",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+  };
+
+  const inputFocus = {
+    onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      e.currentTarget.style.borderColor = T.roseBorder;
+      e.currentTarget.style.boxShadow = `0 0 0 3px ${T.roseGhost}`;
+    },
+    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      e.currentTarget.style.borderColor = T.borderMid;
+      e.currentTarget.style.boxShadow = "none";
+    },
+  };
+
+  const ErrMsg = ({ msg }: { msg?: string }) =>
+    msg ? (
+      <p
+        style={{
+          fontSize: "11px",
+          color: "rgba(255,110,110,0.85)",
+          marginTop: "5px",
+        }}
+      >
+        {msg}
+      </p>
+    ) : null;
 
   return (
     <AnimatePresence>
@@ -218,7 +288,13 @@ export default function ServiceModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-[#2D2420]/20 backdrop-blur-sm"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 40,
+              background: "rgba(8,7,6,0.8)",
+              backdropFilter: "blur(6px)",
+            }}
             onClick={onClose}
           />
 
@@ -229,80 +305,199 @@ export default function ServiceModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-            className="fixed inset-x-4 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 
+            className="fixed inset-x-4 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2
                        sm:-translate-x-1/2 sm:-translate-y-1/2
                        z-50 w-full sm:w-[520px] max-h-[92vh] sm:max-h-[85vh]
-                       bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl
                        overflow-hidden flex flex-col"
+            style={{
+              background: T.surface,
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: "14px 14px 0 0",
+              boxShadow: "0 32px 80px rgba(0,0,0,0.65)",
+            }}
           >
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
+            {/* Acento top */}
+            <div
+              style={{
+                height: "2px",
+                background: `linear-gradient(90deg, ${primaryColor}88, transparent)`,
+                flexShrink: 0,
+              }}
+            />
+
+            {/* Acento esquina */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: "14px",
+                height: "14px",
+                borderTop: "1px solid rgba(255,45,85,0.35)",
+                borderRight: "1px solid rgba(255,45,85,0.35)",
+                borderTopRightRadius: "14px",
+                pointerEvents: "none",
+              }}
+            />
+
+            {/* Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "20px 22px 16px",
+                flexShrink: 0,
+                borderBottom: "1px solid rgba(255,255,255,0.05)",
+              }}
+            >
               <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <div
-                    className="w-4 h-[2px] rounded-full"
-                    style={{ backgroundColor: primaryColor }}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "6px",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "12px",
+                      height: "1px",
+                      background: T.roseDim,
+                    }}
                   />
                   <span
-                    className="text-[10px] font-semibold tracking-[0.15em] uppercase"
-                    style={{ color: primaryColor }}
+                    style={{
+                      fontSize: "10px",
+                      letterSpacing: "0.16em",
+                      textTransform: "uppercase",
+                      color: T.roseDim,
+                    }}
                   >
                     {isEditing ? "Editar" : "Nuevo"}
                   </span>
                 </div>
-                <h2 className="font-['Cormorant_Garamond'] text-2xl font-semibold text-[#2D2420]">
+                <h2
+                  style={{
+                    fontFamily:
+                      "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                    fontSize: "1.4rem",
+                    fontWeight: 300,
+                    color: T.textPrimary,
+                    letterSpacing: "-0.02em",
+                    margin: 0,
+                  }}
+                >
                   {isEditing ? editingService!.name : "Agregar servicio"}
                 </h2>
               </div>
 
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl flex items-center justify-center
-                           text-[#9C8E85] hover:bg-[#FAF8F5] hover:text-[#2D2420]
-                           transition-colors"
+                style={{
+                  width: "30px",
+                  height: "30px",
+                  borderRadius: "7px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: T.textDim,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "rgba(255,255,255,0.05)";
+                  (e.currentTarget as HTMLElement).style.color = T.textMid;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "none";
+                  (e.currentTarget as HTMLElement).style.color = T.textDim;
+                }}
               >
-                <X size={18} />
+                <X size={16} strokeWidth={1.5} />
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1 px-6 pb-6">
+            {/* Body — scrollable */}
+            <div
+              style={{ overflowY: "auto", flex: 1, padding: "20px 22px 24px" }}
+            >
               {/* Suggestions toggle */}
               {!isEditing && (
                 <button
                   onClick={() => setShowSuggestions((v) => !v)}
-                  className="w-full flex items-center justify-between p-3.5 rounded-xl
-                             border border-dashed border-[#EDE8E3] mb-5 text-left
-                             hover:border-transparent transition-all group"
                   style={{
-                    backgroundColor: showSuggestions
-                      ? `${primaryColor}06`
-                      : "transparent",
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    border: `1px dashed ${showSuggestions ? T.roseBorder : T.border}`,
+                    background: showSuggestions ? T.roseGhost : "transparent",
+                    marginBottom: "18px",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    fontFamily: "inherit",
                   }}
                   onMouseEnter={(e) => {
-                    if (!showSuggestions)
-                      (e.currentTarget as HTMLElement).style.backgroundColor =
-                        `${primaryColor}05`;
+                    if (!showSuggestions) {
+                      (e.currentTarget as HTMLElement).style.background =
+                        "rgba(255,255,255,0.02)";
+                      (e.currentTarget as HTMLElement).style.borderColor =
+                        T.borderMid;
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    if (!showSuggestions)
-                      (e.currentTarget as HTMLElement).style.backgroundColor =
+                    if (!showSuggestions) {
+                      (e.currentTarget as HTMLElement).style.background =
                         "transparent";
+                      (e.currentTarget as HTMLElement).style.borderColor =
+                        T.border;
+                    }
                   }}
                 >
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={14} style={{ color: primaryColor }} />
-                    <span className="text-xs font-semibold text-[#2D2420]">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <Sparkles
+                      size={13}
+                      strokeWidth={1.75}
+                      style={{ color: T.roseDim }}
+                    />
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 400,
+                        color: T.textMid,
+                      }}
+                    >
                       Elegir de plantillas
                     </span>
-                    <span className="text-[10px] text-[#9C8E85]">
+                    <span style={{ fontSize: "11px", color: T.textDim }}>
                       — Rápido y fácil
                     </span>
                   </div>
                   <ChevronDown
-                    size={14}
-                    className={`text-[#9C8E85] transition-transform duration-200 ${
-                      showSuggestions ? "rotate-180" : ""
-                    }`}
+                    size={13}
+                    strokeWidth={1.5}
+                    style={{
+                      color: T.textDim,
+                      transform: showSuggestions
+                        ? "rotate(180deg)"
+                        : "rotate(0deg)",
+                      transition: "transform 0.2s",
+                    }}
                   />
                 </button>
               )}
@@ -315,13 +510,23 @@ export default function ServiceModal({
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.25 }}
-                    className="overflow-hidden mb-5"
+                    style={{ overflow: "hidden", marginBottom: "18px" }}
                   >
-                    <div className="flex flex-col gap-2">
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px",
+                      }}
+                    >
                       {SERVICE_SUGGESTIONS.map((cat) => (
                         <div
                           key={cat.category}
-                          className="rounded-xl border border-[#EDE8E3] overflow-hidden"
+                          style={{
+                            borderRadius: "8px",
+                            border: `1px solid ${T.border}`,
+                            overflow: "hidden",
+                          }}
                         >
                           <button
                             onClick={() =>
@@ -331,18 +536,48 @@ export default function ServiceModal({
                                   : cat.category,
                               )
                             }
-                            className="w-full flex items-center justify-between px-4 py-3
-                                       text-sm font-medium text-[#2D2420] hover:bg-[#FAF8F5]
-                                       transition-colors text-left"
+                            style={{
+                              width: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              padding: "10px 14px",
+                              fontSize: "12px",
+                              color: T.textMid,
+                              background:
+                                openCategory === cat.category
+                                  ? "rgba(255,255,255,0.03)"
+                                  : "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              textAlign: "left",
+                              transition: "background 0.15s",
+                              fontFamily: "inherit",
+                            }}
+                            onMouseEnter={(e) => {
+                              (
+                                e.currentTarget as HTMLElement
+                              ).style.background = "rgba(255,255,255,0.03)";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (openCategory !== cat.category)
+                                (
+                                  e.currentTarget as HTMLElement
+                                ).style.background = "transparent";
+                            }}
                           >
                             {cat.category}
                             <ChevronDown
-                              size={14}
-                              className={`text-[#9C8E85] transition-transform duration-200 ${
-                                openCategory === cat.category
-                                  ? "rotate-180"
-                                  : ""
-                              }`}
+                              size={12}
+                              strokeWidth={1.5}
+                              style={{
+                                color: T.textDim,
+                                transform:
+                                  openCategory === cat.category
+                                    ? "rotate(180deg)"
+                                    : "rotate(0deg)",
+                                transition: "transform 0.2s",
+                              }}
                             />
                           </button>
 
@@ -353,44 +588,64 @@ export default function ServiceModal({
                                 animate={{ height: "auto" }}
                                 exit={{ height: 0 }}
                                 transition={{ duration: 0.2 }}
-                                className="overflow-hidden"
+                                style={{ overflow: "hidden" }}
                               >
-                                <div className="px-3 pb-3 flex flex-wrap gap-2">
+                                <div
+                                  style={{
+                                    padding: "8px 12px 12px",
+                                    display: "flex",
+                                    flexWrap: "wrap",
+                                    gap: "6px",
+                                  }}
+                                >
                                   {cat.items.map((item) => (
                                     <button
                                       key={item.name}
                                       onClick={() => applySuggestion(item)}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg
-                                                 border border-[#EDE8E3] text-xs text-[#2D2420]
-                                                 hover:border-transparent transition-all duration-150"
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "5px",
+                                        padding: "5px 10px",
+                                        borderRadius: "6px",
+                                        border: `1px solid ${T.border}`,
+                                        fontSize: "11px",
+                                        color: T.textMid,
+                                        background: "transparent",
+                                        cursor: "pointer",
+                                        transition: "all 0.15s",
+                                        fontFamily: "inherit",
+                                      }}
                                       onMouseEnter={(e) => {
                                         (
                                           e.currentTarget as HTMLElement
-                                        ).style.backgroundColor =
+                                        ).style.background =
                                           `${primaryColor}10`;
                                         (
                                           e.currentTarget as HTMLElement
                                         ).style.borderColor =
-                                          `${primaryColor}40`;
+                                          `${primaryColor}35`;
                                         (
                                           e.currentTarget as HTMLElement
-                                        ).style.color = primaryColor;
+                                        ).style.color = `${primaryColor}CC`;
                                       }}
                                       onMouseLeave={(e) => {
                                         (
                                           e.currentTarget as HTMLElement
-                                        ).style.backgroundColor = "";
+                                        ).style.background = "transparent";
                                         (
                                           e.currentTarget as HTMLElement
-                                        ).style.borderColor = "#EDE8E3";
+                                        ).style.borderColor = T.border;
                                         (
                                           e.currentTarget as HTMLElement
-                                        ).style.color = "#2D2420";
+                                        ).style.color = T.textMid;
                                       }}
                                     >
                                       <span>{item.name}</span>
-                                      <span className="text-[#C4B8B0]">·</span>
-                                      <span className="text-[#9C8E85]">
+                                      <span style={{ color: T.textDim }}>
+                                        ·
+                                      </span>
+                                      <span style={{ color: T.textDim }}>
                                         ${item.price}
                                       </span>
                                     </button>
@@ -403,58 +658,94 @@ export default function ServiceModal({
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-3 my-5">
-                      <div className="h-px flex-1 bg-[#EDE8E3]" />
-                      <span className="text-xs text-[#C4B8B0] font-medium">
+                    {/* Divider */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        margin: "18px 0",
+                      }}
+                    >
+                      <div
+                        style={{ flex: 1, height: "1px", background: T.border }}
+                      />
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          color: T.textDim,
+                          letterSpacing: "0.06em",
+                        }}
+                      >
                         o personaliza
                       </span>
-                      <div className="h-px flex-1 bg-[#EDE8E3]" />
+                      <div
+                        style={{ flex: 1, height: "1px", background: T.border }}
+                      />
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Form */}
+              {/* Error de API */}
               {apiError && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4"
+                  style={{
+                    background: "rgba(239,68,68,0.07)",
+                    border: "1px solid rgba(239,68,68,0.18)",
+                    borderRadius: "8px",
+                    padding: "10px 14px",
+                    marginBottom: "16px",
+                  }}
                 >
-                  <p className="text-sm text-red-600">{apiError}</p>
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "rgba(252,165,165,0.85)",
+                      margin: 0,
+                    }}
+                  >
+                    {apiError}
+                  </p>
                 </motion.div>
               )}
 
+              {/* Form */}
               <form
                 onSubmit={handleSubmit(onSubmit)}
-                className="flex flex-col gap-4"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "16px",
+                }}
                 noValidate
               >
-                {/* Name */}
+                {/* Nombre */}
                 <div>
-                  <label className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase mb-1.5 block">
-                    Nombre del servicio <span className="text-red-400">*</span>
-                  </label>
+                  <FieldLabel required>Nombre del servicio</FieldLabel>
                   <input
                     {...register("name")}
                     placeholder="ej. Corte de damas"
-                    className={inputBase}
-                    style={{ ["--tw-ring-color" as string]: primaryColor }}
+                    style={inputStyle}
+                    {...inputFocus}
                   />
-                  {errors.name && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.name.message}
-                    </p>
-                  )}
+                  <ErrMsg msg={errors.name?.message} />
                 </div>
 
-                {/* Duration */}
+                {/* Duración */}
                 <div>
-                  <label className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase mb-1.5 block">
-                    Duración <span className="text-red-400">*</span>
-                  </label>
+                  <FieldLabel required>Duración</FieldLabel>
                   {/* Presets */}
-                  <div className="flex flex-wrap gap-1.5 mb-2">
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "6px",
+                      marginBottom: "8px",
+                    }}
+                  >
                     {DURATION_PRESETS.map((min) => {
                       const isSelected = watchedDuration === min;
                       return (
@@ -466,20 +757,20 @@ export default function ServiceModal({
                               shouldValidate: true,
                             })
                           }
-                          className="px-3 py-1 rounded-lg text-xs font-medium border transition-all duration-150"
-                          style={
-                            isSelected
-                              ? {
-                                  backgroundColor: primaryColor,
-                                  color: "#fff",
-                                  borderColor: primaryColor,
-                                }
-                              : {
-                                  backgroundColor: "transparent",
-                                  color: "#9C8E85",
-                                  borderColor: "#EDE8E3",
-                                }
-                          }
+                          style={{
+                            padding: "5px 10px",
+                            borderRadius: "6px",
+                            fontSize: "11px",
+                            fontWeight: 400,
+                            border: `1px solid ${isSelected ? `${primaryColor}40` : T.border}`,
+                            background: isSelected
+                              ? `${primaryColor}15`
+                              : "transparent",
+                            color: isSelected ? `${primaryColor}CC` : T.textDim,
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                            fontFamily: "inherit",
+                          }}
                         >
                           {min < 60 ? `${min}m` : `${min / 60}h`}
                           {min % 60 !== 0 && min > 60 ? `${min % 60}m` : ""}
@@ -487,10 +778,17 @@ export default function ServiceModal({
                       );
                     })}
                   </div>
-                  <div className="relative">
+                  <div style={{ position: "relative" }}>
                     <Clock
-                      size={15}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C4B8B0]"
+                      size={14}
+                      strokeWidth={1.5}
+                      style={{
+                        position: "absolute",
+                        left: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: T.textDim,
+                      }}
                     />
                     <Controller
                       name="duration_minutes"
@@ -506,30 +804,29 @@ export default function ServiceModal({
                             field.onChange(parseInt(e.target.value) || 0)
                           }
                           placeholder="60"
-                          className={`${inputBase} pl-9`}
-                          style={{
-                            ["--tw-ring-color" as string]: primaryColor,
-                          }}
+                          style={{ ...inputStyle, paddingLeft: "34px" }}
+                          {...inputFocus}
                         />
                       )}
                     />
                   </div>
-                  {errors.duration_minutes && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.duration_minutes.message}
-                    </p>
-                  )}
+                  <ErrMsg msg={errors.duration_minutes?.message} />
                 </div>
 
-                {/* Price */}
+                {/* Precio */}
                 <div>
-                  <label className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase mb-1.5 block">
-                    Precio (USD) <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
+                  <FieldLabel required>Precio (USD)</FieldLabel>
+                  <div style={{ position: "relative" }}>
                     <DollarSign
-                      size={15}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C4B8B0]"
+                      size={14}
+                      strokeWidth={1.5}
+                      style={{
+                        position: "absolute",
+                        left: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: T.textDim,
+                      }}
                     />
                     <Controller
                       name="price"
@@ -544,26 +841,37 @@ export default function ServiceModal({
                             field.onChange(parseFloat(e.target.value) || 0)
                           }
                           placeholder="0.00"
-                          className={`${inputBase} pl-9`}
-                          style={{
-                            ["--tw-ring-color" as string]: primaryColor,
-                          }}
+                          style={{ ...inputStyle, paddingLeft: "34px" }}
+                          {...inputFocus}
                         />
                       )}
                     />
                   </div>
-                  {errors.price && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.price.message}
-                    </p>
-                  )}
+                  <ErrMsg msg={errors.price?.message} />
                 </div>
 
-                {/* Description */}
+                {/* Descripción */}
                 <div>
-                  <label className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase mb-1.5 block">
+                  <label
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: 400,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      color: T.textDim,
+                      display: "block",
+                      marginBottom: "8px",
+                    }}
+                  >
                     Descripción{" "}
-                    <span className="text-[#C4B8B0] font-normal normal-case tracking-normal">
+                    <span
+                      style={{
+                        color: "rgba(245,242,238,0.12)",
+                        fontWeight: 300,
+                        textTransform: "none",
+                        letterSpacing: 0,
+                      }}
+                    >
                       (opcional)
                     </span>
                   </label>
@@ -571,33 +879,63 @@ export default function ServiceModal({
                     {...register("description")}
                     rows={2}
                     placeholder="Describe brevemente este servicio..."
-                    className={`${inputBase} resize-none`}
-                    style={{ ["--tw-ring-color" as string]: primaryColor }}
+                    style={{
+                      ...inputStyle,
+                      resize: "none",
+                      height: "auto",
+                    }}
+                    {...inputFocus}
                   />
-                  {errors.description && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {errors.description.message}
-                    </p>
-                  )}
+                  <ErrMsg msg={errors.description?.message} />
                 </div>
 
                 {/* Submit */}
                 <motion.button
                   type="submit"
                   disabled={isLoading}
-                  whileHover={!isLoading ? { scale: 1.01 } : {}}
+                  whileHover={!isLoading ? { y: -1 } : {}}
                   whileTap={!isLoading ? { scale: 0.99 } : {}}
-                  className="w-full py-3.5 rounded-xl font-semibold text-sm text-white
-                             transition-opacity disabled:opacity-60 disabled:cursor-not-allowed
-                             flex items-center justify-center gap-2 mt-2"
                   style={{
-                    backgroundColor: primaryColor,
-                    boxShadow: `0 8px 24px ${primaryColor}30`,
+                    width: "100%",
+                    padding: "13px",
+                    borderRadius: "8px",
+                    border: `1px solid ${T.roseBorder}`,
+                    background: T.roseGhost,
+                    color: T.roseDim,
+                    fontSize: "12px",
+                    fontWeight: 400,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    cursor: isLoading ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "7px",
+                    opacity: isLoading ? 0.5 : 1,
+                    transition: "all 0.2s",
+                    marginTop: "4px",
+                    fontFamily: "inherit",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isLoading) {
+                      (e.currentTarget as HTMLElement).style.background =
+                        "rgba(255,45,85,0.16)";
+                      (e.currentTarget as HTMLElement).style.borderColor =
+                        "rgba(255,45,85,0.42)";
+                      (e.currentTarget as HTMLElement).style.color = "#FF2D55";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.background =
+                      T.roseGhost;
+                    (e.currentTarget as HTMLElement).style.borderColor =
+                      T.roseBorder;
+                    (e.currentTarget as HTMLElement).style.color = T.roseDim;
                   }}
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 size={15} className="animate-spin" />
+                      <Loader2 size={14} className="animate-spin" />{" "}
                       Guardando...
                     </>
                   ) : (

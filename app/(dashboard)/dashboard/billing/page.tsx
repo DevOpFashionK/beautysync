@@ -11,7 +11,7 @@ import { BillingStatus } from "@/components/dashboard/billing/BillingStatus";
 import { PricingPlans } from "@/components/dashboard/billing/PricingPlans";
 import { PaymentMethod } from "@/components/dashboard/billing/PaymentMethod";
 import { CancelSubscription } from "@/components/dashboard/billing/CancelSubscription";
-import { Receipt, Sparkles } from "lucide-react";
+import { Receipt } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -52,7 +52,8 @@ export default async function BillingPage({
     .eq("salon_id", salon.id)
     .maybeSingle();
 
-  const primaryColor = salon.primary_color ?? "#D4375F";
+  const primaryColor = salon.primary_color ?? "#FF2D55";
+
   // Calcular estado efectivo y días restantes (hora El Salvador UTC-6)
   const nowSV = new Date(
     new Date().toLocaleString("en-US", { timeZone: "America/El_Salvador" }),
@@ -96,59 +97,143 @@ export default async function BillingPage({
     effectiveStatus as Parameters<typeof isSubscriptionActive>[0],
   );
 
-  // Detectar retorno de Wompi con referencia de pago
+  // Detectar retorno de Wompi
   const paymentRef = params.payment_ref;
   const isDemo = params.demo === "1";
 
   return (
-    <div className="min-h-full bg-[#FAF8F5]">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-        {/* Header */}
+    <div style={{ minHeight: "100vh", background: "#080706" }}>
+      {/* Radial sutil */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          width: "400px",
+          height: "400px",
+          background:
+            "radial-gradient(circle at top right, rgba(255,45,85,0.04) 0%, transparent 65%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+
+      <div
+        className="relative"
+        style={{
+          maxWidth: "720px",
+          margin: "0 auto",
+          padding: "40px 24px 80px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "20px",
+          zIndex: 1,
+        }}
+      >
+        {/* ── Header ───────────────────────────────────────────────── */}
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Receipt className="w-5 h-5" style={{ color: primaryColor }} />
-            <p
-              className="text-xs font-semibold tracking-widest uppercase"
-              style={{ color: primaryColor }}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "10px",
+            }}
+          >
+            <Receipt size={14} style={{ color: "rgba(255,45,85,0.5)" }} />
+            <span
+              style={{
+                fontSize: "10px",
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "rgba(255,45,85,0.5)",
+              }}
             >
               Facturación
-            </p>
+            </span>
           </div>
-          <h1 className="font-display text-3xl text-[#2D2420]">
+          <h1
+            style={{
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+              fontSize: "clamp(2rem, 4vw, 3rem)",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.9)",
+              lineHeight: 1.08,
+              letterSpacing: "-0.03em",
+              margin: 0,
+            }}
+          >
             Tu suscripción
           </h1>
-          <p className="text-[#9C8E85] text-sm mt-1">
+          <p
+            style={{
+              fontSize: "13px",
+              color: "rgba(245,242,238,0.2)",
+              marginTop: "6px",
+              letterSpacing: "0.02em",
+            }}
+          >
             Gestiona tu plan y método de pago
           </p>
         </div>
 
-        {/* Banner de pago exitoso */}
+        {/* ── Banner pago exitoso / demo ────────────────────────────── */}
         {(paymentRef || isDemo) && (
           <div
-            className="rounded-2xl p-4 border flex items-start gap-3"
             style={{
-              backgroundColor: `${primaryColor}10`,
-              borderColor: `${primaryColor}30`,
+              borderRadius: "10px",
+              padding: "16px 18px",
+              border: "1px solid rgba(52,211,153,0.2)",
+              background: "rgba(16,185,129,0.07)",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "12px",
             }}
           >
-            <Sparkles
-              className="w-5 h-5 mt-0.5 shrink-0"
-              style={{ color: primaryColor }}
+            <div
+              style={{
+                width: "6px",
+                height: "6px",
+                borderRadius: "50%",
+                background: "rgba(52,211,153,0.7)",
+                flexShrink: 0,
+                marginTop: "5px",
+              }}
             />
             <div>
               <p
-                className="font-semibold text-sm"
-                style={{ color: primaryColor }}
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 400,
+                  color: "rgba(52,211,153,0.85)",
+                  margin: "0 0 4px",
+                }}
               >
                 {isDemo ? "Modo demo activado" : "¡Pago recibido!"}
               </p>
-              <p className="text-xs text-[#9C8E85] mt-0.5">
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "rgba(245,242,238,0.3)",
+                  margin: 0,
+                  lineHeight: 1.6,
+                }}
+              >
                 {isDemo
                   ? "Tu suscripción se activará automáticamente cuando configures las credenciales de Wompi."
                   : "Tu suscripción se está procesando. Puede tomar unos minutos en reflejarse. Recarga la página si no ves el cambio."}
               </p>
               {paymentRef && !isDemo && (
-                <p className="text-xs text-[#C4B8B0] mt-1 font-mono">
+                <p
+                  style={{
+                    fontSize: "10px",
+                    color: "rgba(245,242,238,0.18)",
+                    marginTop: "6px",
+                    fontFamily: "monospace",
+                  }}
+                >
                   Ref: {paymentRef}
                 </p>
               )}
@@ -156,11 +241,19 @@ export default async function BillingPage({
           </div>
         )}
 
-        {/* Estado actual */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-[#2D2420] uppercase tracking-wide">
+        {/* ── Estado actual ─────────────────────────────────────────── */}
+        <div>
+          <p
+            style={{
+              fontSize: "10px",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "rgba(245,242,238,0.2)",
+              marginBottom: "10px",
+            }}
+          >
             Estado actual
-          </h2>
+          </p>
           <BillingStatus
             subscription={subscription}
             effectiveStatus={effectiveStatus}
@@ -169,12 +262,20 @@ export default async function BillingPage({
           />
         </div>
 
-        {/* Método de pago — solo si tiene suscripción activa */}
+        {/* ── Método de pago — solo si activo con last4 ─────────────── */}
         {isActive && subscription?.payment_method_last4 && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-[#2D2420] uppercase tracking-wide">
+          <div>
+            <p
+              style={{
+                fontSize: "10px",
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "rgba(245,242,238,0.2)",
+                marginBottom: "10px",
+              }}
+            >
               Pago
-            </h2>
+            </p>
             <PaymentMethod
               subscription={subscription}
               primaryColor={primaryColor}
@@ -182,7 +283,7 @@ export default async function BillingPage({
           </div>
         )}
 
-        {/* Cancelar suscripción — solo si está activa */}
+        {/* ── Cancelar — solo si activo ─────────────────────────────── */}
         {isActive && subscription?.status === "active" && (
           <CancelSubscription
             primaryColor={primaryColor}
@@ -190,37 +291,58 @@ export default async function BillingPage({
           />
         )}
 
-        {/* Separador */}
-        <div className="border-t border-[#EDE8E3]" />
+        {/* ── Divider ───────────────────────────────────────────────── */}
+        <div style={{ height: "1px", background: "rgba(255,255,255,0.05)" }} />
 
-        {/* Separador */}
-        <div className="border-t border-[#EDE8E3]" />
-
-        {/* Planes — siempre visible para permitir upgrade/cambio */}
+        {/* ── Planes ───────────────────────────────────────────────── */}
         <PricingPlans
           currentPlan={subscription?.plan}
           currentStatus={effectiveStatus}
           primaryColor={primaryColor}
         />
 
-        {/* Nota legal */}
-        <div className="text-center space-y-1 pb-4">
-          <p className="text-xs text-[#C4B8B0]">
+        {/* ── Nota legal ───────────────────────────────────────────── */}
+        <div style={{ textAlign: "center", paddingBottom: "8px" }}>
+          <p
+            style={{
+              fontSize: "11px",
+              color: "rgba(245,242,238,0.15)",
+              lineHeight: 1.7,
+            }}
+          >
             Al suscribirte aceptas nuestros{" "}
-            <span className="underline cursor-pointer">
+            <span style={{ textDecoration: "underline", cursor: "pointer" }}>
               Términos de servicio
             </span>{" "}
             y{" "}
-            <span className="underline cursor-pointer">
+            <span style={{ textDecoration: "underline", cursor: "pointer" }}>
               Política de privacidad
             </span>
             .
           </p>
-          <p className="text-xs text-[#C4B8B0]">
+          <p
+            style={{
+              fontSize: "11px",
+              color: "rgba(245,242,238,0.12)",
+              marginTop: "4px",
+            }}
+          >
             ¿Preguntas? Escríbenos a{" "}
             <a
               href="mailto:soporte@beautysync.co"
-              className="underline hover:text-[#9C8E85] transition-colors"
+              style={{
+                color: "rgba(245,242,238,0.2)",
+                textDecoration: "underline",
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) =>
+                ((e.currentTarget as HTMLElement).style.color =
+                  "rgba(245,242,238,0.45)")
+              }
+              onMouseLeave={(e) =>
+                ((e.currentTarget as HTMLElement).style.color =
+                  "rgba(245,242,238,0.2)")
+              }
             >
               soporte@beautysync.co
             </a>

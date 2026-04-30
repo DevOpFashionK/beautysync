@@ -1,25 +1,7 @@
 "use client";
 
 // components/dashboard/metrics/WeekdayHeatmap.tsx
-//
-// Heatmap de ocupación por día de semana.
-// Muestra qué días del salón son históricamente más ocupados,
-// calculado sobre los últimos 90 días de citas no canceladas.
-//
-// Diseño: barras horizontales con intensidad de color basada en primaryColor.
-// No usa recharts — divs + CSS para control preciso del diseño.
-//
-// Props:
-//   weekdayData  — array de 7 elementos (Lun→Dom) con { day, count, pct }
-//   primaryColor — color de acento del salón
-//   loading      — muestra skeleton si true
-//
-// Intensidad:
-//   pct 0%        → fondo neutro #F3EDE8
-//   pct 1–33%     → primaryColor 25% opacidad
-//   pct 34–66%    → primaryColor 55% opacidad
-//   pct 67–100%   → primaryColor 85% opacidad
-//   Día con max   → primaryColor 100% + label en color
+// Heatmap de ocupación por día de semana — barras horizontales SVG. Lógica intacta.
 
 import { motion } from "framer-motion";
 import { Flame } from "lucide-react";
@@ -27,15 +9,10 @@ import { Flame } from "lucide-react";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface WeekdayDataPoint {
-  /** Nombre corto del día — "Lun", "Mar", ..., "Dom" */
   day: string;
-  /** Nombre completo — "Lunes", "Martes", etc. */
   dayFull: string;
-  /** Total de citas en ese día de semana (últimos 90 días) */
   count: number;
-  /** Porcentaje relativo al día más ocupado (0–100) */
   pct: number;
-  /** true si es el día con más citas */
   isMax: boolean;
 }
 
@@ -45,70 +22,114 @@ interface WeekdayHeatmapProps {
   loading?: boolean;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Convierte el pct (0–100) en un color con opacidad variable de primaryColor */
 function barColor(pct: number, primaryColor: string, isMax: boolean): string {
-  if (pct === 0) return "#F3EDE8";
+  if (pct === 0) return "rgba(255,255,255,0.03)";
   if (isMax) return primaryColor;
-  if (pct >= 67) return `${primaryColor}D9`; // ~85%
-  if (pct >= 34) return `${primaryColor}8C`; // ~55%
-  return `${primaryColor}40`; // ~25%
+  if (pct >= 67) return `${primaryColor}BB`;
+  if (pct >= 34) return `${primaryColor}77`;
+  return `${primaryColor}33`;
 }
 
-/** Ancho mínimo visible aunque pct sea muy bajo */
 function barWidth(pct: number): string {
   if (pct === 0) return "0%";
   return `${Math.max(pct, 6)}%`;
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
+// ─── Skeleton Dark ────────────────────────────────────────────────────────────
 
 function HeatmapSkeleton() {
   const widths = ["72%", "45%", "88%", "60%", "95%", "38%", "20%"];
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.28 }}
-      className="rounded-2xl p-6 animate-pulse"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      className="animate-pulse"
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
-      {/* Header skeleton */}
-      <div className="flex items-center justify-between mb-6">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "24px",
+        }}
+      >
         <div>
           <div
-            className="h-3 rounded-lg w-36 mb-2"
-            style={{ background: "#F3EDE8" }}
+            style={{
+              height: "10px",
+              width: "130px",
+              borderRadius: "4px",
+              background: "rgba(255,255,255,0.04)",
+              marginBottom: "8px",
+            }}
           />
           <div
-            className="h-6 rounded-lg w-24"
-            style={{ background: "#F3EDE8" }}
+            style={{
+              height: "20px",
+              width: "90px",
+              borderRadius: "6px",
+              background: "rgba(255,255,255,0.05)",
+            }}
           />
         </div>
-        <div className="w-9 h-9 rounded-xl" style={{ background: "#F3EDE8" }} />
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            background: "rgba(255,255,255,0.04)",
+          }}
+        />
       </div>
-      {/* Filas skeleton */}
-      <div className="flex flex-col gap-3">
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
         {widths.map((w, i) => (
-          <div key={i} className="flex items-center gap-3">
+          <div
+            key={i}
+            style={{ display: "flex", alignItems: "center", gap: "10px" }}
+          >
             <div
-              className="w-7 h-3 rounded-lg shrink-0"
-              style={{ background: "#F3EDE8" }}
+              style={{
+                width: "24px",
+                height: "10px",
+                borderRadius: "4px",
+                background: "rgba(255,255,255,0.04)",
+                flexShrink: 0,
+              }}
             />
             <div
-              className="flex-1 h-7 rounded-lg"
-              style={{ background: "#F3EDE8" }}
+              style={{
+                flex: 1,
+                height: "24px",
+                borderRadius: "6px",
+                background: "rgba(255,255,255,0.03)",
+              }}
             >
               <div
-                className="h-full rounded-lg"
-                style={{ width: w, background: "#EDE8E3" }}
+                style={{
+                  height: "100%",
+                  width: w,
+                  borderRadius: "6px",
+                  background: "rgba(255,255,255,0.04)",
+                }}
               />
             </div>
             <div
-              className="w-4 h-3 rounded-lg shrink-0"
-              style={{ background: "#F3EDE8" }}
+              style={{
+                width: "14px",
+                height: "10px",
+                borderRadius: "4px",
+                background: "rgba(255,255,255,0.04)",
+                flexShrink: 0,
+              }}
             />
           </div>
         ))}
@@ -117,7 +138,7 @@ function HeatmapSkeleton() {
   );
 }
 
-// ─── Empty state ─────────────────────────────────────────────────────────────
+// ─── Empty Dark ───────────────────────────────────────────────────────────────
 
 function HeatmapEmpty({ primaryColor }: { primaryColor: string }) {
   return (
@@ -125,28 +146,56 @@ function HeatmapEmpty({ primaryColor }: { primaryColor: string }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.28 }}
-      className="rounded-2xl p-6 flex flex-col items-center justify-center py-16"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingTop: "56px",
+        paddingBottom: "56px",
+      }}
     >
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-        style={{ background: `${primaryColor}14` }}
+        style={{
+          width: "36px",
+          height: "36px",
+          borderRadius: "8px",
+          background: `${primaryColor}12`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "14px",
+        }}
       >
-        <Flame size={18} strokeWidth={1.75} style={{ color: primaryColor }} />
+        <Flame
+          size={16}
+          strokeWidth={1.75}
+          style={{ color: `${primaryColor}99` }}
+        />
       </div>
       <p
         style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontSize: "1.2rem",
-          fontWeight: 500,
-          color: "#9C8E85",
+          fontFamily:
+            "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+          fontSize: "1.1rem",
+          fontWeight: 300,
+          color: "rgba(245,242,238,0.35)",
+          marginBottom: "4px",
         }}
       >
         Sin datos aún
       </p>
       <p
-        className="text-xs mt-1 text-center"
-        style={{ color: "#C4B8B0", maxWidth: "18rem" }}
+        style={{
+          fontSize: "11px",
+          color: "rgba(245,242,238,0.15)",
+          textAlign: "center",
+          maxWidth: "18rem",
+        }}
       >
         El heatmap mostrará tus días más ocupados cuando haya citas registradas.
       </p>
@@ -165,8 +214,8 @@ function DayRow({
   primaryColor: string;
   index: number;
 }) {
-  const fillColor = barColor(point.pct, primaryColor, point.isMax);
-  const trackColor = "#F3EDE8";
+  const fill = barColor(point.pct, primaryColor, point.isMax);
+  const track = "rgba(255,255,255,0.04)";
   const width = barWidth(point.pct);
 
   return (
@@ -174,14 +223,19 @@ function DayRow({
       initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, delay: 0.28 + index * 0.04 }}
-      className="flex items-center gap-3"
+      style={{ display: "flex", alignItems: "center", gap: "10px" }}
     >
       {/* Label día */}
       <p
-        className="text-xs font-medium shrink-0 w-7 text-right"
         style={{
-          color: point.isMax ? primaryColor : "#9C8E85",
-          fontWeight: point.isMax ? 700 : 500,
+          fontSize: "10px",
+          fontWeight: 400,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          flexShrink: 0,
+          width: "24px",
+          textAlign: "right",
+          color: point.isMax ? `${primaryColor}CC` : "rgba(245,242,238,0.25)",
         }}
       >
         {point.day}
@@ -189,10 +243,12 @@ function DayRow({
 
       {/* Track */}
       <div
-        className="flex-1 rounded-lg overflow-hidden"
         style={{
-          background: trackColor,
-          height: "28px",
+          flex: 1,
+          borderRadius: "6px",
+          overflow: "hidden",
+          background: track,
+          height: "24px",
           position: "relative",
         }}
       >
@@ -206,23 +262,35 @@ function DayRow({
           }}
           style={{
             height: "100%",
-            background: fillColor,
-            borderRadius: "0.5rem",
+            background: fill,
+            borderRadius: "6px",
           }}
         />
-        {/* Badge "Día más ocupado" solo en isMax */}
         {point.isMax && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <div
+            style={{
+              position: "absolute",
+              right: "8px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
             <Flame
-              size={10}
+              size={9}
               strokeWidth={2}
-              style={{ color: "rgba(255,255,255,0.9)" }}
+              style={{ color: "rgba(245,242,238,0.7)" }}
             />
             <span
-              className="text-xs font-semibold"
-              style={{ color: "rgba(255,255,255,0.9)", fontSize: "0.65rem" }}
+              style={{
+                fontSize: "9px",
+                color: "rgba(245,242,238,0.7)",
+                letterSpacing: "0.06em",
+              }}
             >
-              Más ocupado
+              Mas ocupado
             </span>
           </div>
         )}
@@ -230,10 +298,12 @@ function DayRow({
 
       {/* Conteo */}
       <p
-        className="text-xs font-semibold shrink-0 w-5 text-right"
         style={{
-          color: point.isMax ? primaryColor : "#B5A99F",
-          fontWeight: point.isMax ? 700 : 500,
+          fontSize: "11px",
+          flexShrink: 0,
+          width: "18px",
+          textAlign: "right",
+          color: point.isMax ? `${primaryColor}CC` : "rgba(245,242,238,0.22)",
         }}
       >
         {point.count}
@@ -252,9 +322,7 @@ export default function WeekdayHeatmap({
   if (loading) return <HeatmapSkeleton />;
 
   const totalCitas = weekdayData.reduce((sum, d) => sum + d.count, 0);
-  const hasData = totalCitas > 0;
-
-  if (!hasData) return <HeatmapEmpty primaryColor={primaryColor} />;
+  if (totalCitas === 0) return <HeatmapEmpty primaryColor={primaryColor} />;
 
   const maxDay = weekdayData.find((d) => d.isMax);
 
@@ -263,47 +331,82 @@ export default function WeekdayHeatmap({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.28 }}
-      className="rounded-2xl p-6"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: "20px",
+        }}
+      >
         <div>
           <p
-            className="text-xs font-medium uppercase tracking-wider mb-1.5"
-            style={{ color: "#9C8E85", letterSpacing: "0.08em" }}
+            style={{
+              fontSize: "10px",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "rgba(245,242,238,0.22)",
+              marginBottom: "6px",
+            }}
           >
             Ocupación · últimos 90 días
           </p>
           {maxDay && (
             <p
               style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontSize: "1.5rem",
-                fontWeight: 600,
-                color: "#2D2420",
+                fontFamily:
+                  "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                fontSize: "1.4rem",
+                fontWeight: 300,
+                color: "rgba(245,242,238,0.85)",
                 lineHeight: 1,
-                letterSpacing: "-0.01em",
+                letterSpacing: "-0.02em",
               }}
             >
               {maxDay.dayFull}
             </p>
           )}
-          <p className="text-xs mt-1" style={{ color: "#B5A99F" }}>
+          <p
+            style={{
+              fontSize: "11px",
+              marginTop: "4px",
+              color: "rgba(245,242,238,0.2)",
+            }}
+          >
             es tu día más ocupado
           </p>
         </div>
-
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: `${primaryColor}14` }}
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            background: `${primaryColor}12`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
         >
-          <Flame size={16} strokeWidth={1.75} style={{ color: primaryColor }} />
+          <Flame
+            size={14}
+            strokeWidth={1.75}
+            style={{ color: `${primaryColor}CC` }}
+          />
         </div>
       </div>
 
-      {/* Filas por día */}
-      <div className="flex flex-col gap-2.5">
+      {/* Filas */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         {weekdayData.map((point, i) => (
           <DayRow
             key={point.day}
@@ -315,7 +418,15 @@ export default function WeekdayHeatmap({
       </div>
 
       {/* Footer */}
-      <p className="text-xs mt-5 text-right" style={{ color: "#C4B8B0" }}>
+      <p
+        style={{
+          fontSize: "10px",
+          marginTop: "16px",
+          textAlign: "right",
+          color: "rgba(245,242,238,0.12)",
+          letterSpacing: "0.04em",
+        }}
+      >
         Total: {totalCitas} citas en 90 días
       </p>
     </motion.div>

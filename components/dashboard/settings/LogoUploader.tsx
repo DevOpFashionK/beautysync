@@ -30,20 +30,30 @@ const ALLOWED_TYPES = [
 const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "svg"];
 
 function validateFile(file: File): string | null {
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  if (!ALLOWED_TYPES.includes(file.type))
     return `Formato no permitido. Usa: ${ALLOWED_EXTENSIONS.join(", ").toUpperCase()}`;
-  }
-  if (file.size > MAX_SIZE_BYTES) {
+  if (file.size > MAX_SIZE_BYTES)
     return `El archivo es muy grande. Máximo ${MAX_SIZE_MB}MB`;
-  }
   return null;
 }
+
+// ─── Tokens ───────────────────────────────────────────────────────────────────
+const T = {
+  surface2: "#131110",
+  border: "rgba(255,255,255,0.055)",
+  borderMid: "rgba(255,255,255,0.09)",
+  textPrimary: "rgba(245,242,238,0.88)",
+  textMid: "rgba(245,242,238,0.45)",
+  textDim: "rgba(245,242,238,0.18)",
+  roseDim: "rgba(255,45,85,0.55)",
+  roseGhost: "rgba(255,45,85,0.08)",
+  roseBorder: "rgba(255,45,85,0.22)",
+};
 
 export default function LogoUploader({
   salonId,
   primaryColor,
 }: LogoUploaderProps) {
-  // Lee y actualiza el Context directamente — actualiza el sidebar en tiempo real
   const { salon, updateLogoUrl, canCustomizeBrand } = useSalon();
   const currentLogoUrl = salon.logoUrl;
 
@@ -85,18 +95,15 @@ export default function LogoUploader({
         const { data: urlData } = supabase.storage
           .from("salon-assets")
           .getPublicUrl(filePath);
-
-        // Agregar timestamp para forzar recarga del navegador si la URL es la misma
         const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
         const { error: dbError } = await supabase
           .from("salons")
-          .update({ logo_url: urlData.publicUrl }) // guardar sin timestamp en DB
+          .update({ logo_url: urlData.publicUrl })
           .eq("id", salonId);
 
         if (dbError) throw dbError;
 
-        // Actualizar Context → sidebar se actualiza inmediatamente sin recargar
         updateLogoUrl(publicUrl);
         setPreview(publicUrl);
         setSuccess(true);
@@ -139,22 +146,17 @@ export default function LogoUploader({
   const handleRemoveLogo = async () => {
     setRemoving(true);
     setError(null);
-
     try {
       const supabase = createClient();
       const filePaths = ALLOWED_EXTENSIONS.map(
         (ext) => `${salonId}/logo.${ext}`,
       );
       await supabase.storage.from("salon-assets").remove(filePaths);
-
       const { error: dbError } = await supabase
         .from("salons")
         .update({ logo_url: null })
         .eq("id", salonId);
-
       if (dbError) throw dbError;
-
-      // Actualizar Context → sidebar quita el logo inmediatamente
       updateLogoUrl(null);
       setPreview(null);
     } catch (e) {
@@ -165,78 +167,171 @@ export default function LogoUploader({
     }
   };
 
-  // ─── Plan no Pro: mostrar bloqueo ────────────────────────────────────────────
+  // ─── Plan no Pro: bloqueo ─────────────────────────────────────────────────
   if (!canCustomizeBrand) {
     return (
-      <div className="flex flex-col gap-3">
-        {/* Header */}
-        <div className="flex items-center gap-2">
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <div
-            className="w-5 h-5 rounded-md flex items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}14` }}
+            style={{
+              width: "20px",
+              height: "20px",
+              borderRadius: "5px",
+              background: `${primaryColor}12`,
+              border: `1px solid ${primaryColor}20`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            <ImageIcon size={11} style={{ color: primaryColor }} />
+            <ImageIcon
+              size={11}
+              strokeWidth={1.75}
+              style={{ color: `${primaryColor}CC` }}
+            />
           </div>
-          <h2 className="font-semibold text-[#2D2420] text-sm">
+          <h2
+            style={{
+              fontSize: "12px",
+              fontWeight: 400,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: T.textMid,
+              margin: 0,
+            }}
+          >
             Logo del salón
           </h2>
           <span
-            className="text-xs px-2 py-0.5 rounded-full font-medium text-white ml-1"
-            style={{ backgroundColor: primaryColor }}
+            style={{
+              fontSize: "9px",
+              padding: "2px 8px",
+              borderRadius: "20px",
+              background: `${primaryColor}15`,
+              border: `1px solid ${primaryColor}22`,
+              color: `${primaryColor}99`,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
           >
             Plan Pro
           </span>
         </div>
 
-        <p className="text-xs text-[#9C8E85] leading-relaxed -mt-1">
-          Aparece en el widget de reservas y en el dashboard.
-        </p>
-
-        {/* Si ya tiene logo, mostrarlo en modo solo lectura */}
         {currentLogoUrl && (
-          <div className="flex items-center gap-4">
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
             <div
-              className="shrink-0 w-20 h-20 rounded-2xl border-2 border-dashed
-                         flex items-center justify-center overflow-hidden"
-              style={{ borderColor: `${primaryColor}40` }}
+              style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "8px",
+                border: `2px dashed ${primaryColor}30`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+                flexShrink: 0,
+              }}
             >
               <img
                 src={currentLogoUrl}
                 alt="Logo del salón"
-                className="w-full h-full object-contain p-1"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  padding: "4px",
+                }}
               />
             </div>
-            <p className="text-xs text-[#9C8E85] leading-relaxed">
+            <p style={{ fontSize: "11px", color: T.textDim, lineHeight: 1.6 }}>
               Tu logo actual se seguirá mostrando, pero no podrás cambiarlo
               hasta activar el Plan Pro.
             </p>
           </div>
         )}
 
-        {/* Bloqueo visual */}
         <div
-          className="rounded-2xl border-2 border-dashed p-6 text-center"
-          style={{ borderColor: "#EDE8E3", backgroundColor: "#FAF8F5" }}
+          style={{
+            borderRadius: "10px",
+            border: `2px dashed ${T.border}`,
+            padding: "24px 16px",
+            textAlign: "center",
+          }}
         >
-          <div className="flex flex-col items-center gap-2">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: `${primaryColor}12` }}
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "8px",
+                background: `${primaryColor}10`,
+                border: `1px solid ${primaryColor}18`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <Lock size={18} style={{ color: primaryColor }} />
+              <Lock
+                size={16}
+                strokeWidth={1.75}
+                style={{ color: `${primaryColor}88` }}
+              />
             </div>
-            <p className="text-sm font-semibold text-[#2D2420]">
+            <p
+              style={{
+                fontSize: "13px",
+                fontWeight: 400,
+                color: T.textMid,
+                margin: 0,
+              }}
+            >
               Feature exclusiva del Plan Pro
             </p>
-            <p className="text-xs text-[#9C8E85] max-w-xs leading-relaxed">
+            <p
+              style={{
+                fontSize: "11px",
+                color: T.textDim,
+                maxWidth: "240px",
+                lineHeight: 1.6,
+                margin: 0,
+              }}
+            >
               Sube el logo de tu salón y refuerza tu marca en el widget de
               reservas y el dashboard.
             </p>
             <a
               href="/dashboard/billing/upgrade"
-              className="mt-2 inline-block px-5 py-2 rounded-xl text-sm font-semibold
-                         text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: primaryColor }}
+              style={{
+                display: "inline-block",
+                marginTop: "4px",
+                padding: "8px 18px",
+                borderRadius: "7px",
+                fontSize: "11px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                background: T.roseGhost,
+                border: `1px solid ${T.roseBorder}`,
+                color: T.roseDim,
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "rgba(255,45,85,0.16)";
+                (e.currentTarget as HTMLElement).style.color = "#FF2D55";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = T.roseGhost;
+                (e.currentTarget as HTMLElement).style.color = T.roseDim;
+              }}
             >
               Ver Plan Pro
             </a>
@@ -246,22 +341,52 @@ export default function LogoUploader({
     );
   }
 
-  // ─── Plan Pro o trialing: funcionalidad completa ──────────────────────────────
+  // ─── Plan Pro: funcionalidad completa ────────────────────────────────────
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         <div
-          className="w-5 h-5 rounded-md flex items-center justify-center"
-          style={{ backgroundColor: `${primaryColor}14` }}
+          style={{
+            width: "20px",
+            height: "20px",
+            borderRadius: "5px",
+            background: `${primaryColor}12`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <ImageIcon size={11} style={{ color: primaryColor }} />
+          <ImageIcon
+            size={11}
+            strokeWidth={1.75}
+            style={{ color: `${primaryColor}CC` }}
+          />
         </div>
-        <h2 className="font-semibold text-[#2D2420] text-sm">Logo del salón</h2>
+        <h2
+          style={{
+            fontSize: "12px",
+            fontWeight: 400,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: T.textMid,
+            margin: 0,
+          }}
+        >
+          Logo del salón
+        </h2>
       </div>
 
-      <p className="text-xs text-[#9C8E85] leading-relaxed -mt-1">
-        Aparece en el widget de reservas y en el dashboard. Formatos: JPG, PNG,
-        WebP, SVG · Máximo {MAX_SIZE_MB}MB
+      <p
+        style={{
+          fontSize: "11px",
+          color: T.textDim,
+          marginTop: "-4px",
+          lineHeight: 1.6,
+          letterSpacing: "0.02em",
+        }}
+      >
+        Formatos: JPG, PNG, WebP, SVG · Máximo {MAX_SIZE_MB}MB
       </p>
 
       <AnimatePresence>
@@ -270,46 +395,105 @@ export default function LogoUploader({
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "rgba(239,68,68,0.07)",
+              border: "1px solid rgba(239,68,68,0.18)",
+              borderRadius: "8px",
+              padding: "10px 12px",
+            }}
           >
-            <AlertTriangle size={14} className="text-red-400 shrink-0" />
-            <p className="text-xs text-red-600">{error}</p>
+            <AlertTriangle
+              size={13}
+              strokeWidth={1.75}
+              style={{ color: "rgba(252,165,165,0.7)", flexShrink: 0 }}
+            />
+            <p
+              style={{
+                fontSize: "12px",
+                color: "rgba(252,165,165,0.85)",
+                margin: 0,
+              }}
+            >
+              {error}
+            </p>
           </motion.div>
         )}
-      </AnimatePresence>
-
-      <AnimatePresence>
         {success && (
           <motion.div
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "rgba(16,185,129,0.07)",
+              border: "1px solid rgba(16,185,129,0.18)",
+              borderRadius: "8px",
+              padding: "10px 12px",
+            }}
           >
-            <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-            <p className="text-xs text-emerald-600">
+            <CheckCircle
+              size={13}
+              strokeWidth={1.75}
+              style={{ color: "rgba(52,211,153,0.7)", flexShrink: 0 }}
+            />
+            <p
+              style={{
+                fontSize: "12px",
+                color: "rgba(52,211,153,0.85)",
+                margin: 0,
+              }}
+            >
               Logo actualizado correctamente
             </p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex items-start gap-4">
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
         {/* Preview */}
         <div
-          className="relative shrink-0 w-20 h-20 rounded-2xl border-2 border-dashed
-                     flex items-center justify-center overflow-hidden transition-colors"
-          style={{ borderColor: preview ? `${primaryColor}40` : "#EDE8E3" }}
+          style={{
+            position: "relative",
+            flexShrink: 0,
+            width: "72px",
+            height: "72px",
+            borderRadius: "10px",
+            border: `2px dashed ${preview ? `${primaryColor}40` : T.border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            transition: "border-color 0.2s",
+          }}
         >
           {preview ? (
             <>
               <img
                 src={preview}
                 alt="Logo del salón"
-                className="w-full h-full object-contain p-1"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  padding: "4px",
+                }}
               />
               {(uploading || removing) && (
-                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "rgba(8,7,6,0.7)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   <Loader2
                     size={16}
                     className="animate-spin"
@@ -319,16 +503,35 @@ export default function LogoUploader({
               )}
             </>
           ) : (
-            <div className="flex flex-col items-center gap-1">
-              <ImageIcon size={20} className="text-[#C4B8B0]" />
-              <span className="text-[9px] text-[#C4B8B0]">Sin logo</span>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "3px",
+              }}
+            >
+              <ImageIcon
+                size={18}
+                strokeWidth={1.25}
+                style={{ color: T.textDim }}
+              />
+              <span
+                style={{
+                  fontSize: "8px",
+                  color: T.textDim,
+                  letterSpacing: "0.06em",
+                }}
+              >
+                Sin logo
+              </span>
             </div>
           )}
         </div>
 
         {/* Drop zone */}
         <div
-          className="flex-1"
+          style={{ flex: 1 }}
           onDragOver={(e) => {
             e.preventDefault();
             setIsDragging(true);
@@ -338,29 +541,70 @@ export default function LogoUploader({
         >
           <motion.div
             animate={{
-              borderColor: isDragging ? primaryColor : "#EDE8E3",
-              backgroundColor: isDragging ? `${primaryColor}06` : "#FAF8F5",
+              borderColor: isDragging ? primaryColor : T.border,
+              background: isDragging
+                ? `${primaryColor}06`
+                : "rgba(255,255,255,0.015)",
             }}
-            className="rounded-2xl border-2 border-dashed p-4 text-center cursor-pointer"
+            style={{
+              borderRadius: "8px",
+              border: `2px dashed ${T.border}`,
+              padding: "14px",
+              textAlign: "center",
+              cursor: uploading ? "default" : "pointer",
+            }}
             onClick={() => !uploading && inputRef.current?.click()}
           >
             {uploading ? (
-              <div className="flex flex-col items-center gap-2 py-1">
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
                 <Loader2
-                  size={18}
+                  size={16}
                   className="animate-spin"
-                  style={{ color: primaryColor }}
+                  style={{ color: `${primaryColor}99` }}
                 />
-                <p className="text-xs text-[#9C8E85]">Subiendo logo...</p>
+                <p style={{ fontSize: "11px", color: T.textDim, margin: 0 }}>
+                  Subiendo logo...
+                </p>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-2 py-1">
-                <Upload size={18} className="text-[#C4B8B0]" />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <Upload
+                  size={16}
+                  strokeWidth={1.5}
+                  style={{ color: T.textDim }}
+                />
                 <div>
-                  <p className="text-xs font-medium text-[#2D2420]">
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 400,
+                      color: T.textMid,
+                      margin: 0,
+                    }}
+                  >
                     {isDragging ? "Suelta aquí" : "Arrastra o haz clic"}
                   </p>
-                  <p className="text-[10px] text-[#9C8E85] mt-0.5">
+                  <p
+                    style={{
+                      fontSize: "10px",
+                      color: T.textDim,
+                      margin: "2px 0 0",
+                    }}
+                  >
                     para subir tu logo
                   </p>
                 </div>
@@ -368,24 +612,68 @@ export default function LogoUploader({
             )}
           </motion.div>
 
-          <div className="flex gap-2 mt-2">
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
             <button
               onClick={() => !uploading && inputRef.current?.click()}
               disabled={uploading || removing}
-              className="flex-1 py-2 rounded-xl border border-[#EDE8E3] text-xs font-medium
-                         text-[#9C8E85] hover:text-[#2D2420] hover:border-[#C4B8B0]
-                         transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white"
+              style={{
+                flex: 1,
+                padding: "7px 12px",
+                borderRadius: "7px",
+                border: `1px solid ${T.border}`,
+                background: "transparent",
+                fontSize: "11px",
+                letterSpacing: "0.05em",
+                color: T.textDim,
+                cursor: uploading || removing ? "not-allowed" : "pointer",
+                transition: "all 0.15s",
+                fontFamily: "inherit",
+                opacity: uploading || removing ? 0.4 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!uploading && !removing) {
+                  (e.currentTarget as HTMLElement).style.borderColor =
+                    T.borderMid;
+                  (e.currentTarget as HTMLElement).style.color = T.textMid;
+                }
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = T.border;
+                (e.currentTarget as HTMLElement).style.color = T.textDim;
+              }}
             >
               {uploading ? "Subiendo..." : "Seleccionar archivo"}
             </button>
-
             {preview && (
               <button
                 onClick={handleRemoveLogo}
                 disabled={uploading || removing}
-                className="px-3 py-2 rounded-xl border border-red-100 text-xs font-medium
-                           text-red-400 hover:bg-red-50 transition-all
-                           disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: "7px",
+                  border: "1px solid rgba(239,68,68,0.18)",
+                  background: "transparent",
+                  fontSize: "11px",
+                  color: "rgba(252,165,165,0.6)",
+                  cursor: uploading || removing ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                  fontFamily: "inherit",
+                  opacity: uploading || removing ? 0.4 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "rgba(239,68,68,0.07)";
+                  (e.currentTarget as HTMLElement).style.color =
+                    "rgba(252,165,165,0.85)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "transparent";
+                  (e.currentTarget as HTMLElement).style.color =
+                    "rgba(252,165,165,0.6)";
+                }}
               >
                 {removing ? (
                   <Loader2 size={12} className="animate-spin" />
@@ -403,7 +691,7 @@ export default function LogoUploader({
         type="file"
         accept={ALLOWED_TYPES.join(",")}
         onChange={handleFileSelect}
-        className="hidden"
+        style={{ display: "none" }}
       />
     </div>
   );

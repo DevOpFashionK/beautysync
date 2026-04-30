@@ -9,54 +9,135 @@ interface ServicesEmptyStateProps {
   onCreate: () => void;
 }
 
-export default function ServicesEmptyState({ primaryColor, onCreate }: ServicesEmptyStateProps) {
+export default function ServicesEmptyState({
+  primaryColor,
+  onCreate,
+}: ServicesEmptyStateProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="flex flex-col items-center justify-center py-24 text-center max-w-sm mx-auto"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "80px 0",
+        textAlign: "center",
+        maxWidth: "320px",
+        margin: "0 auto",
+      }}
     >
-      {/* Decorative icon */}
-      <div className="relative mb-8">
-        {/* Outer ring */}
+      {/* Ícono con anillo giratorio */}
+      <div style={{ position: "relative", marginBottom: "28px" }}>
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 rounded-full border border-dashed"
-          style={{ borderColor: `${primaryColor}30`, width: 80, height: 80, margin: -8 }}
+          style={{
+            position: "absolute",
+            top: "-8px",
+            left: "-8px",
+            width: "80px",
+            height: "80px",
+            borderRadius: "50%",
+            border: `1px dashed ${primaryColor}30`,
+          }}
         />
         <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center"
-          style={{ backgroundColor: `${primaryColor}10` }}
+          style={{
+            width: "64px",
+            height: "64px",
+            borderRadius: "14px",
+            background: `${primaryColor}10`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <Scissors size={28} style={{ color: primaryColor }} strokeWidth={1.5} />
+          <Scissors
+            size={26}
+            strokeWidth={1.25}
+            style={{ color: `${primaryColor}99` }}
+          />
         </div>
       </div>
 
-      <h3 className="font-['Cormorant_Garamond'] text-2xl font-semibold text-[#2D2420] mb-2">
+      <h3
+        style={{
+          fontFamily:
+            "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+          fontSize: "1.6rem",
+          fontWeight: 300,
+          color: "rgba(245,242,238,0.6)",
+          letterSpacing: "-0.02em",
+          margin: "0 0 10px",
+        }}
+      >
         Aún no tienes servicios
       </h3>
-      <p className="text-[#9C8E85] text-sm leading-relaxed mb-8">
-        Agrega los servicios que ofrece tu salón para que tus clientas puedan reservar en línea.
+      <p
+        style={{
+          fontSize: "13px",
+          color: "rgba(245,242,238,0.2)",
+          lineHeight: 1.7,
+          margin: "0 0 32px",
+          letterSpacing: "0.02em",
+        }}
+      >
+        Agrega los servicios que ofrece tu salón para que tus clientas puedan
+        reservar en línea.
       </p>
 
       <motion.button
         onClick={onCreate}
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
-        className="flex items-center gap-2 px-6 py-3 rounded-2xl text-white font-semibold text-sm"
+        whileHover={{ y: -1 }}
+        whileTap={{ scale: 0.98 }}
         style={{
-          backgroundColor: primaryColor,
-          boxShadow: `0 12px 32px ${primaryColor}35`,
+          display: "flex",
+          alignItems: "center",
+          gap: "7px",
+          padding: "12px 24px",
+          borderRadius: "8px",
+          border: "1px solid rgba(255,45,85,0.22)",
+          background: "rgba(255,45,85,0.08)",
+          color: "rgba(255,45,85,0.75)",
+          fontSize: "12px",
+          fontWeight: 400,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          cursor: "pointer",
+          transition: "all 0.2s",
+          fontFamily: "inherit",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.background =
+            "rgba(255,45,85,0.16)";
+          (e.currentTarget as HTMLElement).style.borderColor =
+            "rgba(255,45,85,0.42)";
+          (e.currentTarget as HTMLElement).style.color = "#FF2D55";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.background =
+            "rgba(255,45,85,0.08)";
+          (e.currentTarget as HTMLElement).style.borderColor =
+            "rgba(255,45,85,0.22)";
+          (e.currentTarget as HTMLElement).style.color = "rgba(255,45,85,0.75)";
         }}
       >
-        <Plus size={16} strokeWidth={2.5} />
+        <Plus size={14} strokeWidth={2} />
         Agregar primer servicio
       </motion.button>
 
-      {/* Hint */}
-      <p className="text-xs text-[#C4B8B0] mt-6">
+      <p
+        style={{
+          fontSize: "11px",
+          color: "rgba(245,242,238,0.12)",
+          marginTop: "20px",
+          letterSpacing: "0.03em",
+        }}
+      >
         Puedes usar nuestras plantillas para empezar más rápido
       </p>
     </motion.div>

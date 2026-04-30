@@ -56,15 +56,13 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const supabase = createClient();
 
-    // Primero verificar si ya hay una sesión recovery activa
-    // (el SDK pudo haber procesado el hash antes de que montara el componente)
+    // Verificar si ya hay sesión recovery activa
+    // (el SDK puede procesar el hash antes de que monte el componente)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setPageState("ready");
-      }
+      if (session) setPageState("ready");
     });
 
-    // También escuchar el evento por si llega después
+    // Escuchar el evento por si llega después
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -73,7 +71,7 @@ export default function ResetPasswordPage() {
       }
     });
 
-    // 6 segundos de margen para cubrir conexiones lentas
+    // 6 segundos de margen para conexiones lentas
     const timeout = setTimeout(() => {
       setPageState((current) => {
         if (current === "loading") return "invalid";
@@ -87,7 +85,7 @@ export default function ResetPasswordPage() {
     };
   }, []);
 
-  // ─── SUBMIT ─────────────────────────────────────────────────────────────────
+  // ─── SUBMIT ──────────────────────────────────────────────────────────────────
   const onSubmit = async (data: ResetForm) => {
     setAuthError(null);
     const supabase = createClient();
@@ -112,269 +110,361 @@ export default function ResetPasswordPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap');
 
-        :root {
-          --midnight: #0F0A1E;
-          --card-bg: rgba(26,20,45,0.85);
-          --electric-rose: #FF2D55;
-          --rose-deep: #D4003C;
-          --violet-neon: #7000FF;
-          --muted-lavender: #B3B0C2;
-          --font-display: 'Cormorant Garamond', Georgia, serif;
-          --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
+        /* ── TOKENS Dark Atelier ─────────────────────────────────── */
+        .rpa-root {
+          --bg:           #080706;
+          --surface:      #0E0C0B;
+          --surface2:     #131110;
+          --rose:         #FF2D55;
+          --rose-dim:     rgba(255,45,85,0.55);
+          --rose-ghost:   rgba(255,45,85,0.08);
+          --rose-border:  rgba(255,45,85,0.22);
+          --border:       rgba(255,255,255,0.055);
+          --border-mid:   rgba(255,255,255,0.09);
+          --text-primary: rgba(245,242,238,0.9);
+          --text-mid:     rgba(245,242,238,0.45);
+          --text-dim:     rgba(245,242,238,0.18);
+          --serif:        var(--font-cormorant, 'Cormorant Garamond', Georgia, serif);
+          --sans:         var(--font-jakarta, 'Plus Jakarta Sans', system-ui, sans-serif);
         }
 
-        .rp-root {
+        /* ── ROOT ────────────────────────────────────────────────── */
+        .rpa-root {
           min-height: 100vh;
-          display: flex; align-items: center; justify-content: center;
-          background: var(--midnight);
-          font-family: var(--font-body);
-          position: relative; overflow: hidden;
-          padding: 2rem 1rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg);
+          font-family: var(--sans);
+          position: relative;
+          overflow: hidden;
+          padding: 2rem 1.5rem;
         }
-        .rp-root::before {
-          content: ''; position: fixed;
+        .rpa-root::before {
+          content: '';
+          position: fixed;
           width: 600px; height: 600px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(112,0,255,0.14) 0%, transparent 65%);
-          top: -180px; left: -150px; pointer-events: none; z-index: 0;
+          background: radial-gradient(circle, rgba(255,45,85,0.07) 0%, transparent 65%);
+          top: -200px; right: -150px;
+          pointer-events: none; z-index: 0;
         }
-        .rp-root::after {
-          content: ''; position: fixed;
-          width: 500px; height: 500px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(255,45,85,0.10) 0%, transparent 65%);
-          bottom: -120px; right: -100px; pointer-events: none; z-index: 0;
+        .rpa-root::after {
+          content: '';
+          position: fixed;
+          width: 450px; height: 450px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,45,85,0.04) 0%, transparent 65%);
+          bottom: -150px; left: -80px;
+          pointer-events: none; z-index: 0;
         }
 
-        .rp-container {
+        /* Grid sutil */
+        .rpa-grid {
+          position: fixed; inset: 0; pointer-events: none; z-index: 0;
+          background-image:
+            linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+          background-size: 64px 64px;
+        }
+
+        /* ── WRAP ────────────────────────────────────────────────── */
+        .rpa-wrap {
           position: relative; z-index: 1;
-          width: 100%; max-width: 440px;
+          width: 100%; max-width: 420px;
+          display: flex; flex-direction: column; align-items: center;
         }
 
-        /* Logo */
-        .rp-logo {
-          display: flex; align-items: center; gap: 0.5rem;
-          justify-content: center; margin-bottom: 2rem;
+        /* ── LOGO ────────────────────────────────────────────────── */
+        .rpa-logo {
+          display: flex; align-items: center; gap: 10px;
+          margin-bottom: 40px; text-decoration: none;
         }
-        .rp-gem {
-          width: 32px; height: 32px;
-          background: linear-gradient(135deg, var(--electric-rose), var(--violet-neon));
-          border-radius: 8px;
+        .rpa-logo-box {
+          width: 28px; height: 28px;
+          border: 1px solid var(--rose-border); border-radius: 6px;
           display: flex; align-items: center; justify-content: center;
-          font-size: 0.875rem; color: #fff;
-          box-shadow: 0 4px 16px rgba(255,45,85,0.35);
+          flex-shrink: 0;
         }
-        .rp-brand {
-          font-family: var(--font-display);
-          font-size: 1.375rem; font-weight: 500;
-          color: #fff; letter-spacing: 0.02em;
+        .rpa-logo-box span {
+          font-size: 9px; font-weight: 500;
+          color: var(--rose); letter-spacing: -0.03em;
         }
-
-        /* Header */
-        .rp-header { text-align: center; margin-bottom: 2rem; }
-        .rp-eyebrow {
-          font-size: 0.6875rem; font-weight: 600;
-          letter-spacing: 0.12em; text-transform: uppercase;
-          color: var(--electric-rose); margin-bottom: 0.5rem;
-        }
-        .rp-title {
-          font-family: var(--font-display);
-          font-size: 2rem; font-weight: 500;
-          color: #fff; margin: 0 0 0.5rem; line-height: 1.2;
-        }
-        .rp-sub {
-          font-size: 0.875rem; color: var(--muted-lavender);
-          line-height: 1.6; margin: 0;
+        .rpa-logo-name {
+          font-size: 13px; color: rgba(245,242,238,0.45);
+          letter-spacing: 0.08em; font-weight: 400; text-transform: uppercase;
         }
 
-        /* Card glass */
-        .rp-glass {
-          background: var(--card-bg);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 20px; padding: 2rem;
-          box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.06) inset;
+        /* ── HEADER ──────────────────────────────────────────────── */
+        .rpa-header {
+          text-align: center; margin-bottom: 28px; width: 100%;
+        }
+        .rpa-eyebrow-row {
+          display: flex; align-items: center; justify-content: center;
+          gap: 10px; margin-bottom: 14px;
+        }
+        .rpa-eyebrow-line {
+          width: 18px; height: 1px; background: var(--rose-dim);
+          display: inline-block;
+        }
+        .rpa-eyebrow-text {
+          font-size: 10px; letter-spacing: 0.18em;
+          text-transform: uppercase; color: var(--rose-dim);
+        }
+        .rpa-title {
+          font-family: var(--serif);
+          font-size: 2.5rem; font-weight: 300;
+          color: var(--text-primary); margin: 0 0 10px;
+          line-height: 1.08; letter-spacing: -0.03em;
+        }
+        .rpa-title em { font-style: normal; color: var(--rose); }
+        .rpa-sub {
+          font-size: 13px; color: var(--text-mid);
+          line-height: 1.75; margin: 0; font-weight: 300;
         }
 
-        /* Loading */
-        .rp-loading {
+        /* ── CARD ────────────────────────────────────────────────── */
+        .rpa-card {
+          width: 100%;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 2rem;
+          position: relative; overflow: hidden;
+        }
+        .rpa-card::before {
+          content: '';
+          position: absolute; top: 0; right: 0;
+          width: 16px; height: 16px;
+          border-top: 1px solid var(--rose-border);
+          border-right: 1px solid var(--rose-border);
+          border-top-right-radius: 16px;
+          pointer-events: none;
+        }
+        .rpa-card::after {
+          content: '';
+          position: absolute; top: -40px; right: -40px;
+          width: 180px; height: 180px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,45,85,0.05) 0%, transparent 70%);
+          pointer-events: none;
+        }
+
+        /* ── LOADING ─────────────────────────────────────────────── */
+        .rpa-loading {
           display: flex; flex-direction: column;
-          align-items: center; gap: 1rem;
-          padding: 1rem 0;
+          align-items: center; gap: 14px; padding: 8px 0;
         }
-        .rp-loading-text {
-          font-size: 0.875rem; color: var(--muted-lavender);
+        .rpa-loading-text {
+          font-size: 13px; color: var(--text-dim);
+          letter-spacing: 0.04em; text-align: center;
         }
 
-        /* Campo */
-        .rp-field { margin-bottom: 1.25rem; }
-        .rp-label {
-          display: block; font-size: 0.8125rem; font-weight: 500;
-          color: rgba(255,255,255,0.7); margin-bottom: 0.5rem;
-          letter-spacing: 0.01em;
+        /* ── CAMPO ───────────────────────────────────────────────── */
+        .rpa-field { margin-bottom: 18px; }
+        .rpa-label {
+          display: block;
+          font-size: 10px; font-weight: 400;
+          color: var(--text-mid);
+          letter-spacing: 0.1em; text-transform: uppercase;
+          margin-bottom: 8px;
         }
-        .rp-input-wrap { position: relative; }
-        .rp-input {
-          width: 100%; background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 10px; padding: 0.875rem 2.75rem 0.875rem 1rem;
-          font-size: 0.9375rem; color: #fff;
-          font-family: var(--font-body);
-          transition: border-color 0.2s, box-shadow 0.2s;
+        .rpa-input-wrap { position: relative; }
+        .rpa-input {
+          width: 100%;
+          background: var(--surface2);
+          border: 1px solid var(--border-mid);
+          border-radius: 8px;
+          padding: 12px 42px 12px 14px;
+          font-size: 14px; color: var(--text-primary);
+          font-family: var(--sans);
+          transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
           outline: none; box-sizing: border-box;
         }
-        .rp-input::placeholder { color: rgba(255,255,255,0.25); }
-        .rp-input:focus {
-          border-color: rgba(255,45,85,0.5);
-          box-shadow: 0 0 0 3px rgba(255,45,85,0.12);
+        .rpa-input::placeholder { color: var(--text-dim); }
+        .rpa-input:focus {
+          border-color: var(--rose-border);
+          background: rgba(255,45,85,0.04);
+          box-shadow: 0 0 0 3px rgba(255,45,85,0.08);
         }
-        .rp-input.err {
-          border-color: rgba(255,80,80,0.5);
-          box-shadow: 0 0 0 3px rgba(255,80,80,0.1);
-        }
-        .rp-toggle {
-          position: absolute; right: 0.875rem; top: 50%;
+        .rpa-input.err { border-color: rgba(255,80,80,0.45); }
+
+        .rpa-toggle {
+          position: absolute; right: 12px; top: 50%;
           transform: translateY(-50%);
           background: none; border: none; cursor: pointer;
-          color: rgba(255,255,255,0.35); padding: 0;
+          color: var(--text-dim); padding: 0;
           display: flex; align-items: center;
           transition: color 0.2s;
         }
-        .rp-toggle:hover { color: rgba(255,255,255,0.7); }
-        .rp-err-msg {
-          font-size: 0.75rem; color: #ff8080;
-          margin: 0.375rem 0 0; padding-left: 0.25rem;
+        .rpa-toggle:hover { color: var(--rose-dim); }
+
+        .rpa-err-msg {
+          font-size: 11px; color: rgba(255,110,110,0.85); margin-top: 6px;
+        }
+        .rpa-hint {
+          font-size: 11px; color: var(--text-dim);
+          margin-top: 6px; letter-spacing: 0.03em;
         }
 
-        /* Strength hint */
-        .rp-hint {
-          font-size: 0.75rem; color: rgba(255,255,255,0.3);
-          margin: 0.375rem 0 0; padding-left: 0.25rem;
+        /* ── ERROR BANNER ────────────────────────────────────────── */
+        .rpa-err-banner {
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          border-radius: 8px; padding: 12px 14px;
+          font-size: 12px; color: rgba(255,110,110,0.9);
+          margin-bottom: 18px; line-height: 1.55;
         }
 
-        /* Error banner */
-        .rp-err-banner {
-          background: rgba(255,80,80,0.08);
-          border: 1px solid rgba(255,80,80,0.2);
-          border-radius: 10px; padding: 0.875rem 1rem;
-          font-size: 0.875rem; color: #ff8080;
-          margin-bottom: 1.25rem; line-height: 1.5;
-        }
-
-        /* CTA */
-        .rp-cta {
-          width: 100%; padding: 0.9375rem 1.5rem;
-          background: linear-gradient(135deg, var(--electric-rose) 0%, var(--rose-deep) 100%);
-          border: none; border-radius: 10px;
-          font-family: var(--font-body);
-          font-size: 0.9375rem; font-weight: 700;
-          color: #fff; cursor: pointer;
-          display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        /* ── CTA ─────────────────────────────────────────────────── */
+        .rpa-cta {
+          width: 100%; margin-top: 6px;
+          padding: 13px 20px;
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          border-radius: 8px;
+          font-family: var(--sans);
+          font-size: 12px; font-weight: 400;
+          color: var(--rose-dim);
+          letter-spacing: 0.1em; text-transform: uppercase;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
           transition: all 0.2s;
-          box-shadow: 0 4px 20px rgba(255,45,85,0.35), 0 1px 0 rgba(255,255,255,0.12) inset;
-          letter-spacing: 0.01em; margin-top: 0.5rem;
         }
-        .rp-cta:hover:not(:disabled) {
-          background: linear-gradient(135deg, #ff4d6d 0%, #e8003f 100%);
-          box-shadow: 0 6px 28px rgba(255,45,85,0.5), 0 1px 0 rgba(255,255,255,0.12) inset;
-          transform: translateY(-1px);
+        .rpa-cta:hover:not(:disabled) {
+          background: rgba(255,45,85,0.16);
+          border-color: rgba(255,45,85,0.42);
+          color: var(--rose);
         }
-        .rp-cta:active:not(:disabled) { transform: translateY(0); }
-        .rp-cta:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .rpa-cta:active:not(:disabled) { opacity: 0.85; }
+        .rpa-cta:disabled { opacity: 0.35; cursor: not-allowed; }
 
-        /* Back link */
-        .rp-back {
+        /* ── BACK LINK ───────────────────────────────────────────── */
+        .rpa-back {
           display: flex; align-items: center; justify-content: center;
-          gap: 0.375rem; margin-top: 1.5rem;
-          font-size: 0.8125rem; color: var(--muted-lavender);
+          gap: 6px; margin-top: 20px;
+          font-size: 11px; color: var(--text-dim);
+          letter-spacing: 0.06em; text-transform: uppercase;
           text-decoration: none; transition: color 0.2s;
         }
-        .rp-back:hover { color: #fff; }
+        .rpa-back:hover { color: var(--text-mid); }
 
-        /* Estado inválido */
-        .rp-invalid-icon {
-          width: 64px; height: 64px;
-          background: rgba(255,80,80,0.1);
-          border: 1px solid rgba(255,80,80,0.25);
-          border-radius: 50%;
+        /* ── ESTADO INVÁLIDO ─────────────────────────────────────── */
+        .rpa-state-icon {
           display: flex; align-items: center; justify-content: center;
-          margin: 0 auto 1.5rem;
+          margin-bottom: 22px;
         }
-        .rp-invalid-title {
-          font-family: var(--font-display);
-          font-size: 1.625rem; font-weight: 500;
-          color: #fff; text-align: center; margin: 0 0 0.75rem;
+        .rpa-icon-circle {
+          width: 56px; height: 56px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          position: relative;
         }
-        .rp-invalid-text {
-          font-size: 0.875rem; color: var(--muted-lavender);
-          text-align: center; line-height: 1.7; margin: 0 0 1.5rem;
+        .rpa-icon-circle::before {
+          content: '';
+          position: absolute; inset: -5px; border-radius: 50%;
+          border: 1px solid currentColor; opacity: 0.25;
         }
-        .rp-retry-btn {
+        .rpa-icon-circle.danger {
+          background: rgba(255,80,80,0.07);
+          border: 1px solid rgba(255,80,80,0.22);
+          color: rgba(255,80,80,0.5);
+        }
+        .rpa-icon-circle.success {
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          color: var(--rose-border);
+        }
+
+        .rpa-state-title {
+          font-family: var(--serif);
+          font-size: 1.8rem; font-weight: 300;
+          color: var(--text-primary);
+          text-align: center; margin: 0 0 12px;
+          letter-spacing: -0.02em; line-height: 1.1;
+        }
+        .rpa-state-text {
+          font-size: 13px; color: var(--text-mid);
+          text-align: center; line-height: 1.75;
+          margin: 0; font-weight: 300;
+        }
+        .rpa-state-note {
+          font-size: 11px; color: var(--text-dim);
+          text-align: center; margin-top: 14px;
+          line-height: 1.65; letter-spacing: 0.02em;
+        }
+
+        /* Divider */
+        .rpa-state-divider {
+          height: 1px; background: var(--border); margin: 20px 0;
+        }
+
+        /* Retry btn */
+        .rpa-retry-btn {
           display: block; width: 100%;
-          padding: 0.875rem 1.5rem;
-          background: rgba(255,45,85,0.1);
-          border: 1px solid rgba(255,45,85,0.25);
-          border-radius: 10px; color: var(--electric-rose);
-          font-family: var(--font-body); font-size: 0.9375rem;
-          font-weight: 600; text-align: center;
-          text-decoration: none; cursor: pointer;
-          transition: all 0.2s;
+          padding: 12px 16px;
+          background: var(--rose-ghost);
+          border: 1px solid var(--rose-border);
+          border-radius: 8px;
+          color: var(--rose-dim);
+          font-family: var(--sans);
+          font-size: 12px; font-weight: 400;
+          letter-spacing: 0.1em; text-transform: uppercase;
+          text-align: center; text-decoration: none;
+          transition: all 0.2s; margin-top: 20px;
         }
-        .rp-retry-btn:hover {
-          background: rgba(255,45,85,0.18);
-          border-color: rgba(255,45,85,0.4);
+        .rpa-retry-btn:hover {
+          background: rgba(255,45,85,0.16);
+          border-color: rgba(255,45,85,0.42);
+          color: var(--rose);
         }
 
-        /* Estado éxito */
-        .rp-success-icon {
-          width: 64px; height: 64px;
-          background: linear-gradient(135deg, rgba(255,45,85,0.15), rgba(112,0,255,0.15));
-          border: 1px solid rgba(255,45,85,0.25);
-          border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          margin: 0 auto 1.5rem;
+        /* Progress bar para redirect */
+        .rpa-progress-wrap {
+          margin-top: 20px;
+          height: 1px; background: var(--border); border-radius: 1px;
+          overflow: hidden;
         }
-        .rp-success-title {
-          font-family: var(--font-display);
-          font-size: 1.625rem; font-weight: 500;
-          color: #fff; text-align: center; margin: 0 0 0.75rem;
+        .rpa-progress-bar {
+          height: 100%; background: var(--rose-dim);
+          animation: rpa-fill 2s linear forwards;
         }
-        .rp-success-text {
-          font-size: 0.875rem; color: var(--muted-lavender);
-          text-align: center; line-height: 1.7; margin: 0 0 0.5rem;
+        @keyframes rpa-fill {
+          from { width: 0%; }
+          to   { width: 100%; }
         }
-        .rp-success-note {
-          font-size: 0.75rem; color: rgba(255,255,255,0.3);
-          text-align: center; margin-top: 1rem; line-height: 1.6;
-        }
+
       `}</style>
 
-      <div className="rp-root">
-        <div className="rp-container">
+      <div className="rpa-root">
+        <div className="rpa-grid" aria-hidden="true" />
+
+        <div className="rpa-wrap">
           {/* Logo */}
-          <div className="rp-logo">
-            <div className="rp-gem">✦</div>
-            <span className="rp-brand">BeautySync</span>
-          </div>
+          <Link href="/" className="rpa-logo">
+            <div className="rpa-logo-box">
+              <span>BS</span>
+            </div>
+            <span className="rpa-logo-name">BeautySync</span>
+          </Link>
 
           <AnimatePresence mode="wait">
-            {/* ── Estado: cargando ── */}
+            {/* ── Estado: cargando ───────────────────────────────── */}
             {pageState === "loading" && (
               <motion.div
                 key="loading"
+                style={{ width: "100%" }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="rp-glass">
-                  <div className="rp-loading">
+                <div className="rpa-card">
+                  <div className="rpa-loading">
                     <Loader2
-                      size={32}
-                      color="#FF2D55"
+                      size={28}
+                      color="rgba(255,45,85,0.6)"
                       className="animate-spin"
                     />
-                    <p className="rp-loading-text">
+                    <p className="rpa-loading-text">
                       Verificando enlace de recuperación…
                     </p>
                   </div>
@@ -382,83 +472,99 @@ export default function ResetPasswordPage() {
               </motion.div>
             )}
 
-            {/* ── Estado: token inválido o expirado ── */}
+            {/* ── Estado: token inválido o expirado ──────────────── */}
             {pageState === "invalid" && (
               <motion.div
                 key="invalid"
-                initial={{ opacity: 0, y: 24 }}
+                style={{ width: "100%" }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               >
-                <div className="rp-glass">
-                  <div className="rp-invalid-icon">
-                    <KeyRound size={28} color="#ff8080" />
+                <div className="rpa-card">
+                  <div className="rpa-state-icon">
+                    <div className="rpa-icon-circle danger">
+                      <KeyRound size={22} color="rgba(255,80,80,0.7)" />
+                    </div>
                   </div>
-                  <h2 className="rp-invalid-title">
-                    Enlace inválido o expirado
+
+                  <h2 className="rpa-state-title">
+                    Enlace inválido
+                    <br />o expirado.
                   </h2>
-                  <p className="rp-invalid-text">
+                  <p className="rpa-state-text">
                     Este enlace de recuperación ya no es válido. Puede haber
-                    expirado (duran 1 hora) o ya fue utilizado. Solicita uno
-                    nuevo.
+                    expirado (duran 1 hora) o ya fue utilizado.
                   </p>
-                  <Link href="/forgot-password" className="rp-retry-btn">
+
+                  <div className="rpa-state-divider" />
+
+                  <Link href="/forgot-password" className="rpa-retry-btn">
                     Solicitar nuevo enlace
                   </Link>
                 </div>
 
-                <Link href="/login" className="rp-back">
-                  <ArrowLeft size={14} /> Volver al inicio de sesión
+                <Link href="/login" className="rpa-back">
+                  <ArrowLeft size={13} /> Volver al inicio de sesión
                 </Link>
               </motion.div>
             )}
 
-            {/* ── Estado: formulario listo ── */}
+            {/* ── Estado: formulario listo ────────────────────────── */}
             {pageState === "ready" && (
               <motion.div
                 key="ready"
-                initial={{ opacity: 0, y: 24 }}
+                style={{ width: "100%" }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
+                exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               >
-                <div className="rp-header">
-                  <p className="rp-eyebrow">Nueva contraseña</p>
-                  <h1 className="rp-title">Crea tu nueva contraseña</h1>
-                  <p className="rp-sub">
+                <div className="rpa-header">
+                  <div className="rpa-eyebrow-row">
+                    <span className="rpa-eyebrow-line" />
+                    <span className="rpa-eyebrow-text">Nueva contraseña</span>
+                    <span className="rpa-eyebrow-line" />
+                  </div>
+                  <h1 className="rpa-title">
+                    Crea tu nueva
+                    <br />
+                    <em>contraseña.</em>
+                  </h1>
+                  <p className="rpa-sub">
                     Elige una contraseña segura para tu cuenta.
                   </p>
                 </div>
 
-                <div className="rp-glass">
+                <div className="rpa-card">
                   <form onSubmit={handleSubmit(onSubmit)} noValidate>
                     {authError && (
                       <motion.div
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="rp-err-banner"
+                        className="rpa-err-banner"
                       >
-                        ⚠ {authError}
+                        {authError}
                       </motion.div>
                     )}
 
                     {/* Nueva contraseña */}
-                    <div className="rp-field">
-                      <label className="rp-label">Nueva contraseña</label>
-                      <div className="rp-input-wrap">
+                    <div className="rpa-field">
+                      <label className="rpa-label">Nueva contraseña</label>
+                      <div className="rpa-input-wrap">
                         <input
                           type={showPassword ? "text" : "password"}
                           placeholder="Mínimo 8 caracteres"
                           maxLength={72}
                           autoComplete="new-password"
                           autoFocus
-                          className={`rp-input${errors.password ? " err" : ""}`}
+                          className={`rpa-input${errors.password ? " err" : ""}`}
                           {...register("password")}
                         />
                         <button
                           type="button"
-                          className="rp-toggle"
+                          className="rpa-toggle"
                           onClick={() => setShowPassword((v) => !v)}
                           aria-label={
                             showPassword
@@ -467,34 +573,34 @@ export default function ResetPasswordPage() {
                           }
                         >
                           {showPassword ? (
-                            <EyeOff size={16} />
+                            <EyeOff size={15} />
                           ) : (
-                            <Eye size={16} />
+                            <Eye size={15} />
                           )}
                         </button>
                       </div>
                       {errors.password ? (
-                        <p className="rp-err-msg">{errors.password.message}</p>
+                        <p className="rpa-err-msg">{errors.password.message}</p>
                       ) : (
-                        <p className="rp-hint">Mínimo 8 caracteres</p>
+                        <p className="rpa-hint">Mínimo 8 caracteres</p>
                       )}
                     </div>
 
                     {/* Confirmar contraseña */}
-                    <div className="rp-field">
-                      <label className="rp-label">Confirmar contraseña</label>
-                      <div className="rp-input-wrap">
+                    <div className="rpa-field">
+                      <label className="rpa-label">Confirmar contraseña</label>
+                      <div className="rpa-input-wrap">
                         <input
                           type={showConfirm ? "text" : "password"}
                           placeholder="Repite tu nueva contraseña"
                           maxLength={72}
                           autoComplete="new-password"
-                          className={`rp-input${errors.confirmPassword ? " err" : ""}`}
+                          className={`rpa-input${errors.confirmPassword ? " err" : ""}`}
                           {...register("confirmPassword")}
                         />
                         <button
                           type="button"
-                          className="rp-toggle"
+                          className="rpa-toggle"
                           onClick={() => setShowConfirm((v) => !v)}
                           aria-label={
                             showConfirm
@@ -503,14 +609,14 @@ export default function ResetPasswordPage() {
                           }
                         >
                           {showConfirm ? (
-                            <EyeOff size={16} />
+                            <EyeOff size={15} />
                           ) : (
-                            <Eye size={16} />
+                            <Eye size={15} />
                           )}
                         </button>
                       </div>
                       {errors.confirmPassword && (
-                        <p className="rp-err-msg">
+                        <p className="rpa-err-msg">
                           {errors.confirmPassword.message}
                         </p>
                       )}
@@ -519,16 +625,16 @@ export default function ResetPasswordPage() {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="rp-cta"
+                      className="rpa-cta"
                     >
                       {isSubmitting ? (
                         <>
-                          <Loader2 size={16} className="animate-spin" />{" "}
+                          <Loader2 size={14} className="animate-spin" />{" "}
                           Guardando contraseña…
                         </>
                       ) : (
                         <>
-                          Guardar nueva contraseña <ShieldCheck size={16} />
+                          Guardar nueva contraseña <ShieldCheck size={14} />
                         </>
                       )}
                     </button>
@@ -537,27 +643,40 @@ export default function ResetPasswordPage() {
               </motion.div>
             )}
 
-            {/* ── Estado: éxito ── */}
+            {/* ── Estado: éxito ───────────────────────────────────── */}
             {pageState === "success" && (
               <motion.div
                 key="success"
-                initial={{ opacity: 0, y: 24 }}
+                style={{ width: "100%" }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               >
-                <div className="rp-glass">
-                  <div className="rp-success-icon">
-                    <ShieldCheck size={28} color="#FF2D55" />
+                <div className="rpa-card">
+                  <div className="rpa-state-icon">
+                    <div className="rpa-icon-circle success">
+                      <ShieldCheck size={22} color="rgba(255,45,85,0.7)" />
+                    </div>
                   </div>
-                  <h2 className="rp-success-title">¡Contraseña actualizada!</h2>
-                  <p className="rp-success-text">
+
+                  <h2 className="rpa-state-title">
+                    Contraseña
+                    <br />
+                    actualizada.
+                  </h2>
+                  <p className="rpa-state-text">
                     Tu contraseña fue cambiada exitosamente. Redirigiendo a tu
                     dashboard…
                   </p>
-                  <p className="rp-success-note">
+                  <p className="rpa-state-note">
                     Serás redirigida automáticamente en unos segundos.
                   </p>
+
+                  {/* Barra de progreso del redirect */}
+                  <div className="rpa-progress-wrap">
+                    <div className="rpa-progress-bar" />
+                  </div>
                 </div>
               </motion.div>
             )}

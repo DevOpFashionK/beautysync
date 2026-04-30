@@ -19,15 +19,26 @@
 
 import dynamic from "next/dynamic";
 
-// Skeleton con la misma estructura visual que DashboardHeader
-// para evitar layout shift mientras carga
+// Skeleton Dark Atelier — misma estructura que DashboardHeader
 function HeaderSkeleton() {
   return (
     <div className="animate-pulse">
-      <div className="h-3 w-24 rounded-full bg-[#EDE8E3] mb-3" />
-      <div className="h-10 w-72 rounded-xl bg-[#EDE8E3] mb-2" />
-      <div className="h-3 w-40 rounded-full bg-[#EDE8E3]" />
-      <div className="mt-5 h-px w-full bg-[#E8E0D8]" />
+      <div
+        className="h-2.5 w-20 rounded-full mb-3"
+        style={{ background: "rgba(255,255,255,0.06)" }}
+      />
+      <div
+        className="h-9 w-64 rounded-lg mb-2"
+        style={{ background: "rgba(255,255,255,0.06)" }}
+      />
+      <div
+        className="h-2.5 w-36 rounded-full"
+        style={{ background: "rgba(255,255,255,0.04)" }}
+      />
+      <div
+        className="mt-5 h-px w-full"
+        style={{ background: "rgba(255,255,255,0.05)" }}
+      />
     </div>
   );
 }

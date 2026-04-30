@@ -19,16 +19,15 @@ interface AppointmentRaw {
 }
 
 export interface ClientProfile {
-  // Identificador único: teléfono (más confiable que nombre)
   phone: string;
   name: string;
   email: string | null;
   totalAppointments: number;
   totalSpent: number;
-  lastVisit: string; // ISO string
-  firstVisit: string; // ISO string
+  lastVisit: string;
+  firstVisit: string;
   favoriteService: string | null;
-  isFrequent: boolean; // 3+ citas
+  isFrequent: boolean;
   appointments: AppointmentRaw[];
 }
 
@@ -45,6 +44,7 @@ const SORT_LABELS: Record<SortOption, string> = {
   spent: "Mayor gasto",
 };
 
+// ── buildClientProfiles — lógica intacta ──────────────────────────────────────
 function buildClientProfiles(appointments: AppointmentRaw[]): ClientProfile[] {
   const map = new Map<string, ClientProfile>();
 
@@ -71,24 +71,25 @@ function buildClientProfiles(appointments: AppointmentRaw[]): ClientProfile[] {
     profile.totalSpent += appt.services?.price ?? 0;
     profile.appointments.push(appt);
 
-    // Actualizar última y primera visita
-    if (appt.scheduled_at > profile.lastVisit) profile.lastVisit = appt.scheduled_at;
-    if (appt.scheduled_at < profile.firstVisit) profile.firstVisit = appt.scheduled_at;
-
-    // Usar el nombre más reciente (por si cambió)
+    if (appt.scheduled_at > profile.lastVisit)
+      profile.lastVisit = appt.scheduled_at;
+    if (appt.scheduled_at < profile.firstVisit)
+      profile.firstVisit = appt.scheduled_at;
     if (appt.scheduled_at >= profile.lastVisit) profile.name = appt.client_name;
     if (appt.client_email) profile.email = appt.client_email;
   }
 
-  // Calcular servicio favorito e isFrequent
   for (const profile of map.values()) {
     const serviceCounts: Record<string, number> = {};
     for (const appt of profile.appointments) {
       if (appt.services?.name) {
-        serviceCounts[appt.services.name] = (serviceCounts[appt.services.name] || 0) + 1;
+        serviceCounts[appt.services.name] =
+          (serviceCounts[appt.services.name] || 0) + 1;
       }
     }
-    const topService = Object.entries(serviceCounts).sort((a, b) => b[1] - a[1])[0];
+    const topService = Object.entries(serviceCounts).sort(
+      (a, b) => b[1] - a[1],
+    )[0];
     profile.favoriteService = topService?.[0] ?? null;
     profile.isFrequent = profile.totalAppointments >= 3;
   }
@@ -96,15 +97,34 @@ function buildClientProfiles(appointments: AppointmentRaw[]): ClientProfile[] {
   return Array.from(map.values());
 }
 
+// ─── Tokens ───────────────────────────────────────────────────────────────────
+const T = {
+  bg: "#080706",
+  surface: "#0E0C0B",
+  border: "rgba(255,255,255,0.055)",
+  borderMid: "rgba(255,255,255,0.09)",
+  textPrimary: "rgba(245,242,238,0.9)",
+  textMid: "rgba(245,242,238,0.45)",
+  textDim: "rgba(245,242,238,0.18)",
+  roseDim: "rgba(255,45,85,0.55)",
+  roseGhost: "rgba(255,45,85,0.08)",
+  roseBorder: "rgba(255,45,85,0.22)",
+};
+
 export default function ClientsClient({
   primaryColor,
   appointments,
 }: ClientsClientProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
-  const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
+  const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(
+    null,
+  );
 
-  const clients = useMemo(() => buildClientProfiles(appointments), [appointments]);
+  const clients = useMemo(
+    () => buildClientProfiles(appointments),
+    [appointments],
+  );
 
   const filtered = useMemo(() => {
     let result = clients.filter((c) => {
@@ -116,194 +136,329 @@ export default function ClientsClient({
         (c.email?.toLowerCase().includes(q) ?? false)
       );
     });
-
     result = [...result].sort((a, b) => {
       if (sortBy === "recent") return b.lastVisit.localeCompare(a.lastVisit);
-      if (sortBy === "frequent") return b.totalAppointments - a.totalAppointments;
+      if (sortBy === "frequent")
+        return b.totalAppointments - a.totalAppointments;
       if (sortBy === "spent") return b.totalSpent - a.totalSpent;
       return 0;
     });
-
     return result;
   }, [clients, search, sortBy]);
 
-  // Métricas globales
   const totalRevenue = useMemo(
     () => clients.reduce((sum, c) => sum + c.totalSpent, 0),
-    [clients]
+    [clients],
   );
   const frequentCount = useMemo(
     () => clients.filter((c) => c.isFrequent).length,
-    [clients]
+    [clients],
   );
 
+  const formatCurrency = (v: number) =>
+    new Intl.NumberFormat("es-SV", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+    }).format(v);
+
   return (
-    <div className="min-h-screen bg-[#FAF8F5]">
-      <div className="max-w-5xl mx-auto">
-      {/* ── Header ── */}
-      <div className="px-6 pt-8 pb-6 md:px-10">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-5 h-[2px] rounded-full" style={{ backgroundColor: primaryColor }} />
-            <span
-              className="text-xs font-semibold tracking-[0.15em] uppercase"
-              style={{ color: primaryColor }}
+    <div style={{ minHeight: "100vh", background: T.bg }}>
+      <div style={{ maxWidth: "960px", margin: "0 auto" }}>
+        {/* ── Header ───────────────────────────────────────────────── */}
+        <div style={{ padding: "40px 24px 24px" }}>
+          <div style={{ marginBottom: "24px" }}>
+            {/* Eyebrow */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "10px",
+              }}
             >
-              Directorio
-            </span>
+              <span
+                style={{
+                  display: "inline-block",
+                  width: "14px",
+                  height: "1px",
+                  background: T.roseDim,
+                }}
+              />
+              <span
+                style={{
+                  fontSize: "10px",
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: T.roseDim,
+                }}
+              >
+                Directorio
+              </span>
+            </div>
+            <h1
+              style={{
+                fontFamily:
+                  "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                fontSize: "clamp(2.5rem, 5vw, 4rem)",
+                fontWeight: 300,
+                color: T.textPrimary,
+                lineHeight: 1.04,
+                letterSpacing: "-0.035em",
+                margin: 0,
+              }}
+            >
+              Clientas
+            </h1>
+            <p
+              style={{
+                fontSize: "12px",
+                color: T.textDim,
+                marginTop: "6px",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {clients.length} clientas registradas
+            </p>
           </div>
-          <h1 className="font-['Cormorant_Garamond'] text-4xl md:text-5xl font-semibold text-[#2D2420] leading-none">
-            Clientas
-          </h1>
-          <p className="text-[#9C8E85] text-sm mt-2">
-            {clients.length} clientas registradas
-          </p>
+
+          {/* Summary metrics */}
+          {clients.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: "10px",
+                marginBottom: "24px",
+              }}
+            >
+              {[
+                {
+                  icon: <Users size={13} />,
+                  label: "Total clientas",
+                  value: clients.length,
+                  fmt: String,
+                },
+                {
+                  icon: <Star size={13} />,
+                  label: "Frecuentes",
+                  value: frequentCount,
+                  fmt: String,
+                },
+                {
+                  icon: <TrendingUp size={13} />,
+                  label: "Ingresos totales",
+                  value: totalRevenue,
+                  fmt: formatCurrency,
+                },
+              ].map((m, i) => (
+                <motion.div
+                  key={m.label}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.05 }}
+                  style={{
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: "10px",
+                    padding: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "26px",
+                      height: "26px",
+                      borderRadius: "6px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: `${primaryColor}12`,
+                      color: `${primaryColor}CC`,
+                      marginBottom: "8px",
+                    }}
+                  >
+                    {m.icon}
+                  </div>
+                  <p
+                    style={{
+                      fontFamily:
+                        "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                      fontSize: "1.3rem",
+                      fontWeight: 300,
+                      lineHeight: 1,
+                      color: `${primaryColor}CC`,
+                      margin: 0,
+                    }}
+                  >
+                    {m.fmt(m.value)}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "9px",
+                      color: T.textDim,
+                      marginTop: "4px",
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {m.label}
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+
+          {/* Search + Sort */}
+          {clients.length > 0 && (
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+            >
+              <div style={{ position: "relative" }}>
+                <Search
+                  size={14}
+                  strokeWidth={1.5}
+                  style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: T.textDim,
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, teléfono o email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    paddingLeft: "36px",
+                    paddingRight: "14px",
+                    paddingTop: "10px",
+                    paddingBottom: "10px",
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    color: T.textPrimary,
+                    outline: "none",
+                    transition: "border-color 0.2s, box-shadow 0.2s",
+                    boxSizing: "border-box",
+                    fontFamily: "inherit",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = T.roseBorder;
+                    e.currentTarget.style.boxShadow = `0 0 0 3px ${T.roseGhost}`;
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = T.border;
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                />
+              </div>
+
+              {/* Sort tabs */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "2px",
+                  background: T.surface,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: "8px",
+                  padding: "3px",
+                }}
+              >
+                {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => {
+                  const isActive = sortBy === opt;
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => setSortBy(opt)}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: "6px",
+                        fontSize: "11px",
+                        letterSpacing: "0.04em",
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                        border: isActive
+                          ? `1px solid ${T.roseBorder}`
+                          : "1px solid transparent",
+                        background: isActive ? T.roseGhost : "transparent",
+                        color: isActive ? T.roseDim : T.textDim,
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {SORT_LABELS[opt]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Summary metrics */}
-        {clients.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-3 gap-3 mb-6"
-          >
-            {[
-              {
-                icon: <Users size={14} />,
-                label: "Total clientas",
-                value: clients.length,
-                format: (v: number) => v.toString(),
-              },
-              {
-                icon: <Star size={14} />,
-                label: "Frecuentes",
-                value: frequentCount,
-                format: (v: number) => v.toString(),
-              },
-              {
-                icon: <TrendingUp size={14} />,
-                label: "Ingresos totales",
-                value: totalRevenue,
-                format: (v: number) =>
-                  new Intl.NumberFormat("es-SV", {
-                    style: "currency",
-                    currency: "USD",
-                    minimumFractionDigits: 0,
-                  }).format(v),
-              },
-            ].map((metric, i) => (
-              <motion.div
-                key={metric.label}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + i * 0.05 }}
-                className="bg-white rounded-2xl border border-[#EDE8E3] p-3.5"
-              >
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center mb-2"
-                  style={{ backgroundColor: `${primaryColor}12`, color: primaryColor }}
-                >
-                  {metric.icon}
-                </div>
-                <p
-                  className="font-['Cormorant_Garamond'] text-xl font-bold leading-none"
-                  style={{ color: primaryColor }}
-                >
-                  {metric.format(metric.value)}
-                </p>
-                <p className="text-[10px] text-[#9C8E85] mt-1">{metric.label}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-
-        {/* Search + Sort */}
-        {clients.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <div className="relative">
+        {/* ── Content ──────────────────────────────────────────────── */}
+        <div style={{ padding: "0 24px 80px" }}>
+          {clients.length === 0 ? (
+            <ClientsEmptyState primaryColor={primaryColor} />
+          ) : filtered.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "64px 0",
+                textAlign: "center",
+              }}
+            >
               <Search
-                size={15}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C4B8B0]"
+                size={24}
+                strokeWidth={1.25}
+                style={{ color: T.textDim, marginBottom: "12px" }}
               />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, teléfono o email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#EDE8E3]
-                           rounded-xl text-sm text-[#2D2420] placeholder:text-[#C4B8B0]
-                           outline-none transition-all"
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = primaryColor;
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}15`;
+              <p
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 400,
+                  color: T.textMid,
+                  margin: "0 0 4px",
                 }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "#EDE8E3";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-              />
-            </div>
-
-            {/* Sort tabs */}
-            <div className="flex items-center gap-1 bg-white border border-[#EDE8E3] rounded-xl p-1 w-fit">
-              {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setSortBy(opt)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
-                  style={
-                    sortBy === opt
-                      ? { backgroundColor: primaryColor, color: "#fff" }
-                      : { color: "#9C8E85" }
-                  }
-                >
-                  {SORT_LABELS[opt]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+              >
+                Sin resultados
+              </p>
+              <p style={{ fontSize: "12px", color: T.textDim, margin: 0 }}>
+                Intenta con otro término
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              layout
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            >
+              <AnimatePresence mode="popLayout">
+                {filtered.map((client, i) => (
+                  <ClientCard
+                    key={client.phone}
+                    client={client}
+                    primaryColor={primaryColor}
+                    index={i}
+                    onClick={() => setSelectedClient(client)}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </div>
       </div>
 
-      {/* ── Content ── */}
-      <div className="px-6 md:px-10 pb-16">
-        {clients.length === 0 ? (
-          <ClientsEmptyState primaryColor={primaryColor} />
-        ) : filtered.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center py-20 text-center"
-          >
-            <Search size={28} className="text-[#C4B8B0] mb-3" />
-            <p className="text-[#2D2420] font-medium text-sm">Sin resultados</p>
-            <p className="text-[#9C8E85] text-xs mt-1">
-              Intenta con otro término
-            </p>
-          </motion.div>
-        ) : (
-          <motion.div
-            layout
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-          >
-            <AnimatePresence mode="popLayout">
-              {filtered.map((client, i) => (
-                <ClientCard
-                  key={client.phone}
-                  client={client}
-                  primaryColor={primaryColor}
-                  index={i}
-                  onClick={() => setSelectedClient(client)}
-                />
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </div>
-      </div>
-
-      {/* ── Detail Modal ── */}
+      {/* ── Detail Modal ─────────────────────────────────────────────── */}
       <ClientDetailModal
         client={selectedClient}
         primaryColor={primaryColor}

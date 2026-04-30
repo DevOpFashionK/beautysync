@@ -7,7 +7,7 @@
 // que usa dynamic() + ssr:false — Next.js App Router solo permite ssr:false
 // dentro de componentes cliente ("use client"), no en Server Components.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const DAYS_ES = [
   "Domingo",
@@ -59,50 +59,97 @@ export default function DashboardHeader({
   firstName,
   primaryColor,
 }: DashboardHeaderProps) {
-  const [greeting, setGreeting] = useState<string>("");
-  const [dateFormatted, setDateFormatted] = useState<string>("");
-
-  useEffect(() => {
-    const now = new Date();
-    setGreeting(getGreeting(now.getHours()));
-    setDateFormatted(getDateFormatted());
-  }, []);
+  const [greeting] = useState<string>(() => getGreeting(new Date().getHours()));
+  const [dateFormatted] = useState<string>(getDateFormatted);
 
   return (
     <div>
-      <p
-        className="text-xs font-semibold tracking-widest uppercase mb-2"
-        style={{ color: primaryColor, letterSpacing: "0.14em" }}
+      {/* Eyebrow — nombre del salón con línea acento */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "14px",
+        }}
       >
-        {salonName}
-      </p>
+        <span
+          style={{
+            display: "inline-block",
+            width: "14px",
+            height: "1px",
+            background: "rgba(255,45,85,0.4)",
+            flexShrink: 0,
+          }}
+        />
+        <p
+          style={{
+            fontSize: "10px",
+            fontWeight: 400,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+            color: "rgba(255,45,85,0.5)",
+            margin: 0,
+          }}
+        >
+          {salonName}
+        </p>
+      </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
+      {/* Saludo + fecha */}
+      <div
+        className="flex flex-col sm:flex-row sm:items-end sm:justify-between"
+        style={{ gap: "6px" }}
+      >
         <h1
           style={{
-            fontFamily: "'Cormorant Garamond', Georgia, serif",
+            fontFamily:
+              "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
             fontSize: "clamp(2rem, 4vw, 3rem)",
-            fontWeight: 500,
-            color: "#2D2420",
-            lineHeight: 1.1,
-            letterSpacing: "-0.02em",
+            fontWeight: 300,
+            color: "rgba(245,242,238,0.9)",
+            lineHeight: 1.08,
+            letterSpacing: "-0.03em",
+            margin: 0,
           }}
         >
           {greeting}
-          {firstName ? `, ${firstName}` : ""}.
+          {firstName ? (
+            <>
+              ,{" "}
+              <em
+                style={{ fontStyle: "normal", color: "rgba(255,45,85,0.75)" }}
+              >
+                {firstName}
+              </em>
+            </>
+          ) : (
+            ""
+          )}
+          .
         </h1>
+
         <p
-          className="text-sm pb-1"
-          style={{ color: "#B5A99F", fontWeight: 400 }}
+          style={{
+            fontSize: "11px",
+            color: "rgba(245,242,238,0.18)",
+            fontWeight: 400,
+            letterSpacing: "0.06em",
+            paddingBottom: "4px",
+            margin: 0,
+          }}
         >
           {dateFormatted}
         </p>
       </div>
 
+      {/* Divisor */}
       <div
-        className="mt-5 h-px w-full"
         style={{
-          background: "linear-gradient(90deg, #E8E0D8 0%, transparent 80%)",
+          marginTop: "20px",
+          height: "1px",
+          background:
+            "linear-gradient(90deg, rgba(255,255,255,0.06) 0%, transparent 80%)",
         }}
       />
     </div>

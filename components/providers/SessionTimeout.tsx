@@ -19,10 +19,26 @@ import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { Timer, LogOut, RefreshCw } from "lucide-react";
 
+// ─── Tokens Dark Atelier ──────────────────────────────────────────────────────
+const t = {
+  bg: "#080706",
+  surface: "#0E0C0B",
+  surface2: "#131110",
+  border: "rgba(255,255,255,0.055)",
+  borderMid: "rgba(255,255,255,0.09)",
+  rose: "#FF2D55",
+  roseDim: "rgba(255,45,85,0.55)",
+  roseGhost: "rgba(255,45,85,0.08)",
+  roseBorder: "rgba(255,45,85,0.22)",
+  textPrimary: "rgba(245,242,238,0.9)",
+  textMid: "rgba(245,242,238,0.45)",
+  textDim: "rgba(245,242,238,0.18)",
+};
+
 // ─── CONSTANTES ───────────────────────────────────────────────────────────────
 const INACTIVITY_MS = 25 * 60 * 1000; // 25 min → muestra aviso
 const WARNING_MS = 5 * 60 * 1000; //  5 min → tiempo del countdown
-const TOTAL_MS = INACTIVITY_MS + WARNING_MS; // 30 min total
+// const TOTAL_MS = INACTIVITY_MS + WARNING_MS; // 30 min total
 
 // Eventos de actividad que resetean el timer
 const ACTIVITY_EVENTS = [
@@ -46,10 +62,9 @@ export default function SessionTimeout() {
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ─── LOGOUT ───────────────────────────────────────────────────────────────
+  // ─── LOGOUT ─────────────────────────────────────────────────────────────────
   const handleSignOut = useCallback(async () => {
     setIsSigningOut(true);
-    // Limpiar timers antes de salir
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     if (countdownTimer.current) clearInterval(countdownTimer.current);
 
@@ -57,10 +72,9 @@ export default function SessionTimeout() {
     router.replace("/login?timeout=true");
   }, [supabase, router]);
 
-  // ─── INICIAR COUNTDOWN (cuando aparece el aviso) ──────────────────────────
+  // ─── INICIAR COUNTDOWN ──────────────────────────────────────────────────────
   const startCountdown = useCallback(() => {
     setSecondsLeft(WARNING_MS / 1000);
-
     if (countdownTimer.current) clearInterval(countdownTimer.current);
 
     countdownTimer.current = setInterval(() => {
@@ -75,14 +89,10 @@ export default function SessionTimeout() {
     }, 1000);
   }, [handleSignOut]);
 
-  // ─── RESETEAR TIMER DE INACTIVIDAD ───────────────────────────────────────
+  // ─── RESETEAR TIMER DE INACTIVIDAD ──────────────────────────────────────────
   const resetTimer = useCallback(() => {
-    // Si ya se está cerrando sesión, no hacer nada
     if (isSigningOut) return;
-
-    // Si el aviso está visible, no resetear por actividad accidental
-    // (el usuario debe hacer clic en "Seguir conectada" explícitamente)
-    if (showWarning) return;
+    if (showWarning) return; // el usuario debe confirmar explícitamente
 
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
 
@@ -92,14 +102,12 @@ export default function SessionTimeout() {
     }, INACTIVITY_MS);
   }, [isSigningOut, showWarning, startCountdown]);
 
-  // ─── CONTINUAR SESIÓN (botón del modal) ──────────────────────────────────
+  // ─── CONTINUAR SESIÓN ───────────────────────────────────────────────────────
   const handleContinue = useCallback(() => {
-    // Detener countdown
     if (countdownTimer.current) clearInterval(countdownTimer.current);
     setShowWarning(false);
     setSecondsLeft(WARNING_MS / 1000);
 
-    // Reiniciar timer de inactividad desde cero
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     inactivityTimer.current = setTimeout(() => {
       setShowWarning(true);
@@ -107,12 +115,10 @@ export default function SessionTimeout() {
     }, INACTIVITY_MS);
   }, [startCountdown]);
 
-  // ─── MONTAR/DESMONTAR LISTENERS ───────────────────────────────────────────
+  // ─── MONTAR / DESMONTAR LISTENERS ───────────────────────────────────────────
   useEffect(() => {
-    // Iniciar timer al montar
     resetTimer();
 
-    // Throttle: no procesar eventos más de 1 vez por segundo
     let lastActivity = 0;
     const handleActivity = () => {
       const now = Date.now();
@@ -126,7 +132,6 @@ export default function SessionTimeout() {
     });
 
     return () => {
-      // Cleanup completo al desmontar
       ACTIVITY_EVENTS.forEach((event) => {
         window.removeEventListener(event, handleActivity);
       });
@@ -134,20 +139,19 @@ export default function SessionTimeout() {
       if (countdownTimer.current) clearInterval(countdownTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Solo al montar — resetTimer se llama desde handleActivity
+  }, []); // Solo al montar
 
-  // ─── FORMATO MM:SS ────────────────────────────────────────────────────────
+  // ─── FORMATO MM:SS ───────────────────────────────────────────────────────────
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
   const countdown = `${minutes}:${String(seconds).padStart(2, "0")}`;
 
-  // ─── NADA SI NO HAY AVISO ─────────────────────────────────────────────────
-  // El componente no renderiza nada visible durante operación normal
+  // ─── RENDER ──────────────────────────────────────────────────────────────────
   return (
     <AnimatePresence>
       {showWarning && (
         <>
-          {/* Overlay */}
+          {/* ── Overlay ───────────────────────────────────────────────────── */}
           <motion.div
             key="overlay"
             initial={{ opacity: 0 }}
@@ -157,21 +161,22 @@ export default function SessionTimeout() {
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(15, 10, 30, 0.75)",
-              backdropFilter: "blur(4px)",
+              background: "rgba(8,7,6,0.82)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
               zIndex: 9998,
             }}
-            onClick={handleContinue} // Clic en overlay = continuar
+            onClick={handleContinue}
             aria-hidden="true"
           />
 
-          {/* Modal */}
+          {/* ── Modal ─────────────────────────────────────────────────────── */}
           <motion.div
             key="modal"
-            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+            initial={{ opacity: 0, scale: 0.96, y: 14 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 16 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: 0, scale: 0.96, y: 14 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="timeout-title"
@@ -183,83 +188,139 @@ export default function SessionTimeout() {
               transform: "translate(-50%, -50%)",
               zIndex: 9999,
               width: "min(420px, calc(100vw - 2rem))",
-              background: "rgba(26, 20, 45, 0.97)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: "20px",
-              padding: "2rem",
-              boxShadow:
-                "0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset",
-              fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
+              background: t.surface,
+              border: `1px solid ${t.borderMid}`,
+              borderRadius: "18px",
+              padding: "28px",
+              boxShadow: "0 24px 80px rgba(0,0,0,0.60)",
+              // Radial sutil
+              backgroundImage: `radial-gradient(ellipse at top left, rgba(255,45,85,0.05) 0%, transparent 60%)`,
             }}
           >
-            {/* Ícono */}
+            {/* Acento esquina superior derecha */}
+            <span
+              aria-hidden
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: "14px",
+                height: "14px",
+                borderTop: `1px solid ${t.roseBorder}`,
+                borderRight: `1px solid ${t.roseBorder}`,
+                borderTopRightRadius: "18px",
+                pointerEvents: "none",
+              }}
+            />
+
+            {/* ── Eyebrow ───────────────────────────────────────────────── */}
             <div
               style={{
-                width: 52,
-                height: 52,
-                borderRadius: "14px",
-                background: "rgba(255, 185, 0, 0.12)",
-                border: "1px solid rgba(255, 185, 0, 0.2)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "20px",
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  width: "14px",
+                  height: "1px",
+                  background: t.roseDim,
+                }}
+              />
+              <span
+                style={{
+                  fontFamily: "var(--font-jakarta), sans-serif",
+                  fontSize: "10px",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.16em",
+                  color: t.roseDim,
+                }}
+              >
+                Seguridad de sesión
+              </span>
+            </div>
+
+            {/* ── Ícono ─────────────────────────────────────────────────── */}
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
+                background: t.roseGhost,
+                border: `1px solid ${t.roseBorder}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                marginBottom: "1.25rem",
+                marginBottom: "18px",
               }}
             >
-              <Timer size={24} color="#FFC107" />
+              <Timer size={20} color={t.roseDim} />
             </div>
 
-            {/* Título */}
+            {/* ── Título ────────────────────────────────────────────────── */}
             <h2
               id="timeout-title"
               style={{
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontSize: "1.5rem",
-                fontWeight: 600,
-                color: "#F5F3FF",
-                margin: "0 0 0.5rem",
+                fontFamily: "var(--font-cormorant), serif",
+                fontSize: "24px",
+                fontWeight: 300,
+                color: t.textPrimary,
+                margin: "0 0 8px",
                 lineHeight: 1.2,
+                letterSpacing: "0.01em",
               }}
             >
               ¿Sigues ahí?
             </h2>
 
-            {/* Descripción */}
+            {/* ── Descripción ───────────────────────────────────────────── */}
             <p
               id="timeout-desc"
               style={{
-                fontSize: "0.875rem",
-                color: "#B3B0C2",
-                margin: "0 0 1.5rem",
-                lineHeight: 1.6,
+                fontFamily: "var(--font-jakarta), sans-serif",
+                fontSize: "13px",
+                color: t.textMid,
+                margin: "0 0 20px",
+                lineHeight: 1.65,
               }}
             >
               Por seguridad, cerraremos tu sesión por inactividad. Tu progreso
               guardado no se perderá.
             </p>
 
-            {/* Countdown */}
+            {/* ── Countdown ─────────────────────────────────────────────── */}
             <div
               style={{
-                background: "rgba(255, 185, 0, 0.06)",
-                border: "1px solid rgba(255, 185, 0, 0.15)",
-                borderRadius: "12px",
-                padding: "0.875rem 1rem",
-                marginBottom: "1.5rem",
+                background: t.roseGhost,
+                border: `1px solid ${t.roseBorder}`,
+                borderRadius: "10px",
+                padding: "12px 16px",
+                marginBottom: "20px",
                 display: "flex",
                 alignItems: "center",
-                gap: "0.75rem",
+                gap: "10px",
               }}
             >
-              <Timer size={16} color="#FFC107" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: "0.8125rem", color: "#B3B0C2" }}>
+              <Timer size={15} color={t.roseDim} style={{ flexShrink: 0 }} />
+              <span
+                style={{
+                  fontFamily: "var(--font-jakarta), sans-serif",
+                  fontSize: "13px",
+                  color: t.textMid,
+                }}
+              >
                 Sesión se cerrará en{" "}
                 <span
                   style={{
-                    fontFamily: "'Cormorant Garamond', Georgia, serif",
-                    fontSize: "1.125rem",
-                    fontWeight: 600,
-                    color: "#FFC107",
+                    fontFamily: "var(--font-cormorant), serif",
+                    fontSize: "20px",
+                    fontWeight: 300,
+                    color: t.rose,
+                    letterSpacing: "0.02em",
                   }}
                 >
                   {countdown}
@@ -267,13 +328,18 @@ export default function SessionTimeout() {
               </span>
             </div>
 
-            {/* Botones */}
+            {/* ── Divisor ───────────────────────────────────────────────── */}
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.75rem",
+                height: "1px",
+                background: t.border,
+                marginBottom: "20px",
               }}
+            />
+
+            {/* ── Botones ───────────────────────────────────────────────── */}
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "10px" }}
             >
               {/* Primario: seguir conectada */}
               <button
@@ -281,26 +347,31 @@ export default function SessionTimeout() {
                 disabled={isSigningOut}
                 style={{
                   width: "100%",
-                  padding: "0.9375rem",
-                  background:
-                    "linear-gradient(135deg, #FF2D55 0%, #D4003C 100%)",
-                  border: "none",
+                  padding: "12px",
+                  background: t.rose,
+                  border: `1px solid ${t.rose}`,
                   borderRadius: "10px",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  fontSize: "0.9375rem",
-                  fontWeight: 700,
+                  fontFamily: "var(--font-jakarta), sans-serif",
+                  fontSize: "13px",
+                  fontWeight: 500,
                   color: "#fff",
-                  cursor: "pointer",
+                  cursor: isSigningOut ? "not-allowed" : "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "0.5rem",
-                  boxShadow: "0 4px 20px rgba(255,45,85,0.35)",
-                  transition: "opacity 0.15s",
+                  gap: "8px",
+                  transition: "filter 0.18s ease",
                   opacity: isSigningOut ? 0.5 : 1,
                 }}
+                onMouseEnter={(e) => {
+                  if (!isSigningOut)
+                    e.currentTarget.style.filter = "brightness(1.12)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.filter = "brightness(1)";
+                }}
               >
-                <RefreshCw size={16} />
+                <RefreshCw size={14} />
                 Seguir conectada
               </button>
 
@@ -310,28 +381,39 @@ export default function SessionTimeout() {
                 disabled={isSigningOut}
                 style={{
                   width: "100%",
-                  padding: "0.875rem",
+                  padding: "11px",
                   background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  border: `1px solid ${t.border}`,
                   borderRadius: "10px",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  fontSize: "0.875rem",
+                  fontFamily: "var(--font-jakarta), sans-serif",
+                  fontSize: "13px",
                   fontWeight: 500,
-                  color: "#B3B0C2",
-                  cursor: "pointer",
+                  color: t.textMid,
+                  cursor: isSigningOut ? "not-allowed" : "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "0.5rem",
-                  transition: "all 0.15s",
+                  gap: "8px",
+                  transition: "border-color 0.18s, color 0.18s",
                   opacity: isSigningOut ? 0.5 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSigningOut) {
+                    e.currentTarget.style.borderColor = t.borderMid;
+                    e.currentTarget.style.color = t.textPrimary;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = t.border;
+                  e.currentTarget.style.color = t.textMid;
                 }}
               >
                 {isSigningOut ? (
                   "Cerrando sesión…"
                 ) : (
                   <>
-                    <LogOut size={15} /> Cerrar sesión ahora
+                    <LogOut size={14} />
+                    Cerrar sesión ahora
                   </>
                 )}
               </button>

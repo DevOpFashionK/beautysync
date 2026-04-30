@@ -1,21 +1,7 @@
 "use client";
 
 // components/dashboard/metrics/RevenueLineChart.tsx
-//
-// Gráfico de líneas: ingresos acumulados día a día del mes actual
-// comparado con el mes anterior (línea punteada de referencia).
-//
-// Recibe datos ya procesados desde el Server Component — no hace fetch propio.
-//
-// Dos líneas:
-//   - Mes actual   → línea sólida con primaryColor
-//   - Mes anterior → línea punteada en gris (#C4B8B0)
-//
-// Props:
-//   dailyData    — array de { day, currentRevenue, previousRevenue, cumulativeCurrent, cumulativePrevious }
-//   primaryColor — color de acento del salón
-//   currentMonth — nombre del mes actual ("Abril 2026")
-//   loading      — muestra skeleton si true
+// Ingresos acumulados día a día — mes actual vs mes anterior. Recharts intacto.
 
 import { motion } from "framer-motion";
 import {
@@ -26,20 +12,15 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 import { TrendingUp } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface DailyRevenuePoint {
-  /** Día del mes: 1, 2, 3, ... 31 */
   day: number;
-  /** Label para eje X: "1", "5", "10"... (solo cada 5 días para no saturar) */
   dayLabel: string;
-  /** Ingresos acumulados del mes actual hasta este día */
   cumulativeCurrent: number;
-  /** Ingresos acumulados del mes anterior hasta este día */
   cumulativePrevious: number;
 }
 
@@ -62,7 +43,7 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-// ─── Tooltip personalizado ────────────────────────────────────────────────────
+// ─── Tooltip Dark ─────────────────────────────────────────────────────────────
 
 function CustomTooltip({
   active,
@@ -90,37 +71,63 @@ function CustomTooltip({
 
   return (
     <div
-      className="rounded-xl px-4 py-3 shadow-lg"
       style={{
-        background: "#FFFFFF",
-        border: "1px solid #EDE8E3",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "10px",
+        padding: "14px 16px",
         minWidth: "180px",
       }}
     >
       <p
-        className="text-xs font-semibold mb-3"
-        style={{ color: "#9C8E85", letterSpacing: "0.06em" }}
+        style={{
+          fontSize: "10px",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "rgba(245,242,238,0.25)",
+          marginBottom: "12px",
+        }}
       >
         Día {label}
       </p>
 
       {/* Mes actual */}
-      <div className="flex items-center gap-2 mb-1.5">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "8px",
+        }}
+      >
         <div
-          className="w-2.5 h-2.5 rounded-full shrink-0"
-          style={{ background: primaryColor }}
+          style={{
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            background: primaryColor,
+            flexShrink: 0,
+          }}
         />
         <div>
-          <p className="text-xs" style={{ color: "#B5A99F" }}>
+          <p
+            style={{
+              fontSize: "10px",
+              color: "rgba(245,242,238,0.25)",
+              margin: 0,
+            }}
+          >
             {currentMonth}
           </p>
           <p
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
               fontSize: "1.2rem",
-              fontWeight: 600,
-              color: "#2D2420",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.85)",
               lineHeight: 1,
+              margin: 0,
             }}
           >
             {formatCurrency(current)}
@@ -129,22 +136,42 @@ function CustomTooltip({
       </div>
 
       {/* Mes anterior */}
-      <div className="flex items-center gap-2 mb-2">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "10px",
+        }}
+      >
         <div
-          className="w-2.5 h-2.5 rounded-full shrink-0"
-          style={{ background: "#C4B8B0" }}
+          style={{
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            background: "rgba(245,242,238,0.2)",
+            flexShrink: 0,
+          }}
         />
         <div>
-          <p className="text-xs" style={{ color: "#B5A99F" }}>
+          <p
+            style={{
+              fontSize: "10px",
+              color: "rgba(245,242,238,0.25)",
+              margin: 0,
+            }}
+          >
             {previousMonth}
           </p>
           <p
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
               fontSize: "1.2rem",
-              fontWeight: 600,
-              color: "#9C8E85",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.4)",
               lineHeight: 1,
+              margin: 0,
             }}
           >
             {formatCurrency(previous)}
@@ -155,10 +182,15 @@ function CustomTooltip({
       {/* Diferencia */}
       {previous > 0 && (
         <div
-          className="text-xs font-semibold px-2 py-1 rounded-lg"
           style={{
-            background: isAhead ? "#D1FAE5" : "#FEE2E2",
-            color: isAhead ? "#065F46" : "#B91C1C",
+            fontSize: "11px",
+            padding: "4px 10px",
+            borderRadius: "20px",
+            background: isAhead
+              ? "rgba(16,185,129,0.1)"
+              : "rgba(239,68,68,0.1)",
+            color: isAhead ? "rgba(52,211,153,0.85)" : "rgba(252,165,165,0.85)",
+            border: `1px solid ${isAhead ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`,
           }}
         >
           {isAhead ? "▲" : "▼"} {formatCurrency(Math.abs(diff))} vs mes anterior
@@ -168,123 +200,7 @@ function CustomTooltip({
   );
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
-
-function LineChartSkeleton() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: 0.24 }}
-      className="rounded-2xl p-6 animate-pulse"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div
-            className="h-3 rounded-lg w-40 mb-2"
-            style={{ background: "#F3EDE8" }}
-          />
-          <div
-            className="h-7 rounded-lg w-24"
-            style={{ background: "#F3EDE8" }}
-          />
-        </div>
-        <div className="w-9 h-9 rounded-xl" style={{ background: "#F3EDE8" }} />
-      </div>
-      {/* Líneas skeleton — simulan el gráfico */}
-      <div className="relative h-44 px-2">
-        <div
-          className="absolute bottom-0 left-0 right-0 h-px"
-          style={{ background: "#EDE8E3" }}
-        />
-        {[25, 50, 75].map((pct) => (
-          <div
-            key={pct}
-            className="absolute left-0 right-0 h-px"
-            style={{ bottom: `${pct}%`, background: "#F3EDE8" }}
-          />
-        ))}
-        {/* Línea curva simulada */}
-        <svg
-          viewBox="0 0 300 100"
-          className="w-full h-full"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M0,80 C30,75 60,60 90,50 C120,40 150,30 180,25 C210,20 240,15 300,10"
-            fill="none"
-            stroke="#F3EDE8"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <path
-            d="M0,90 C30,85 60,80 90,72 C120,65 150,58 180,52 C210,46 240,40 300,35"
-            fill="none"
-            stroke="#EDE8E3"
-            strokeWidth="2"
-            strokeDasharray="6 4"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-      {/* Eje X skeleton */}
-      <div className="flex gap-4 mt-3 px-2">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div
-            key={i}
-            className="h-2.5 rounded-lg flex-1"
-            style={{ background: "#F3EDE8" }}
-          />
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Empty state ─────────────────────────────────────────────────────────────
-
-function LineChartEmpty({ primaryColor }: { primaryColor: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: 0.24 }}
-      className="rounded-2xl p-6 flex flex-col items-center justify-center py-16"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
-    >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-        style={{ background: `${primaryColor}14` }}
-      >
-        <TrendingUp
-          size={18}
-          strokeWidth={1.75}
-          style={{ color: primaryColor }}
-        />
-      </div>
-      <p
-        style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontSize: "1.2rem",
-          fontWeight: 500,
-          color: "#9C8E85",
-        }}
-      >
-        Sin ingresos aún
-      </p>
-      <p
-        className="text-xs mt-1 text-center"
-        style={{ color: "#C4B8B0", maxWidth: "18rem" }}
-      >
-        El gráfico aparecerá cuando haya citas completadas este mes.
-      </p>
-    </motion.div>
-  );
-}
-
-// ─── Leyenda personalizada ────────────────────────────────────────────────────
+// ─── Leyenda Dark ─────────────────────────────────────────────────────────────
 
 function CustomLegend({
   primaryColor,
@@ -296,33 +212,214 @@ function CustomLegend({
   previousMonth: string;
 }) {
   return (
-    <div className="flex items-center gap-5 mt-3 justify-end">
-      <div className="flex items-center gap-1.5">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "16px",
+        marginTop: "10px",
+        justifyContent: "flex-end",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <div
-          className="w-6 h-0.5 rounded-full"
-          style={{ background: primaryColor }}
+          style={{
+            width: "20px",
+            height: "1.5px",
+            background: primaryColor,
+            borderRadius: "2px",
+          }}
         />
-        <span className="text-xs" style={{ color: "#9C8E85" }}>
+        <span
+          style={{
+            fontSize: "10px",
+            color: "rgba(245,242,238,0.3)",
+            letterSpacing: "0.04em",
+          }}
+        >
           {currentMonth}
         </span>
       </div>
-      <div className="flex items-center gap-1.5">
-        <svg width="24" height="2" viewBox="0 0 24 2">
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <svg width="20" height="2" viewBox="0 0 20 2">
           <line
             x1="0"
             y1="1"
-            x2="24"
+            x2="20"
             y2="1"
-            stroke="#C4B8B0"
-            strokeWidth="2"
-            strokeDasharray="5 3"
+            stroke="rgba(245,242,238,0.18)"
+            strokeWidth="1.5"
+            strokeDasharray="4 3"
           />
         </svg>
-        <span className="text-xs" style={{ color: "#9C8E85" }}>
+        <span
+          style={{
+            fontSize: "10px",
+            color: "rgba(245,242,238,0.25)",
+            letterSpacing: "0.04em",
+          }}
+        >
           {previousMonth}
         </span>
       </div>
     </div>
+  );
+}
+
+// ─── Skeleton Dark ────────────────────────────────────────────────────────────
+
+function LineChartSkeleton() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: 0.24 }}
+      className="animate-pulse"
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "24px",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              height: "10px",
+              width: "160px",
+              borderRadius: "4px",
+              background: "rgba(255,255,255,0.04)",
+              marginBottom: "8px",
+            }}
+          />
+          <div
+            style={{
+              height: "24px",
+              width: "80px",
+              borderRadius: "6px",
+              background: "rgba(255,255,255,0.05)",
+            }}
+          />
+        </div>
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            background: "rgba(255,255,255,0.04)",
+          }}
+        />
+      </div>
+      <div style={{ position: "relative", height: "160px" }}>
+        <svg
+          viewBox="0 0 300 100"
+          style={{ width: "100%", height: "100%" }}
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M0,80 C30,75 60,60 90,50 C120,40 150,30 180,25 C210,20 240,15 300,10"
+            fill="none"
+            stroke="rgba(255,255,255,0.05)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M0,90 C30,85 60,80 90,72 C120,65 150,58 180,52 C210,46 240,40 300,35"
+            fill="none"
+            stroke="rgba(255,255,255,0.04)"
+            strokeWidth="1.5"
+            strokeDasharray="5 3"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
+      <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div
+            key={i}
+            style={{
+              flex: 1,
+              height: "8px",
+              borderRadius: "4px",
+              background: "rgba(255,255,255,0.03)",
+            }}
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Empty Dark ───────────────────────────────────────────────────────────────
+
+function LineChartEmpty({ primaryColor }: { primaryColor: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: 0.24 }}
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingTop: "56px",
+        paddingBottom: "56px",
+      }}
+    >
+      <div
+        style={{
+          width: "36px",
+          height: "36px",
+          borderRadius: "8px",
+          background: `${primaryColor}12`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "14px",
+        }}
+      >
+        <TrendingUp
+          size={16}
+          strokeWidth={1.75}
+          style={{ color: `${primaryColor}99` }}
+        />
+      </div>
+      <p
+        style={{
+          fontFamily:
+            "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+          fontSize: "1.1rem",
+          fontWeight: 300,
+          color: "rgba(245,242,238,0.35)",
+          marginBottom: "4px",
+        }}
+      >
+        Sin ingresos aún
+      </p>
+      <p
+        style={{
+          fontSize: "11px",
+          color: "rgba(245,242,238,0.15)",
+          textAlign: "center",
+          maxWidth: "18rem",
+        }}
+      >
+        El gráfico aparecerá cuando haya citas completadas este mes.
+      </p>
+    </motion.div>
   );
 }
 
@@ -342,7 +439,6 @@ export default function RevenueLineChart({
   );
   if (!hasData) return <LineChartEmpty primaryColor={primaryColor} />;
 
-  // Ingreso acumulado final del mes actual (último punto con datos)
   const lastPoint = [...dailyData]
     .reverse()
     .find((d) => d.cumulativeCurrent > 0);
@@ -353,48 +449,78 @@ export default function RevenueLineChart({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.24 }}
-      className="rounded-2xl p-6"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        borderRadius: "10px",
+        padding: "24px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-2">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: "4px",
+        }}
+      >
         <div>
           <p
-            className="text-xs font-medium uppercase tracking-wider mb-1.5"
-            style={{ color: "#9C8E85", letterSpacing: "0.08em" }}
+            style={{
+              fontSize: "10px",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "rgba(245,242,238,0.22)",
+              marginBottom: "6px",
+            }}
           >
             Ingresos acumulados · {currentMonth}
           </p>
           <p
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontFamily:
+                "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
               fontSize: "1.9rem",
-              fontWeight: 600,
-              color: "#2D2420",
+              fontWeight: 300,
+              color: "rgba(245,242,238,0.88)",
               lineHeight: 1,
-              letterSpacing: "-0.02em",
+              letterSpacing: "-0.03em",
             }}
           >
             {formatCurrency(totalCurrent)}
           </p>
-          <p className="text-xs mt-1" style={{ color: "#B5A99F" }}>
+          <p
+            style={{
+              fontSize: "11px",
+              marginTop: "4px",
+              color: "rgba(245,242,238,0.2)",
+            }}
+          >
             acumulado hasta hoy
           </p>
         </div>
-
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: `${primaryColor}14` }}
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            background: `${primaryColor}12`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
         >
           <TrendingUp
-            size={16}
+            size={14}
             strokeWidth={1.75}
-            style={{ color: primaryColor }}
+            style={{ color: `${primaryColor}CC` }}
           />
         </div>
       </div>
 
-      {/* Leyenda */}
       <CustomLegend
         primaryColor={primaryColor}
         currentMonth={currentMonth}
@@ -402,7 +528,7 @@ export default function RevenueLineChart({
       />
 
       {/* Gráfico */}
-      <div className="mt-4">
+      <div style={{ marginTop: "16px" }}>
         <ResponsiveContainer width="100%" height={180}>
           <LineChart
             data={dailyData}
@@ -410,12 +536,16 @@ export default function RevenueLineChart({
           >
             <CartesianGrid
               vertical={false}
-              stroke="#EDE8E3"
+              stroke="rgba(255,255,255,0.04)"
               strokeDasharray="3 3"
             />
             <XAxis
               dataKey="dayLabel"
-              tick={{ fontSize: 11, fill: "#B5A99F", fontFamily: "inherit" }}
+              tick={{
+                fontSize: 11,
+                fill: "rgba(245,242,238,0.2)",
+                fontFamily: "inherit",
+              }}
               axisLine={false}
               tickLine={false}
               dy={6}
@@ -423,7 +553,11 @@ export default function RevenueLineChart({
             />
             <YAxis
               tickFormatter={(v) => `$${v}`}
-              tick={{ fontSize: 11, fill: "#C4B8B0", fontFamily: "inherit" }}
+              tick={{
+                fontSize: 11,
+                fill: "rgba(245,242,238,0.15)",
+                fontFamily: "inherit",
+              }}
               axisLine={false}
               tickLine={false}
               width={48}
@@ -436,32 +570,34 @@ export default function RevenueLineChart({
                   previousMonth={previousMonth}
                 />
               }
-              cursor={{ stroke: "#EDE8E3", strokeWidth: 1 }}
+              cursor={{ stroke: "rgba(255,255,255,0.06)", strokeWidth: 1 }}
             />
-
-            {/* Línea mes anterior — punteada, gris */}
+            {/* Mes anterior — punteada */}
             <Line
               type="monotone"
               dataKey="cumulativePrevious"
-              stroke="#C4B8B0"
-              strokeWidth={2}
+              stroke="rgba(245,242,238,0.18)"
+              strokeWidth={1.5}
               strokeDasharray="5 4"
               dot={false}
-              activeDot={{ r: 4, fill: "#C4B8B0", strokeWidth: 0 }}
+              activeDot={{
+                r: 3,
+                fill: "rgba(245,242,238,0.3)",
+                strokeWidth: 0,
+              }}
             />
-
-            {/* Línea mes actual — sólida, primaryColor */}
+            {/* Mes actual — sólida */}
             <Line
               type="monotone"
               dataKey="cumulativeCurrent"
               stroke={primaryColor}
-              strokeWidth={2.5}
+              strokeWidth={2}
               dot={false}
               activeDot={{
-                r: 5,
+                r: 4,
                 fill: primaryColor,
                 strokeWidth: 2,
-                stroke: "#FFFFFF",
+                stroke: "#080706",
               }}
             />
           </LineChart>

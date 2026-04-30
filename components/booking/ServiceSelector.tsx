@@ -1,10 +1,11 @@
 "use client";
 
 // components/booking/ServiceSelector.tsx
-// Fase 8.1 v2 — Cards de servicio adaptadas a la estética oscura premium
+// Diseño premium único — cards con identidad visual fuerte.
+// Lógica 100% intacta.
 
 import { motion } from "framer-motion";
-import { Clock, ChevronRight, Sparkles } from "lucide-react";
+import { Clock, ChevronRight, Sparkles, DollarSign } from "lucide-react";
 import type { ServicePublicData, SelectedService } from "@/types/booking.types";
 
 interface ServiceSelectorProps {
@@ -30,126 +31,141 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
+function getServiceEmoji(name: string): string {
+  const l = name.toLowerCase();
+  if (l.includes("cejas") || l.includes("brow")) return "🪄";
+  if (l.includes("cabello") || l.includes("pelo") || l.includes("corte"))
+    return "✂️";
+  if (l.includes("manicure") || l.includes("uñas") || l.includes("nail"))
+    return "💅";
+  if (l.includes("facial") || l.includes("limpieza")) return "✨";
+  if (l.includes("pedicure")) return "🦶";
+  if (l.includes("tinte") || l.includes("color")) return "🎨";
+  if (l.includes("depilación") || l.includes("depilacion")) return "🌿";
+  if (l.includes("maquillaje") || l.includes("makeup")) return "💄";
+  if (l.includes("masaje") || l.includes("spa")) return "🧖‍♀️";
+  if (l.includes("laminado")) return "⭐";
+  return "💇‍♀️";
+}
+
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const styles = `
   .ss-header {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }
 
   .ss-eyebrow {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 6px;
+    background: var(--brand-subtle, rgba(255,45,85,0.08));
+    border: 1px solid var(--brand-border, rgba(255,45,85,0.22));
+    border-radius: 100px;
+    padding: 4px 12px 4px 8px;
+    margin-bottom: 14px;
   }
 
   .ss-eyebrow-text {
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--color-brand);
-    font-family: var(--font-jakarta), sans-serif;
+    color: var(--brand);
+    font-family: var(--font-body);
   }
 
   .ss-title {
-    font-family: var(--font-cormorant), Georgia, serif;
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: rgba(245, 242, 238, 0.95);
-    line-height: 1.15;
-    margin-bottom: 4px;
-    letter-spacing: -0.01em;
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 300;
+    color: rgba(245,242,238,0.92);
+    line-height: 1.1;
+    margin-bottom: 6px;
+    letter-spacing: -0.025em;
   }
 
   .ss-subtitle {
     font-size: 13px;
-    color: rgba(245, 242, 238, 0.4);
-    font-family: var(--font-jakarta), sans-serif;
+    color: rgba(245,242,238,0.3);
+    font-family: var(--font-body);
+    letter-spacing: 0.02em;
   }
 
-  /* ── Service card ── */
+  /* ── Card ── */
   .ss-card {
     width: 100%;
     text-align: left;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
     padding: 16px 18px;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 14px;
-    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
     font-family: inherit;
     position: relative;
     overflow: hidden;
+    transition: border-color 0.2s, background 0.2s;
   }
 
   .ss-card:hover {
-    background: rgba(255, 255, 255, 0.07);
-    border-color: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.045);
   }
 
   /* Línea de acento izquierda */
-  .ss-card-accent {
+  .ss-accent {
     position: absolute;
     left: 0;
-    top: 18%;
-    bottom: 18%;
-    width: 3px;
-    border-radius: 0 3px 3px 0;
+    top: 16%;
+    bottom: 16%;
+    width: 2px;
+    border-radius: 0 2px 2px 0;
     opacity: 0;
     transition: opacity 0.2s;
   }
 
-  .ss-card:hover .ss-card-accent {
-    opacity: 1;
-  }
+  .ss-card:hover .ss-accent { opacity: 0.7; }
 
-  /* Ícono del servicio */
+  /* Ícono */
   .ss-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 20px;
+    font-size: 22px;
     transition: transform 0.2s;
   }
 
-  .ss-card:hover .ss-icon {
-    transform: scale(1.05);
-  }
+  .ss-card:hover .ss-icon { transform: scale(1.06); }
 
-  /* Info del servicio */
-  .ss-info {
-    flex: 1;
-    min-width: 0;
-  }
+  /* Info */
+  .ss-info { flex: 1; min-width: 0; }
 
   .ss-name {
-    font-size: 15px;
-    font-weight: 600;
-    color: rgba(245, 242, 238, 0.92);
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(245,242,238,0.88);
     line-height: 1.3;
     margin-bottom: 3px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
   }
 
-  .ss-description {
-    font-size: 12px;
-    color: rgba(245, 242, 238, 0.38);
+  .ss-desc {
+    font-size: 11px;
+    color: rgba(245,242,238,0.28);
     margin-bottom: 8px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-body);
   }
 
   .ss-meta {
@@ -162,43 +178,53 @@ const styles = `
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px;
-    color: rgba(245, 242, 238, 0.38);
-    font-family: var(--font-jakarta), sans-serif;
+    font-size: 11px;
+    color: rgba(245,242,238,0.3);
+    font-family: var(--font-body);
   }
 
-  .ss-dot {
+  .ss-sep {
     width: 3px;
     height: 3px;
     border-radius: 50%;
-    background: rgba(245, 242, 238, 0.2);
+    background: rgba(245,242,238,0.15);
+  }
+
+  /* Precio — protagonista */
+  .ss-price-wrap {
+    flex-shrink: 0;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
   }
 
   .ss-price {
-    font-size: 15px;
-    font-weight: 700;
-    font-family: var(--font-jakarta), sans-serif;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -0.02em;
   }
 
-  /* Flecha derecha */
+  /* Flecha */
   .ss-arrow {
     flex-shrink: 0;
-    opacity: 0.25;
+    opacity: 0.18;
     transition: opacity 0.2s, transform 0.2s;
-    color: rgba(245, 242, 238, 0.8);
   }
 
   .ss-card:hover .ss-arrow {
-    opacity: 0.7;
+    opacity: 0.55;
     transform: translateX(3px);
   }
 
-  /* Empty state */
+  /* Empty */
   .ss-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     padding: 56px 0;
     text-align: center;
     gap: 10px;
@@ -211,49 +237,22 @@ const styles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 4px;
     font-size: 24px;
+    margin-bottom: 4px;
   }
 
   .ss-empty-title {
     font-size: 15px;
-    font-weight: 600;
-    color: rgba(245, 242, 238, 0.7);
-    font-family: var(--font-jakarta), sans-serif;
+    color: rgba(245,242,238,0.5);
+    font-family: var(--font-body);
   }
 
   .ss-empty-sub {
-    font-size: 13px;
-    color: rgba(245, 242, 238, 0.3);
-    font-family: var(--font-jakarta), sans-serif;
+    font-size: 12px;
+    color: rgba(245,242,238,0.2);
+    font-family: var(--font-body);
   }
 `;
-
-// ─── Íconos por servicio (emoji semántico según nombre) ───────────────────────
-function getServiceEmoji(name: string): string {
-  const lower = name.toLowerCase();
-  if (lower.includes("cejas") || lower.includes("brow")) return "🪄";
-  if (
-    lower.includes("cabello") ||
-    lower.includes("pelo") ||
-    lower.includes("corte")
-  )
-    return "✂️";
-  if (
-    lower.includes("manicure") ||
-    lower.includes("uñas") ||
-    lower.includes("nail")
-  )
-    return "💅";
-  if (lower.includes("facial") || lower.includes("limpieza")) return "✨";
-  if (lower.includes("pedicure")) return "🦶";
-  if (lower.includes("tinte") || lower.includes("color")) return "🎨";
-  if (lower.includes("depilación") || lower.includes("depilacion")) return "🌿";
-  if (lower.includes("maquillaje") || lower.includes("makeup")) return "💄";
-  if (lower.includes("masaje") || lower.includes("spa")) return "🧖‍♀️";
-  if (lower.includes("laminado")) return "⭐";
-  return "💇‍♀️";
-}
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 function EmptyServices({ primaryColor }: { primaryColor: string }) {
@@ -272,63 +271,64 @@ function EmptyServices({ primaryColor }: { primaryColor: string }) {
 }
 
 // ─── Service Card ─────────────────────────────────────────────────────────────
-interface ServiceCardProps {
-  service: ServicePublicData;
-  primaryColor: string;
-  index: number;
-  onSelect: (service: SelectedService) => void;
-}
-
 function ServiceCard({
   service,
   primaryColor,
   index,
   onSelect,
-}: ServiceCardProps) {
+}: {
+  service: ServicePublicData;
+  primaryColor: string;
+  index: number;
+  onSelect: (service: SelectedService) => void;
+}) {
   const emoji = getServiceEmoji(service.name);
 
   return (
     <motion.button
-      initial={{ opacity: 0, y: 14 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32, delay: index * 0.07 + 0.08 }}
+      transition={{ duration: 0.3, delay: index * 0.06 + 0.06 }}
       whileTap={{ scale: 0.985 }}
       onClick={() => onSelect(service as SelectedService)}
       className="ss-card"
     >
-      {/* Acento izquierdo */}
-      <div
-        className="ss-card-accent"
-        style={{ backgroundColor: primaryColor }}
-      />
+      {/* Acento lateral */}
+      <div className="ss-accent" style={{ background: primaryColor }} />
 
-      {/* Ícono emoji */}
-      <div className="ss-icon" style={{ background: `${primaryColor}16` }}>
+      {/* Emoji icon */}
+      <div className="ss-icon" style={{ background: `${primaryColor}14` }}>
         {emoji}
       </div>
 
       {/* Info */}
       <div className="ss-info">
         <p className="ss-name">{service.name}</p>
-
         {service.description && (
-          <p className="ss-description">{service.description}</p>
+          <p className="ss-desc">{service.description}</p>
         )}
-
         <div className="ss-meta">
           <span className="ss-duration">
-            <Clock size={11} />
+            <Clock size={10} strokeWidth={1.75} />
             {formatDuration(service.duration_minutes)}
-          </span>
-          <span className="ss-dot" />
-          <span className="ss-price" style={{ color: primaryColor }}>
-            {formatPrice(service.price)}
           </span>
         </div>
       </div>
 
+      {/* Precio */}
+      <div className="ss-price-wrap">
+        <span className="ss-price" style={{ color: primaryColor }}>
+          {formatPrice(service.price)}
+        </span>
+      </div>
+
       {/* Flecha */}
-      <ChevronRight size={18} className="ss-arrow" />
+      <ChevronRight
+        size={16}
+        strokeWidth={1.5}
+        className="ss-arrow"
+        style={{ color: "rgba(245,242,238,0.8)" }}
+      />
     </motion.button>
   );
 }
@@ -339,9 +339,9 @@ export default function ServiceSelector({
   primaryColor,
   onSelect,
 }: ServiceSelectorProps) {
-  const activeServices = services.filter((s) => s !== null);
+  const active = services.filter((s) => s !== null);
 
-  if (activeServices.length === 0) {
+  if (active.length === 0) {
     return (
       <>
         <style>{styles}</style>
@@ -362,12 +362,13 @@ export default function ServiceSelector({
         className="ss-header"
       >
         <div className="ss-eyebrow">
-          <Sparkles size={11} color={primaryColor} />
+          <Sparkles
+            size={10}
+            strokeWidth={1.75}
+            style={{ color: primaryColor }}
+          />
           <span className="ss-eyebrow-text">
-            {activeServices.length}{" "}
-            {activeServices.length === 1
-              ? "servicio disponible"
-              : "servicios disponibles"}
+            {active.length} {active.length === 1 ? "servicio" : "servicios"}
           </span>
         </div>
         <h2 className="ss-title">¿Qué servicio deseas?</h2>
@@ -375,13 +376,13 @@ export default function ServiceSelector({
       </motion.div>
 
       {/* Lista */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {activeServices.map((service, index) => (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {active.map((service, i) => (
           <ServiceCard
             key={service.id}
             service={service}
             primaryColor={primaryColor}
-            index={index}
+            index={i}
             onSelect={onSelect}
           />
         ))}

@@ -2,8 +2,23 @@
 
 // components/dashboard/clients/ClientDetailModal.tsx
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Phone, Mail, Scissors, Calendar, DollarSign, Clock, Star } from "lucide-react";
-import { formatTime, formatDateMini, formatMonthYear, formatPrice, formatRelativeDate } from "@/lib/utils";
+import {
+  X,
+  Phone,
+  Mail,
+  Scissors,
+  Calendar,
+  DollarSign,
+  Clock,
+  Star,
+} from "lucide-react";
+import {
+  formatTime,
+  formatDateMini,
+  formatMonthYear,
+  formatPrice,
+  formatRelativeDate,
+} from "@/lib/utils";
 import type { ClientProfile } from "./ClientsClient";
 
 interface ClientDetailModalProps {
@@ -12,20 +27,45 @@ interface ClientDetailModalProps {
   onClose: () => void;
 }
 
+// ─── Status config Dark ───────────────────────────────────────────────────────
+
 const STATUS_LABELS: Record<string, string> = {
-  pending:   "Pendiente",
+  pending: "Pendiente",
   confirmed: "Confirmada",
   completed: "Completada",
   cancelled: "Cancelada",
-  no_show:   "No asistió",
+  no_show: "No asistió",
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  pending:   "text-amber-600 bg-amber-50",
-  confirmed: "text-emerald-600 bg-emerald-50",
-  completed: "text-blue-600 bg-blue-50",
-  cancelled: "text-red-500 bg-red-50",
-  no_show:   "text-gray-500 bg-gray-50",
+const STATUS_STYLES: Record<
+  string,
+  { bg: string; color: string; border: string }
+> = {
+  pending: {
+    bg: "rgba(234,179,8,0.07)",
+    color: "rgba(251,191,36,0.85)",
+    border: "rgba(234,179,8,0.2)",
+  },
+  confirmed: {
+    bg: "rgba(59,130,246,0.07)",
+    color: "rgba(147,197,253,0.85)",
+    border: "rgba(59,130,246,0.2)",
+  },
+  completed: {
+    bg: "rgba(16,185,129,0.07)",
+    color: "rgba(110,231,183,0.85)",
+    border: "rgba(16,185,129,0.2)",
+  },
+  cancelled: {
+    bg: "rgba(255,255,255,0.03)",
+    color: "rgba(245,242,238,0.25)",
+    border: "rgba(255,255,255,0.07)",
+  },
+  no_show: {
+    bg: "rgba(239,68,68,0.07)",
+    color: "rgba(252,165,165,0.85)",
+    border: "rgba(239,68,68,0.2)",
+  },
 };
 
 function getInitials(name: string): string {
@@ -37,6 +77,18 @@ function getInitials(name: string): string {
     .join("");
 }
 
+const avatarPalettes = [
+  { bg: "rgba(255,45,85,0.1)", text: "rgba(255,45,85,0.7)" },
+  { bg: "rgba(59,130,246,0.1)", text: "rgba(147,197,253,0.7)" },
+  { bg: "rgba(16,185,129,0.1)", text: "rgba(52,211,153,0.7)" },
+  { bg: "rgba(234,179,8,0.1)", text: "rgba(251,191,36,0.7)" },
+  { bg: "rgba(168,85,247,0.1)", text: "rgba(216,180,254,0.7)" },
+];
+
+function getAvatarPalette(name: string) {
+  return avatarPalettes[name.charCodeAt(0) % avatarPalettes.length];
+}
+
 export default function ClientDetailModal({
   client,
   primaryColor,
@@ -44,24 +96,34 @@ export default function ClientDetailModal({
 }: ClientDetailModalProps) {
   if (!client) return null;
 
-  const sortedAppointments = [...client.appointments].sort(
-    (a, b) => b.scheduled_at.localeCompare(a.scheduled_at)
+  const sortedAppointments = [...client.appointments].sort((a, b) =>
+    b.scheduled_at.localeCompare(a.scheduled_at),
   );
+
+  const palette = getAvatarPalette(client.name);
 
   return (
     <AnimatePresence>
       {client && (
         <>
+          {/* Backdrop */}
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-[#2D2420]/20 backdrop-blur-sm"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 40,
+              background: "rgba(8,7,6,0.8)",
+              backdropFilter: "blur(6px)",
+            }}
             onClick={onClose}
           />
 
+          {/* Modal */}
           <motion.div
             key="modal"
             initial={{ opacity: 0, y: 24, scale: 0.98 }}
@@ -71,40 +133,117 @@ export default function ClientDetailModal({
             className="fixed inset-x-4 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2
                        sm:-translate-x-1/2 sm:-translate-y-1/2
                        z-50 w-full sm:w-[500px] max-h-[92vh] sm:max-h-[85vh]
-                       bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl
                        overflow-hidden flex flex-col"
+            style={{
+              background: "#0E0C0B",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: "14px 14px 0 0",
+              boxShadow: "0 32px 80px rgba(0,0,0,0.65)",
+            }}
           >
+            {/* Acento top */}
+            <div
+              style={{
+                height: "2px",
+                background: `linear-gradient(90deg, ${primaryColor}88, transparent)`,
+                flexShrink: 0,
+              }}
+            />
+
             {/* Header */}
             <div
-              className="px-6 pt-6 pb-5 shrink-0"
               style={{
-                background: `linear-gradient(135deg, ${primaryColor}08 0%, transparent 100%)`,
-                borderBottom: "1px solid #EDE8E3",
+                padding: "20px 22px 16px",
+                flexShrink: 0,
+                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                background: `radial-gradient(ellipse at top left, ${primaryColor}06, transparent 60%)`,
               }}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-4">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                }}
+              >
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "14px" }}
+                >
+                  {/* Avatar grande */}
                   <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center
-                               text-white text-lg font-bold shrink-0"
-                    style={{ backgroundColor: primaryColor }}
+                    style={{
+                      width: "52px",
+                      height: "52px",
+                      borderRadius: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "16px",
+                      fontWeight: 600,
+                      flexShrink: 0,
+                      background: palette.bg,
+                      color: palette.text,
+                      letterSpacing: "0.03em",
+                    }}
                   >
                     {getInitials(client.name)}
                   </div>
+
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="font-['Cormorant_Garamond'] text-2xl font-semibold text-[#2D2420]">
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      <h2
+                        style={{
+                          fontFamily:
+                            "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                          fontSize: "1.4rem",
+                          fontWeight: 300,
+                          color: "rgba(245,242,238,0.88)",
+                          letterSpacing: "-0.02em",
+                          margin: 0,
+                        }}
+                      >
                         {client.name}
                       </h2>
                       {client.isFrequent && (
-                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full
-                                         text-[10px] font-semibold bg-amber-50 text-amber-600">
-                          <Star size={9} className="fill-amber-400 text-amber-400" />
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "2px 8px",
+                            borderRadius: "20px",
+                            fontSize: "10px",
+                            background: "rgba(234,179,8,0.08)",
+                            border: "1px solid rgba(234,179,8,0.2)",
+                            color: "rgba(251,191,36,0.8)",
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          <Star
+                            size={9}
+                            strokeWidth={0}
+                            style={{ fill: "rgba(251,191,36,0.7)" }}
+                          />
                           Frecuente
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[#9C8E85] mt-0.5">
+                    <p
+                      style={{
+                        fontSize: "11px",
+                        color: "rgba(245,242,238,0.22)",
+                        margin: 0,
+                        letterSpacing: "0.03em",
+                      }}
+                    >
                       Clienta desde {formatMonthYear(client.firstVisit)}
                     </p>
                   </div>
@@ -112,151 +251,391 @@ export default function ClientDetailModal({
 
                 <button
                   onClick={onClose}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center
-                             text-[#9C8E85] hover:bg-white/80 transition-colors shrink-0"
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "rgba(245,242,238,0.2)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLElement).style.color =
+                      "rgba(245,242,238,0.5)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLElement).style.color =
+                      "rgba(245,242,238,0.2)")
+                  }
                 >
-                  <X size={18} />
+                  <X size={15} strokeWidth={1.5} />
                 </button>
               </div>
             </div>
 
-            {/* Scrollable content */}
-            <div className="overflow-y-auto flex-1 px-6 py-5 flex flex-col gap-5">
-              {/* Metrics */}
-              <div className="grid grid-cols-3 gap-3">
+            {/* Scrollable body */}
+            <div
+              style={{
+                overflowY: "auto",
+                flex: 1,
+                padding: "18px 22px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+              }}
+            >
+              {/* Métricas */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: "8px",
+                }}
+              >
                 {[
                   {
-                    icon: <Calendar size={13} />,
+                    icon: <Calendar size={12} />,
                     label: "Citas",
                     value: client.totalAppointments.toString(),
                   },
                   {
-                    icon: <DollarSign size={13} />,
+                    icon: <DollarSign size={12} />,
                     label: "Gastado",
                     value: formatPrice(client.totalSpent),
                   },
                   {
-                    icon: <Clock size={13} />,
+                    icon: <Clock size={12} />,
                     label: "Última visita",
                     value: formatRelativeDate(client.lastVisit),
                   },
                 ].map((m) => (
                   <div
                     key={m.label}
-                    className="rounded-xl p-3 text-center"
-                    style={{ backgroundColor: `${primaryColor}08` }}
+                    style={{
+                      borderRadius: "8px",
+                      padding: "12px 10px",
+                      textAlign: "center",
+                      background: `${primaryColor}08`,
+                      border: `1px solid ${primaryColor}12`,
+                    }}
                   >
                     <div
-                      className="w-6 h-6 rounded-lg flex items-center justify-center mx-auto mb-1.5"
-                      style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "6px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: `${primaryColor}14`,
+                        color: `${primaryColor}CC`,
+                        margin: "0 auto 6px",
+                      }}
                     >
                       {m.icon}
                     </div>
                     <p
-                      className="font-['Cormorant_Garamond'] text-lg font-bold leading-none"
-                      style={{ color: primaryColor }}
+                      style={{
+                        fontFamily:
+                          "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                        fontSize: "1.1rem",
+                        fontWeight: 300,
+                        lineHeight: 1,
+                        color: `${primaryColor}CC`,
+                        margin: 0,
+                      }}
                     >
                       {m.value}
                     </p>
-                    <p className="text-[10px] text-[#9C8E85] mt-0.5">{m.label}</p>
+                    <p
+                      style={{
+                        fontSize: "9px",
+                        color: "rgba(245,242,238,0.2)",
+                        marginTop: "4px",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {m.label}
+                    </p>
                   </div>
                 ))}
               </div>
 
-              {/* Favorite service */}
+              {/* Servicio favorito */}
               {client.favoriteService && (
-                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-[#EDE8E3] bg-[#FAF8F5]">
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(255,255,255,0.055)",
+                    background: "rgba(255,255,255,0.02)",
+                  }}
+                >
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${primaryColor}14` }}
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "7px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: `${primaryColor}12`,
+                      border: `1px solid ${primaryColor}20`,
+                      flexShrink: 0,
+                    }}
                   >
-                    <Scissors size={15} style={{ color: primaryColor }} />
+                    <Scissors
+                      size={13}
+                      strokeWidth={1.75}
+                      style={{ color: `${primaryColor}99` }}
+                    />
                   </div>
                   <div>
-                    <p className="text-xs text-[#9C8E85]">Servicio favorito</p>
-                    <p className="text-sm font-semibold text-[#2D2420]">
+                    <p
+                      style={{
+                        fontSize: "10px",
+                        color: "rgba(245,242,238,0.2)",
+                        margin: "0 0 3px",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Servicio favorito
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "13px",
+                        color: "rgba(245,242,238,0.7)",
+                        margin: 0,
+                      }}
+                    >
                       {client.favoriteService}
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Contact */}
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase">
+              {/* Contacto */}
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+              >
+                <p
+                  style={{
+                    fontSize: "10px",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "rgba(245,242,238,0.18)",
+                    margin: 0,
+                  }}
+                >
                   Contacto
                 </p>
                 <a
                   href={`tel:${client.phone}`}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-[#EDE8E3]
-                             hover:bg-[#FAF8F5] transition-colors"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(255,255,255,0.055)",
+                    background: "transparent",
+                    textDecoration: "none",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLElement).style.background =
+                      "rgba(255,255,255,0.03)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLElement).style.background =
+                      "transparent")
+                  }
                 >
-                  <Phone size={15} className="text-[#9C8E85]" />
-                  <span className="text-sm text-[#2D2420]">{client.phone}</span>
+                  <Phone
+                    size={13}
+                    strokeWidth={1.5}
+                    style={{ color: "rgba(245,242,238,0.25)" }}
+                  />
+                  <span
+                    style={{ fontSize: "13px", color: "rgba(245,242,238,0.6)" }}
+                  >
+                    {client.phone}
+                  </span>
                 </a>
                 {client.email && (
                   <a
                     href={`mailto:${client.email}`}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-[#EDE8E3]
-                               hover:bg-[#FAF8F5] transition-colors"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(255,255,255,0.055)",
+                      background: "transparent",
+                      textDecoration: "none",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={(e) =>
+                      ((e.currentTarget as HTMLElement).style.background =
+                        "rgba(255,255,255,0.03)")
+                    }
+                    onMouseLeave={(e) =>
+                      ((e.currentTarget as HTMLElement).style.background =
+                        "transparent")
+                    }
                   >
-                    <Mail size={15} className="text-[#9C8E85]" />
-                    <span className="text-sm text-[#2D2420]">{client.email}</span>
+                    <Mail
+                      size={13}
+                      strokeWidth={1.5}
+                      style={{ color: "rgba(245,242,238,0.25)" }}
+                    />
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        color: "rgba(245,242,238,0.6)",
+                      }}
+                    >
+                      {client.email}
+                    </span>
                   </a>
                 )}
               </div>
 
-              {/* Appointment history */}
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase">
+              {/* Historial */}
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
+                <p
+                  style={{
+                    fontSize: "10px",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "rgba(245,242,238,0.18)",
+                    margin: 0,
+                  }}
+                >
                   Historial de citas
                 </p>
-                <div className="flex flex-col gap-2">
-                  {sortedAppointments.map((appt, i) => (
-                    <motion.div
-                      key={appt.id}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-[#EDE8E3] bg-white"
-                    >
-                      {/* Date/time block */}
-                      <div
-                        className="shrink-0 text-center px-2 py-1.5 rounded-lg min-w-[56px]"
-                        style={{ backgroundColor: `${primaryColor}10` }}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                  }}
+                >
+                  {sortedAppointments.map((appt, i) => {
+                    const ss =
+                      STATUS_STYLES[appt.status] ?? STATUS_STYLES.cancelled;
+                    return (
+                      <motion.div
+                        key={appt.id}
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          padding: "10px 14px",
+                          borderRadius: "8px",
+                          border: "1px solid rgba(255,255,255,0.055)",
+                          background: "rgba(255,255,255,0.015)",
+                        }}
                       >
-                        <p
-                          className="text-xs font-bold leading-none"
-                          style={{ color: primaryColor }}
+                        {/* Bloque fecha/hora */}
+                        <div
+                          style={{
+                            flexShrink: 0,
+                            textAlign: "center",
+                            padding: "6px 8px",
+                            borderRadius: "6px",
+                            minWidth: "52px",
+                            background: `${primaryColor}10`,
+                            border: `1px solid ${primaryColor}18`,
+                          }}
                         >
-                          {formatTime(appt.scheduled_at)}
-                        </p>
-                        <p className="text-[9px] text-[#9C8E85] mt-0.5">
-                          {formatDateMini(appt.scheduled_at)}
-                        </p>
-                      </div>
-
-                      {/* Service */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-[#2D2420] truncate">
-                          {appt.services?.name ?? "Servicio eliminado"}
-                        </p>
-                        {appt.services && (
-                          <p className="text-[11px] text-[#9C8E85]">
-                            {formatPrice(appt.services.price)}
+                          <p
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 400,
+                              lineHeight: 1,
+                              color: `${primaryColor}CC`,
+                              margin: 0,
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
+                            {formatTime(appt.scheduled_at)}
                           </p>
-                        )}
-                      </div>
+                          <p
+                            style={{
+                              fontSize: "9px",
+                              color: "rgba(245,242,238,0.2)",
+                              marginTop: "3px",
+                              margin: "3px 0 0",
+                            }}
+                          >
+                            {formatDateMini(appt.scheduled_at)}
+                          </p>
+                        </div>
 
-                      {/* Status */}
-                      <span
-                        className={`shrink-0 text-[10px] font-semibold px-2 py-0.5
-                                    rounded-full ${STATUS_COLORS[appt.status] ?? ""}`}
-                      >
-                        {STATUS_LABELS[appt.status] ?? appt.status}
-                      </span>
-                    </motion.div>
-                  ))}
+                        {/* Servicio */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: 400,
+                              color: "rgba(245,242,238,0.7)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              margin: 0,
+                            }}
+                          >
+                            {appt.services?.name ?? "Servicio eliminado"}
+                          </p>
+                          {appt.services && (
+                            <p
+                              style={{
+                                fontSize: "10px",
+                                color: "rgba(245,242,238,0.25)",
+                                margin: "2px 0 0",
+                              }}
+                            >
+                              {formatPrice(appt.services.price)}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Status badge */}
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            fontSize: "10px",
+                            padding: "2px 8px",
+                            borderRadius: "20px",
+                            background: ss.bg,
+                            color: ss.color,
+                            border: `1px solid ${ss.border}`,
+                            letterSpacing: "0.04em",
+                          }}
+                        >
+                          {STATUS_LABELS[appt.status] ?? appt.status}
+                        </span>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

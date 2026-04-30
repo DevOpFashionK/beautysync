@@ -2,19 +2,12 @@
 
 // components/dashboard/appointments/AppointmentsClient.tsx
 //
-// NUEVO — Realtime:
-// Suscripción Supabase Realtime para INSERT, UPDATE y DELETE en appointments.
-// - INSERT: agrega la cita si está dentro del rango de los últimos 30 días.
-//           Hace fetch adicional para obtener el JOIN de services, ya que
-//           Supabase Realtime solo envía columnas de la tabla propia.
-// - UPDATE: actualiza status y datos en lista y modal si está abierto.
+// Realtime: suscripción INSERT / UPDATE / DELETE en appointments.
+// - INSERT: fetch adicional para obtener el JOIN de services.
+// - UPDATE: actualiza status en lista y modal si está abierto.
 // - DELETE: elimina de la lista y cierra modal si corresponde.
 // - Indicador visual "En vivo" con dot animado.
 // - Cleanup correcto en unmount.
-//
-// TIPOS: payload.new y payload.old de Supabase Realtime tienen tipo
-// Record<string, unknown>. Se castean a Partial<Appointment> & { id: string }
-// para satisfacer TypeScript sin perder seguridad de tipos.
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,6 +18,8 @@ import AppointmentRow from "./AppointmentRow";
 import { AppointmentDetailModal } from "./AppointmentDetailModal";
 import AppointmentsEmptyState from "./AppointmentsEmptyState";
 
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
 export interface AppointmentService {
   id: string;
   name: string;
@@ -34,6 +29,7 @@ export interface AppointmentService {
 
 export interface Appointment {
   id: string;
+  salon_id: string;
   client_name: string;
   client_email: string | null;
   client_phone: string;
@@ -47,7 +43,6 @@ export interface Appointment {
   services: AppointmentService | null;
 }
 
-// Tipo para el payload de Realtime — todos los campos son opcionales excepto id
 type RealtimeAppointment = Partial<Appointment> & { id: string };
 
 type StatusFilter =
@@ -73,19 +68,48 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
   no_show: "No asistió",
 };
 
+// ─── STATUS_COLORS Dark Atelier ───────────────────────────────────────────────
+// Exportado para que AppointmentRow lo importe directamente.
+
 export const STATUS_COLORS: Record<
   string,
-  { bg: string; text: string; dot: string }
+  {
+    badgeBg: string;
+    badgeText: string;
+    badgeBorder: string;
+    dotColor: string;
+  }
 > = {
-  pending: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
-  confirmed: {
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    dot: "bg-emerald-400",
+  pending: {
+    badgeBg: "rgba(234,179,8,0.07)",
+    badgeText: "rgba(251,191,36,0.85)",
+    badgeBorder: "rgba(234,179,8,0.2)",
+    dotColor: "rgba(251,191,36,0.7)",
   },
-  completed: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-400" },
-  cancelled: { bg: "bg-red-50", text: "text-red-600", dot: "bg-red-400" },
-  no_show: { bg: "bg-gray-50", text: "text-gray-500", dot: "bg-gray-400" },
+  confirmed: {
+    badgeBg: "rgba(59,130,246,0.07)",
+    badgeText: "rgba(147,197,253,0.85)",
+    badgeBorder: "rgba(59,130,246,0.2)",
+    dotColor: "rgba(147,197,253,0.7)",
+  },
+  completed: {
+    badgeBg: "rgba(16,185,129,0.07)",
+    badgeText: "rgba(110,231,183,0.85)",
+    badgeBorder: "rgba(16,185,129,0.2)",
+    dotColor: "rgba(52,211,153,0.7)",
+  },
+  cancelled: {
+    badgeBg: "rgba(255,255,255,0.03)",
+    badgeText: "rgba(245,242,238,0.25)",
+    badgeBorder: "rgba(255,255,255,0.07)",
+    dotColor: "rgba(245,242,238,0.2)",
+  },
+  no_show: {
+    badgeBg: "rgba(239,68,68,0.07)",
+    badgeText: "rgba(252,165,165,0.85)",
+    badgeBorder: "rgba(239,68,68,0.2)",
+    dotColor: "rgba(252,165,165,0.6)",
+  },
 };
 
 function getThirtyDaysAgoStr(): string {
@@ -93,6 +117,23 @@ function getThirtyDaysAgoStr(): string {
   d.setDate(d.getDate() - 30);
   return d.toISOString().slice(0, 10);
 }
+
+// ─── Tokens ───────────────────────────────────────────────────────────────────
+const T = {
+  bg: "#080706",
+  surface: "#0E0C0B",
+  surface2: "#131110",
+  border: "rgba(255,255,255,0.055)",
+  borderMid: "rgba(255,255,255,0.09)",
+  textPrimary: "rgba(245,242,238,0.9)",
+  textMid: "rgba(245,242,238,0.45)",
+  textDim: "rgba(245,242,238,0.18)",
+  roseDim: "rgba(255,45,85,0.55)",
+  roseBorder: "rgba(255,45,85,0.22)",
+  roseGhost: "rgba(255,45,85,0.08)",
+};
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function AppointmentsClient({
   salonId,
@@ -107,8 +148,7 @@ export default function AppointmentsClient({
     useState<Appointment | null>(null);
   const [connected, setConnected] = useState(false);
 
-  // Fetch completo de una cita con JOIN de services
-  // Necesario porque Realtime no incluye datos de tablas relacionadas
+  // ── Fetch completo con JOIN de services ───────────────────────────────────
   const fetchFullAppointment = useCallback(
     async (id: string): Promise<Appointment | null> => {
       const supabase = createClient();
@@ -129,7 +169,7 @@ export default function AppointmentsClient({
     [],
   );
 
-  // Suscripción Realtime
+  // ── Realtime — lógica intacta ─────────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient();
     const thirtyDaysAgo = getThirtyDaysAgoStr();
@@ -148,13 +188,10 @@ export default function AppointmentsClient({
           if (payload.eventType === "INSERT") {
             const raw = payload.new as RealtimeAppointment;
             const dateKey = (raw.scheduled_at ?? "").slice(0, 10);
-            // Ignorar citas fuera del rango de 30 días
             if (!raw.id || dateKey < thirtyDaysAgo) return;
-            // Fetch completo para obtener services JOIN
             const full = await fetchFullAppointment(raw.id);
             if (!full) return;
             setAppointments((prev) => {
-              // Evitar duplicados (puede llegar dos veces en dev con StrictMode)
               if (prev.some((a) => a.id === full.id)) return prev;
               return [full, ...prev].sort((a, b) =>
                 b.scheduled_at.localeCompare(a.scheduled_at),
@@ -179,7 +216,6 @@ export default function AppointmentsClient({
                   : a,
               ),
             );
-            // Sincronizar modal si está abierto con esta cita
             setSelectedAppointment((prev) =>
               prev?.id === updated.id
                 ? {
@@ -210,6 +246,7 @@ export default function AppointmentsClient({
     };
   }, [salonId, fetchFullAppointment]);
 
+  // ── Filtered + grouped ────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
       const matchesStatus = statusFilter === "all" || a.status === statusFilter;
@@ -280,54 +317,129 @@ export default function AppointmentsClient({
     }
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen bg-[#FAF8F5]">
-      <div className="max-w-5xl mx-auto">
-        {/* ── Header ── */}
-        <div className="px-6 pt-8 pb-6 md:px-10">
-          <div className="flex items-start justify-between gap-4 mb-6">
+    <div style={{ minHeight: "100vh", background: T.bg }}>
+      <div style={{ maxWidth: "960px", margin: "0 auto" }}>
+        {/* ── Header ───────────────────────────────────────────────── */}
+        <div style={{ padding: "40px 24px 24px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: "16px",
+              marginBottom: "24px",
+            }}
+          >
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div
-                  className="w-5 h-[2px] rounded-full"
-                  style={{ backgroundColor: primaryColor }}
+              {/* Eyebrow */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  marginBottom: "10px",
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "14px",
+                    height: "1px",
+                    background: T.roseDim,
+                  }}
                 />
                 <span
-                  className="text-xs font-semibold tracking-[0.15em] uppercase"
-                  style={{ color: primaryColor }}
+                  style={{
+                    fontSize: "10px",
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    color: T.roseDim,
+                  }}
                 >
                   Agenda
                 </span>
               </div>
-              <h1 className="font-['Cormorant_Garamond'] text-4xl md:text-5xl font-semibold text-[#2D2420] leading-none">
+              <h1
+                style={{
+                  fontFamily:
+                    "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                  fontSize: "clamp(2.5rem, 5vw, 4rem)",
+                  fontWeight: 300,
+                  color: T.textPrimary,
+                  lineHeight: 1.04,
+                  letterSpacing: "-0.035em",
+                  margin: 0,
+                }}
+              >
                 Citas
               </h1>
-              <p className="text-[#9C8E85] text-sm mt-2">
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: T.textDim,
+                  marginTop: "6px",
+                  letterSpacing: "0.04em",
+                }}
+              >
                 Últimos 30 días · {appointments.length} citas en total
               </p>
             </div>
 
-            {/* Indicador En vivo */}
-            <div className="flex items-center gap-1.5 mt-2 shrink-0">
+            {/* Indicador en vivo */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                marginTop: "8px",
+                flexShrink: 0,
+              }}
+            >
               {connected ? (
                 <>
                   <motion.div
-                    animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
+                    animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
                     transition={{ repeat: Infinity, duration: 2.5 }}
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: "#10B981" }}
+                    style={{
+                      width: "5px",
+                      height: "5px",
+                      borderRadius: "50%",
+                      background: "#22c55e",
+                    }}
                   />
                   <span
-                    className="text-xs hidden sm:block"
-                    style={{ color: "#10B981" }}
+                    className="hidden sm:block"
+                    style={{
+                      fontSize: "10px",
+                      color: "rgba(34,197,94,0.7)",
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
                   >
                     En vivo
                   </span>
                 </>
               ) : (
                 <>
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#C4B8B0]" />
-                  <span className="text-xs hidden sm:block text-[#C4B8B0]">
+                  <div
+                    style={{
+                      width: "5px",
+                      height: "5px",
+                      borderRadius: "50%",
+                      background: T.textDim,
+                    }}
+                  />
+                  <span
+                    className="hidden sm:block"
+                    style={{
+                      fontSize: "10px",
+                      color: T.textDim,
+                      letterSpacing: "0.06em",
+                    }}
+                  >
                     Reconectando…
                   </span>
                 </>
@@ -336,32 +448,60 @@ export default function AppointmentsClient({
           </div>
 
           {/* Search */}
-          <div className="relative mb-4">
+          <div style={{ position: "relative", marginBottom: "12px" }}>
             <Search
-              size={15}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C4B8B0]"
+              size={14}
+              strokeWidth={1.5}
+              style={{
+                position: "absolute",
+                left: "12px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: T.textDim,
+              }}
             />
             <input
               type="text"
               placeholder="Buscar por nombre, teléfono o servicio..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#EDE8E3]
-                         rounded-xl text-sm text-[#2D2420] placeholder:text-[#C4B8B0]
-                         outline-none transition-all"
+              style={{
+                width: "100%",
+                paddingLeft: "36px",
+                paddingRight: "14px",
+                paddingTop: "10px",
+                paddingBottom: "10px",
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                borderRadius: "8px",
+                fontSize: "13px",
+                color: T.textPrimary,
+                outline: "none",
+                transition: "border-color 0.2s, box-shadow 0.2s",
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+              }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = primaryColor;
-                e.currentTarget.style.boxShadow = `0 0 0 3px ${primaryColor}15`;
+                e.currentTarget.style.borderColor = T.roseBorder;
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${T.roseGhost}`;
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = "#EDE8E3";
+                e.currentTarget.style.borderColor = T.border;
                 e.currentTarget.style.boxShadow = "none";
               }}
             />
           </div>
 
-          {/* Status filters */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {/* Filtros de estado */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              overflowX: "auto",
+              paddingBottom: "4px",
+            }}
+          >
             {(Object.keys(STATUS_LABELS) as StatusFilter[]).map((s) => {
               const isActive = statusFilter === s;
               const count = counts[s] || 0;
@@ -370,23 +510,29 @@ export default function AppointmentsClient({
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs
-                             font-medium whitespace-nowrap transition-all duration-150 shrink-0"
-                  style={
-                    isActive
-                      ? { backgroundColor: primaryColor, color: "#fff" }
-                      : {
-                          backgroundColor: "#fff",
-                          color: "#9C8E85",
-                          border: "1px solid #EDE8E3",
-                        }
-                  }
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "6px 12px",
+                    borderRadius: "7px",
+                    fontSize: "11px",
+                    fontWeight: 400,
+                    letterSpacing: "0.04em",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    fontFamily: "inherit",
+                    background: isActive ? T.roseGhost : "transparent",
+                    color: isActive ? T.roseDim : T.textDim,
+                    border: isActive
+                      ? `1px solid ${T.roseBorder}`
+                      : `1px solid ${T.border}`,
+                  }}
                 >
                   {STATUS_LABELS[s]}
-                  <span
-                    className="text-[10px] font-bold"
-                    style={{ opacity: isActive ? 0.7 : 1 }}
-                  >
+                  <span style={{ fontSize: "10px", opacity: 0.7 }}>
                     {count}
                   </span>
                 </button>
@@ -395,43 +541,94 @@ export default function AppointmentsClient({
           </div>
         </div>
 
-        {/* ── Content ── */}
-        <div className="px-6 md:px-10 pb-16">
+        {/* ── Content ──────────────────────────────────────────────── */}
+        <div style={{ padding: "0 24px 80px" }}>
           {appointments.length === 0 ? (
             <AppointmentsEmptyState primaryColor={primaryColor} />
           ) : filtered.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex flex-col items-center py-20 text-center"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "64px 0",
+                textAlign: "center",
+              }}
             >
-              <Search size={28} className="text-[#C4B8B0] mb-3" />
-              <p className="text-[#2D2420] font-medium text-sm">
+              <Search
+                size={24}
+                strokeWidth={1.25}
+                style={{ color: T.textDim, marginBottom: "12px" }}
+              />
+              <p
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 400,
+                  color: T.textMid,
+                  margin: "0 0 4px",
+                }}
+              >
                 Sin resultados
               </p>
-              <p className="text-[#9C8E85] text-xs mt-1">
+              <p style={{ fontSize: "12px", color: T.textDim, margin: 0 }}>
                 Intenta con otro término
               </p>
             </motion.div>
           ) : (
-            <div className="flex flex-col gap-6">
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "28px" }}
+            >
               {grouped.map(([dateKey, appts]) => (
                 <motion.div
                   key={dateKey}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="font-['Cormorant_Garamond'] text-lg font-semibold text-[#2D2420] capitalize">
+                  {/* Date header */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily:
+                          "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
+                        fontSize: "1.1rem",
+                        fontWeight: 300,
+                        color: T.textMid,
+                        letterSpacing: "-0.01em",
+                        textTransform: "capitalize",
+                      }}
+                    >
                       {formatGroupDate(dateKey)}
                     </span>
-                    <div className="h-px flex-1 bg-[#EDE8E3]" />
-                    <span className="text-xs text-[#C4B8B0]">
+                    <div
+                      style={{ flex: 1, height: "1px", background: T.border }}
+                    />
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        color: T.textDim,
+                        letterSpacing: "0.06em",
+                      }}
+                    >
                       {appts.length}
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-2">
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                    }}
+                  >
                     {appts.map((appt, i) => (
                       <AppointmentRow
                         key={appt.id}
@@ -449,7 +646,7 @@ export default function AppointmentsClient({
         </div>
       </div>
 
-      {/* ── Detail Modal ── */}
+      {/* ── Detail Modal ─────────────────────────────────────────────── */}
       <AppointmentDetailModal
         appointment={selectedAppointment}
         primaryColor={primaryColor}

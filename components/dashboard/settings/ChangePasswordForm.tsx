@@ -39,6 +39,103 @@ const passwordSchema = z
 
 type PasswordForm = z.infer<typeof passwordSchema>;
 
+// ─── Tokens ───────────────────────────────────────────────────────────────────
+const T = {
+  surface2: "#131110",
+  border: "rgba(255,255,255,0.055)",
+  borderMid: "rgba(255,255,255,0.09)",
+  textPrimary: "rgba(245,242,238,0.88)",
+  textMid: "rgba(245,242,238,0.45)",
+  textDim: "rgba(245,242,238,0.18)",
+  roseDim: "rgba(255,45,85,0.55)",
+  roseGhost: "rgba(255,45,85,0.08)",
+  roseBorder: "rgba(255,45,85,0.22)",
+};
+
+// ─── Input con toggle de visibilidad ─────────────────────────────────────────
+function PasswordInput({
+  id,
+  show,
+  onToggle,
+  placeholder,
+  autoComplete,
+  registration,
+  focusHandlers,
+  hasError,
+}: {
+  id: string;
+  show: boolean;
+  onToggle: () => void;
+  placeholder: string;
+  autoComplete: string;
+  registration: ReturnType<ReturnType<typeof useForm>["register"]>;
+  focusHandlers: {
+    onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
+    onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
+  };
+  hasError: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        borderRadius: "8px",
+        border: `1px solid ${hasError ? "rgba(255,80,80,0.45)" : T.borderMid}`,
+        background: T.surface2,
+        overflow: "hidden",
+        transition: "border-color 0.2s, box-shadow 0.2s",
+      }}
+    >
+      <input
+        type={show ? "text" : "password"}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        style={{
+          flex: 1,
+          padding: "11px 14px",
+          fontSize: "14px",
+          color: T.textPrimary,
+          background: "transparent",
+          outline: "none",
+          border: "none",
+          fontFamily: "inherit",
+        }}
+        {...registration}
+        {...focusHandlers}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        tabIndex={-1}
+        style={{
+          padding: "0 12px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: T.textDim,
+          display: "flex",
+          alignItems: "center",
+          transition: "color 0.2s",
+          flexShrink: 0,
+        }}
+        onMouseEnter={(e) =>
+          ((e.currentTarget as HTMLElement).style.color = T.roseDim)
+        }
+        onMouseLeave={(e) =>
+          ((e.currentTarget as HTMLElement).style.color = T.textDim)
+        }
+      >
+        {show ? (
+          <EyeOff size={15} strokeWidth={1.5} />
+        ) : (
+          <Eye size={15} strokeWidth={1.5} />
+        )}
+      </button>
+    </div>
+  );
+}
+
 export default function ChangePasswordForm({
   primaryColor,
 }: ChangePasswordFormProps) {
@@ -58,12 +155,14 @@ export default function ChangePasswordForm({
 
   const focusHandlers = {
     onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
-      e.currentTarget.parentElement!.style.borderColor = primaryColor;
-      e.currentTarget.parentElement!.style.boxShadow = `0 0 0 3px ${primaryColor}18`;
+      const wrap = e.currentTarget.parentElement!;
+      wrap.style.borderColor = T.roseBorder;
+      wrap.style.boxShadow = `0 0 0 3px ${T.roseGhost}`;
     },
     onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
-      e.currentTarget.parentElement!.style.borderColor = "#EDE8E3";
-      e.currentTarget.parentElement!.style.boxShadow = "none";
+      const wrap = e.currentTarget.parentElement!;
+      wrap.style.borderColor = T.borderMid;
+      wrap.style.boxShadow = "none";
     },
   };
 
@@ -74,10 +173,6 @@ export default function ChangePasswordForm({
 
     try {
       const supabase = createClient();
-
-      // ── Paso 1: verificar contraseña actual ────────────────────────────
-      // Supabase no tiene verifyPassword() — el patrón oficial es
-      // intentar signInWithPassword y comprobar si falla.
       const { data: userData } = await supabase.auth.getUser();
       const email = userData.user?.email;
 
@@ -86,24 +181,20 @@ export default function ChangePasswordForm({
         return;
       }
 
+      // Verificar contraseña actual
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password: data.currentPassword,
       });
-
       if (signInError) {
-        // Error específico — no revelar si la cuenta existe o no,
-        // pero en este contexto el usuario ya está logueado, así que
-        // es seguro indicar que la contraseña actual es incorrecta.
         setErrorMsg("La contraseña actual es incorrecta.");
         return;
       }
 
-      // ── Paso 2: actualizar a la nueva contraseña ───────────────────────
+      // Actualizar contraseña
       const { error: updateError } = await supabase.auth.updateUser({
         password: data.password,
       });
-
       if (updateError) throw updateError;
 
       setSuccess(true);
@@ -117,131 +208,139 @@ export default function ChangePasswordForm({
     }
   };
 
-  const inputWrapperClass = `
-    flex items-center rounded-xl border border-[#EDE8E3] bg-white
-    overflow-hidden transition-all
-  `;
+  const FieldLabel = ({ children }: { children: React.ReactNode }) => (
+    <label
+      style={{
+        fontSize: "10px",
+        fontWeight: 400,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        color: T.textDim,
+        display: "block",
+        marginBottom: "7px",
+      }}
+    >
+      {children}
+    </label>
+  );
 
-  const inputClass = `
-    flex-1 px-4 py-2.5 text-sm text-[#2D2420]
-    placeholder:text-[#C4B8B0] outline-none bg-transparent
-  `;
+  const ErrMsg = ({ msg }: { msg?: string }) =>
+    msg ? (
+      <p
+        style={{
+          fontSize: "11px",
+          color: "rgba(255,110,110,0.85)",
+          marginTop: "5px",
+        }}
+      >
+        {msg}
+      </p>
+    ) : null;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
       {/* Header */}
-      <div className="flex items-center gap-2">
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         <div
-          className="w-5 h-5 rounded-md flex items-center justify-center"
-          style={{ backgroundColor: `${primaryColor}14` }}
+          style={{
+            width: "20px",
+            height: "20px",
+            borderRadius: "5px",
+            background: `${primaryColor}12`,
+            border: `1px solid ${primaryColor}20`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <KeyRound size={11} style={{ color: primaryColor }} />
+          <KeyRound
+            size={11}
+            strokeWidth={1.75}
+            style={{ color: `${primaryColor}CC` }}
+          />
         </div>
-        <h2 className="font-semibold text-[#2D2420] text-sm">
+        <h2
+          style={{
+            fontSize: "12px",
+            fontWeight: 400,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: T.textMid,
+            margin: 0,
+          }}
+        >
           Cambiar contraseña
         </h2>
       </div>
 
-      <p className="text-xs text-[#9C8E85] leading-relaxed -mt-1">
+      <p
+        style={{
+          fontSize: "11px",
+          color: T.textDim,
+          marginTop: "-4px",
+          lineHeight: 1.6,
+          letterSpacing: "0.02em",
+        }}
+      >
         Confirma tu contraseña actual antes de establecer una nueva.
       </p>
 
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="flex flex-col gap-4 mt-1"
+        style={{ display: "flex", flexDirection: "column", gap: "16px" }}
       >
         {/* Contraseña actual */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase">
-            Contraseña actual
-          </label>
-          <div className={inputWrapperClass}>
-            <input
-              type={showCurrent ? "text" : "password"}
-              className={inputClass}
-              placeholder="Tu contraseña actual"
-              autoComplete="current-password"
-              {...register("currentPassword")}
-              {...focusHandlers}
-            />
-            <button
-              type="button"
-              onClick={() => setShowCurrent((v) => !v)}
-              className="px-3 text-[#C4B8B0] hover:text-[#9C8E85] transition-colors shrink-0"
-              tabIndex={-1}
-            >
-              {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
-          </div>
-          {errors.currentPassword && (
-            <p className="text-xs text-red-500">
-              {errors.currentPassword.message}
-            </p>
-          )}
+        <div>
+          <FieldLabel>Contraseña actual</FieldLabel>
+          <PasswordInput
+            id="current"
+            show={showCurrent}
+            onToggle={() => setShowCurrent((v) => !v)}
+            placeholder="Tu contraseña actual"
+            autoComplete="current-password"
+            registration={register("currentPassword")}
+            focusHandlers={focusHandlers}
+            hasError={!!errors.currentPassword}
+          />
+          <ErrMsg msg={errors.currentPassword?.message} />
         </div>
 
-        {/* Divisor visual */}
-        <div className="border-t border-[#EDE8E3]" />
+        {/* Divider */}
+        <div style={{ height: "1px", background: T.border }} />
 
         {/* Nueva contraseña */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase">
-            Nueva contraseña
-          </label>
-          <div className={inputWrapperClass}>
-            <input
-              type={showPassword ? "text" : "password"}
-              className={inputClass}
-              placeholder="Mínimo 8 caracteres"
-              autoComplete="new-password"
-              {...register("password")}
-              {...focusHandlers}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="px-3 text-[#C4B8B0] hover:text-[#9C8E85] transition-colors shrink-0"
-              tabIndex={-1}
-            >
-              {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="text-xs text-red-500">{errors.password.message}</p>
-          )}
+        <div>
+          <FieldLabel>Nueva contraseña</FieldLabel>
+          <PasswordInput
+            id="new"
+            show={showPassword}
+            onToggle={() => setShowPassword((v) => !v)}
+            placeholder="Mínimo 8 caracteres"
+            autoComplete="new-password"
+            registration={register("password")}
+            focusHandlers={focusHandlers}
+            hasError={!!errors.password}
+          />
+          <ErrMsg msg={errors.password?.message} />
         </div>
 
         {/* Confirmar contraseña */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-[#9C8E85] tracking-wide uppercase">
-            Confirmar contraseña
-          </label>
-          <div className={inputWrapperClass}>
-            <input
-              type={showConfirm ? "text" : "password"}
-              className={inputClass}
-              placeholder="Repite la nueva contraseña"
-              autoComplete="new-password"
-              {...register("confirmPassword")}
-              {...focusHandlers}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirm((v) => !v)}
-              className="px-3 text-[#C4B8B0] hover:text-[#9C8E85] transition-colors shrink-0"
-              tabIndex={-1}
-            >
-              {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
-            </button>
-          </div>
-          {errors.confirmPassword && (
-            <p className="text-xs text-red-500">
-              {errors.confirmPassword.message}
-            </p>
-          )}
+        <div>
+          <FieldLabel>Confirmar contraseña</FieldLabel>
+          <PasswordInput
+            id="confirm"
+            show={showConfirm}
+            onToggle={() => setShowConfirm((v) => !v)}
+            placeholder="Repite la nueva contraseña"
+            autoComplete="new-password"
+            registration={register("confirmPassword")}
+            focusHandlers={focusHandlers}
+            hasError={!!errors.confirmPassword}
+          />
+          <ErrMsg msg={errors.confirmPassword?.message} />
         </div>
 
-        {/* Mensajes de error / éxito */}
+        {/* Banners */}
         <AnimatePresence mode="wait">
           {errorMsg && (
             <motion.div
@@ -249,10 +348,30 @@ export default function ChangePasswordForm({
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "rgba(239,68,68,0.07)",
+                border: "1px solid rgba(239,68,68,0.18)",
+                borderRadius: "8px",
+                padding: "10px 12px",
+              }}
             >
-              <AlertTriangle size={14} className="text-red-400 shrink-0" />
-              <p className="text-xs text-red-600">{errorMsg}</p>
+              <AlertTriangle
+                size={13}
+                strokeWidth={1.75}
+                style={{ color: "rgba(252,165,165,0.7)", flexShrink: 0 }}
+              />
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "rgba(252,165,165,0.85)",
+                  margin: 0,
+                }}
+              >
+                {errorMsg}
+              </p>
             </motion.div>
           )}
           {success && (
@@ -261,37 +380,82 @@ export default function ChangePasswordForm({
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "rgba(16,185,129,0.07)",
+                border: "1px solid rgba(16,185,129,0.18)",
+                borderRadius: "8px",
+                padding: "10px 12px",
+              }}
             >
-              <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-              <p className="text-xs text-emerald-600">
+              <CheckCircle
+                size={13}
+                strokeWidth={1.75}
+                style={{ color: "rgba(52,211,153,0.7)", flexShrink: 0 }}
+              />
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "rgba(52,211,153,0.85)",
+                  margin: 0,
+                }}
+              >
                 ¡Contraseña actualizada correctamente!
               </p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Botón submit */}
+        {/* Submit */}
         <motion.button
           type="submit"
           disabled={saving}
-          whileHover={!saving ? { scale: 1.01 } : {}}
+          whileHover={!saving ? { y: -1 } : {}}
           whileTap={!saving ? { scale: 0.99 } : {}}
-          className="w-full py-3 rounded-xl font-semibold text-sm text-white
-                     flex items-center justify-center gap-2
-                     disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
           style={{
-            backgroundColor: primaryColor,
-            boxShadow: `0 8px 24px ${primaryColor}25`,
+            width: "100%",
+            padding: "12px",
+            borderRadius: "8px",
+            border: `1px solid ${T.roseBorder}`,
+            background: T.roseGhost,
+            color: T.roseDim,
+            fontSize: "12px",
+            fontWeight: 400,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            cursor: saving ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "7px",
+            opacity: saving ? 0.5 : 1,
+            transition: "all 0.2s",
+            fontFamily: "inherit",
+          }}
+          onMouseEnter={(e) => {
+            if (!saving) {
+              (e.currentTarget as HTMLElement).style.background =
+                "rgba(255,45,85,0.14)";
+              (e.currentTarget as HTMLElement).style.borderColor =
+                "rgba(255,45,85,0.4)";
+              (e.currentTarget as HTMLElement).style.color = "#FF2D55";
+            }
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = T.roseGhost;
+            (e.currentTarget as HTMLElement).style.borderColor = T.roseBorder;
+            (e.currentTarget as HTMLElement).style.color = T.roseDim;
           }}
         >
           {saving ? (
             <>
-              <Loader2 size={15} className="animate-spin" /> Verificando…
+              <Loader2 size={14} className="animate-spin" /> Verificando…
             </>
           ) : (
             <>
-              <KeyRound size={15} /> Actualizar contraseña
+              <KeyRound size={14} strokeWidth={1.75} /> Actualizar contraseña
             </>
           )}
         </motion.button>

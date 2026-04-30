@@ -2,10 +2,7 @@
 
 // components/dashboard/metrics/MetricCard.tsx
 //
-// Fase 8.3 — Agregados íconos nuevos al ICON_MAP:
-//   no-show, ticket, rebooking, clock, trending-up, calendar-check
-//
-// FIX original: íconos como string identifier (no función) para evitar
+// Fase 8.3 — Íconos como string identifier (no función) para evitar
 // el error de serialización Server → Client Component en Next.js 16.
 
 import { motion } from "framer-motion";
@@ -23,15 +20,13 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-// ─── Map de íconos disponibles ────────────────────────────────────────────────
+// ─── Map de íconos ────────────────────────────────────────────────────────────
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  // Fase 8.2
   calendar: CalendarDays,
   dollar: DollarSign,
   "user-plus": UserPlus,
   "trending-down": TrendingDown,
-  // Fase 8.3 — nuevos
   "no-show": UserX,
   ticket: Receipt,
   rebooking: RefreshCw,
@@ -48,7 +43,6 @@ interface MetricCardProps {
   icon: MetricIconKey;
   label: string;
   value: string;
-  /** Subtexto debajo del valor — ej: "por cita completada" */
   sublabel?: string;
   delta?: number | null;
   deltaLabel?: string;
@@ -58,7 +52,7 @@ interface MetricCardProps {
   skeletonWidth?: string;
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
+// ─── Skeleton Dark Atelier ────────────────────────────────────────────────────
 
 function MetricCardSkeleton({
   index = 0,
@@ -72,27 +66,54 @@ function MetricCardSkeleton({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.04 }}
-      className="rounded-2xl p-5 animate-pulse"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      className="animate-pulse"
+      style={{
+        borderRadius: "10px",
+        padding: "20px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+      }}
     >
       <div
-        className="w-9 h-9 rounded-xl mb-4"
-        style={{ background: "#F3EDE8" }}
+        style={{
+          width: "32px",
+          height: "32px",
+          borderRadius: "8px",
+          background: "rgba(255,255,255,0.04)",
+          marginBottom: "16px",
+        }}
       />
       <div
-        className="h-3 rounded-lg w-24 mb-3"
-        style={{ background: "#F3EDE8" }}
+        style={{
+          height: "10px",
+          borderRadius: "4px",
+          width: "60%",
+          background: "rgba(255,255,255,0.04)",
+          marginBottom: "10px",
+        }}
       />
       <div
-        className={`h-8 rounded-lg ${skeletonWidth} mb-2`}
-        style={{ background: "#F3EDE8" }}
+        className={skeletonWidth}
+        style={{
+          height: "28px",
+          borderRadius: "6px",
+          background: "rgba(255,255,255,0.05)",
+          marginBottom: "8px",
+        }}
       />
-      <div className="h-3 rounded-lg w-20" style={{ background: "#F3EDE8" }} />
+      <div
+        style={{
+          height: "10px",
+          borderRadius: "4px",
+          width: "40%",
+          background: "rgba(255,255,255,0.03)",
+        }}
+      />
     </motion.div>
   );
 }
 
-// ─── Delta badge ─────────────────────────────────────────────────────────────
+// ─── Delta badge Dark Atelier ─────────────────────────────────────────────────
 
 function DeltaBadge({
   delta,
@@ -104,23 +125,64 @@ function DeltaBadge({
   const isZero = delta === 0;
   const isPositive = delta > 0;
 
-  const color = isZero ? "#9C8E85" : isPositive ? "#065F46" : "#B91C1C";
-  const bg = isZero ? "#F3EDE8" : isPositive ? "#D1FAE5" : "#FEE2E2";
+  const color = isZero
+    ? "rgba(245,242,238,0.25)"
+    : isPositive
+      ? "rgba(52,211,153,0.85)"
+      : "rgba(252,165,165,0.85)";
+
+  const bg = isZero
+    ? "rgba(255,255,255,0.04)"
+    : isPositive
+      ? "rgba(16,185,129,0.1)"
+      : "rgba(239,68,68,0.1)";
+
+  const border = isZero
+    ? "rgba(255,255,255,0.07)"
+    : isPositive
+      ? "rgba(16,185,129,0.2)"
+      : "rgba(239,68,68,0.2)";
+
   const arrow = isZero ? "→" : isPositive ? "▲" : "▼";
   const sign = isPositive ? "+" : "";
 
   return (
-    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        marginTop: "10px",
+        flexWrap: "wrap",
+      }}
+    >
       <span
-        className="inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full"
-        style={{ background: bg, color }}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "3px",
+          fontSize: "11px",
+          padding: "2px 8px",
+          borderRadius: "20px",
+          background: bg,
+          color,
+          border: `1px solid ${border}`,
+          fontWeight: 400,
+          letterSpacing: "0.04em",
+        }}
       >
-        <span style={{ fontSize: "0.6rem" }}>{arrow}</span>
+        <span style={{ fontSize: "9px" }}>{arrow}</span>
         {sign}
         {Math.abs(delta).toFixed(0)}%
       </span>
       {deltaLabel && (
-        <span className="text-xs" style={{ color: "#C4B8B0" }}>
+        <span
+          style={{
+            fontSize: "11px",
+            color: "rgba(245,242,238,0.18)",
+            letterSpacing: "0.03em",
+          }}
+        >
           {deltaLabel}
         </span>
       )}
@@ -153,21 +215,69 @@ export default function MetricCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.04 }}
-      className="rounded-2xl p-5"
-      style={{ background: "#FFFFFF", border: "1px solid #EDE8E3" }}
+      style={{
+        borderRadius: "10px",
+        padding: "20px",
+        background: "#0E0C0B",
+        border: "1px solid rgba(255,255,255,0.055)",
+        position: "relative",
+        overflow: "hidden",
+        transition: "border-color 0.2s",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor =
+          "rgba(255,255,255,0.09)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor =
+          "rgba(255,255,255,0.055)";
+      }}
     >
+      {/* Radial sutil en esquina */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          width: "80px",
+          height: "80px",
+          background: `radial-gradient(circle at top right, ${primaryColor}0A, transparent 70%)`,
+          pointerEvents: "none",
+        }}
+      />
+
       {/* Ícono */}
       <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center mb-4"
-        style={{ background: `${primaryColor}14` }}
+        style={{
+          width: "32px",
+          height: "32px",
+          borderRadius: "8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "16px",
+          background: `${primaryColor}12`,
+          border: `1px solid ${primaryColor}20`,
+        }}
       >
-        <Icon size={16} strokeWidth={1.75} style={{ color: primaryColor }} />
+        <Icon
+          size={15}
+          strokeWidth={1.75}
+          style={{ color: `${primaryColor}CC` }}
+        />
       </div>
 
       {/* Label */}
       <p
-        className="text-xs font-medium uppercase tracking-wider mb-1.5"
-        style={{ color: "#9C8E85", letterSpacing: "0.08em" }}
+        style={{
+          fontSize: "10px",
+          fontWeight: 400,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "rgba(245,242,238,0.25)",
+          marginBottom: "8px",
+        }}
       >
         {label}
       </p>
@@ -175,25 +285,33 @@ export default function MetricCard({
       {/* Valor */}
       <p
         style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontFamily:
+            "var(--font-cormorant, 'Cormorant Garamond', Georgia, serif)",
           fontSize: "2rem",
-          fontWeight: 600,
-          color: "#2D2420",
+          fontWeight: 300,
+          color: "rgba(245,242,238,0.88)",
           lineHeight: 1,
-          letterSpacing: "-0.02em",
+          letterSpacing: "-0.03em",
         }}
       >
         {value}
       </p>
 
-      {/* Sublabel opcional */}
+      {/* Sublabel */}
       {sublabel && (
-        <p className="text-xs mt-1" style={{ color: "#B5A99F" }}>
+        <p
+          style={{
+            fontSize: "11px",
+            marginTop: "5px",
+            color: "rgba(245,242,238,0.2)",
+            letterSpacing: "0.03em",
+          }}
+        >
           {sublabel}
         </p>
       )}
 
-      {/* Delta opcional */}
+      {/* Delta */}
       {delta != null && <DeltaBadge delta={delta} deltaLabel={deltaLabel} />}
     </motion.div>
   );

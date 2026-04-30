@@ -1,6 +1,6 @@
 /**
  * app/(dashboard)/layout.tsx
- * BeautySync — Fase 4 → Fase 7.5
+ * BeautySync — Dark Atelier
  *
  * REGLA: NO agregar padding aquí. Cada página maneja su propio layout interno.
  * FIX: Mapear primary_color → primaryColor y logo_url → logoUrl antes de
@@ -12,7 +12,7 @@ import { redirect } from "next/navigation";
 import { SalonProvider, type SubscriptionData } from "@/context/SalonContext";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { SubscriptionGate } from "@/components/dashboard/SubscriptionGate";
-import SessionTimeout from "@/components/providers/SessionTimeout"; // ← NUEVO Fase 7.5
+import SessionTimeout from "@/components/providers/SessionTimeout";
 
 export default async function DashboardLayout({
   children,
@@ -66,7 +66,7 @@ export default async function DashboardLayout({
     );
   }
 
-  const primaryColor = salon.primary_color ?? "#D4375F";
+  const primaryColor = salon.primary_color ?? "#FF2D55";
 
   const initialSalon = {
     id: salon.id,
@@ -86,15 +86,17 @@ export default async function DashboardLayout({
       initialSalon={initialSalon}
       initialSubscription={initialSubscription}
     >
-      <SessionTimeout /> {/* ← NUEVO Fase 7.5 */}
+      <SessionTimeout />
       <SubscriptionGate
         status={effectiveStatus}
         trialDaysRemaining={trialDaysRemaining}
         primaryColor={primaryColor}
         salonName={salon.name}
       >
-        {/* Estructura idéntica a Fase 3 — sin padding aquí */}
-        <div className="flex h-screen bg-[#FAF8F5] overflow-hidden">
+        <div
+          className="flex h-screen overflow-hidden"
+          style={{ background: "#080706" }}
+        >
           <DashboardSidebar />
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
